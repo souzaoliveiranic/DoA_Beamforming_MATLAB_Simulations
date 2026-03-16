@@ -68,7 +68,7 @@ RMSE = zeros(nMethods, nSNR, nISR, nRadius, nCoupling, nSnapshots, nPhi*nPhi);
 Z0 = 50; % Impedância de referência
 
 % R_list = [0.05 0.10 0.15 0.20 0.30];   % metros (ajuste)
-R_list = [0.025 0.125 0.25 0.375 0.5];   % metros (ajuste)
+R_list = [0.01 0.025 0.125 0.25 0.375 0.5];   % metros (ajuste)
 use_dB = false;
 
 % --------- Pré-alocação ---------
@@ -463,6 +463,12 @@ end
 
 %% ======= Calculo do Beamforming  =======
 
+% Testando outros ranges no beamforming
+range_SNR_dB = -9:3:3; %-9:3:9;
+range_ISR_dB = -6:3:3; %-9:3:3;
+
+nulo_no_interferidor = 0;
+
 TotalSim = nSNR*nISR*nRadius*nCoupling*nPhi*nPhi;
 iTotal = 0;
 % Armazenamento
@@ -509,9 +515,9 @@ for iSNR = 1:nSNR
                             Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
                             Coupling_matrix = 1\Ctx;
                         end
-                        % X = Coupling_matrix * X;
+                        X = Coupling_matrix * X;
                         % X = Coupling_matrix_sig * Xsig + Coupling_matrix_int * Xint + Xn;
-                        X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
+                        % X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
 
 
                         iTotal = iTotal + 1;
@@ -531,15 +537,21 @@ for iSNR = 1:nSNR
 
                         % --- Matriz de restrições C ---
                         % Cada coluna de C é um vetor de direção (sinal + interferentes)
-                        C = a_sig;                                    % primeira coluna = sinal desejado
-                        for k = 1:Nnull
-                            a_null = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_nulls(k));  % vetor de direção Mx1
-                            C = [C, a_null];                          % adiciona interferente
+                        C = a_sig;                                   % primeira coluna = sinal desejado
+                        if nulo_no_interferidor
+                            for k = 1:Nnull
+                                a_null = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_nulls(k));  % vetor de direção Mx1
+                                C = [C, a_null];                          % adiciona interferente
+                            end
                         end
 
                         % --- Vetor de ganhos desejados f ---
                         % Ganho = 1 para o sinal desejado, 0 para cada nulo
-                        f = [1; zeros(Nnull,1)];
+                        if nulo_no_interferidor
+                            f = [1; zeros(Nnull,1)];
+                        else
+                            f = [1];
+                        end
 
                         % --- Matriz de projeção e vetor de correção
                         P   = eye(M) - C * ((C' * C) \ C');
@@ -558,18 +570,20 @@ for iSNR = 1:nSNR
 
                         % ======= Demodulação =======
 
-                        [bits_hat_q, BER_q, pam_rx_mf0, sym_rx0]        = utils.fsk2_demod(qn, bits, Rs, sps, alpha, span, fd);
-                        [bits_hat_in, BER_in, pam_rx_mf1, sym_rx1]      = utils.fsk2_demod(X(1,:), bits, Rs, sps, alpha, span, fd);
+                        [bits_hat_q, BER_q, pam_rx_mf0, sym_rx0]      = utils.fsk2_demod(qn, bits, Rs, sps, alpha, span, fd);
+                        [bits_hat_controle, BER_controle, pam_rx_mf4, sym_rx4]      = utils.fsk2_demod(Xsig(1,:), bits, Rs, sps, alpha, span, fd);
+                        [bits_hat_in, BER_in, pam_rx_mf1, sym_rx1]    = utils.fsk2_demod(X(1,:), bits, Rs, sps, alpha, span, fd);
                         [bits_hat_das, BER_das, pam_rx_mf2, sym_rx2]  = utils.fsk2_demod(y_das, bits, Rs, sps, alpha, span, fd);
-                        [bits_hat_mvdr, BER_mvdr, pam_rx_mf3, sym_rx3]  = utils.fsk2_demod(y_capon, bits, Rs, sps, alpha, span, fd);
+                        [bits_hat_mvdr, BER_mvdr, pam_rx_mf3, sym_rx3]= utils.fsk2_demod(y_capon, bits, Rs, sps, alpha, span, fd);
 
                         fprintf('BER: RX SEM INT. %.2f%%  / RX %.2f%% / Capon %.2f%% / DAS %.2f%% \n', ...
                             BER_q*100, BER_in*100, BER_mvdr*100, BER_das*100);
 
                         % Calcula EVM
                         [EVM_onlynoise,  EVMdB_onlynoise]   = utils.calc_evm_real(sym_rx0,  sym_tx);
+                        [EVM_controle,  EVMdB_controle]   = utils.calc_evm_real(sym_rx4,  sym_tx);
                         [EVM_in,  EVMdB_in]                 = utils.calc_evm_real(sym_rx1,  sym_tx);
-                        [EVM_das, EVMdB_das]              = utils.calc_evm_real(sym_rx2, sym_tx);
+                        [EVM_das, EVMdB_das]                = utils.calc_evm_real(sym_rx2, sym_tx);
                         [EVM_mvdr,EVMdB_mvdr]               = utils.calc_evm_real(sym_rx3, sym_tx);
 
                         fprintf('EVM (dB): Rx Sem Int. %.2f | Rx: %.2f | Capon: %.2f | DAS: %.2f\n', ...
@@ -577,14 +591,16 @@ for iSNR = 1:nSNR
 
                         % Salvando EVM e BER
                         BER(:,iSNR,iISR,iRadius, iCoupling, ii) = [
-                            BER_q;
+                            % BER_q;
+                            BER_controle;
                             BER_in;
                             BER_mvdr;
                             BER_das
                             ];
 
                         EVM(:,iSNR,iISR,iRadius, iCoupling, ii) = [
-                            EVMdB_onlynoise;
+                            % EVMdB_onlynoise;
+                            BER_controle;
                             EVMdB_in;
                             EVMdB_mvdr;
                             EVMdB_das
@@ -605,7 +621,7 @@ EVM_mean = mean(EVM, 6);
 
 %% ======= Gráficos de BER e EVM por SNR, ISR, CF após beamforming =======
 
-methods = ["NOISE", "w/o BF","MPDR","DAS"];
+methods = ["SINAL ORIGINAL", "SEM BF","MPDR","DAS"];
 nMethods = 4;
 markers = ["o-","x-","s-","d-","^-","v-","*-","+-"];
 colors =  ["red", "green", "blue", "black", "red", "green", "blue", "black"];
@@ -629,19 +645,19 @@ for iRadius = 1:nRadius
 
         legend_strings = strings(0);   % inicializa como array de strings vazio
 
-        for iCoupling = 1:nCoupling
-            for m = 1:nMethods
+        for iCoupling = 1:nCoupling 
+            for m = 1:nMethods % ignorando o primeiro método
                 plot(range_SNR_dB, squeeze(BER_mean(m, :, iISR, iRadius, iCoupling))*100, ...
                     markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
             end
         end
-        for m = 1:nMethods
+        for m = 1:nMethods % ignorando o primeiro método
             legend_strings(end+1) = methods(m);
         end
 
         xlabel("SNR (dB)",'Interpreter','latex');
         ylabel("BER (%)",'Interpreter','latex');
-        ylim([0 80]);
+        ylim([0 60]);
         % title(sprintf('BER vs SNR | ISR=%d dB | Snapshots=%d', ...
         %     range_ISR_dB(iISR), range_snapshots(end)), 'FontSize', 12);
 
@@ -662,7 +678,7 @@ for iRadius = 1:nRadius
     end
 end
 
-%  GRÁFICOS: Varredura de SNR
+%  GRÁFICOS: Varredura de ISR
 
 for iRadius = 1:nRadius
     for iSNR = 1:nSNR
@@ -673,18 +689,18 @@ for iRadius = 1:nRadius
         legend_strings = strings(0);   % inicializa como array de strings vazio
 
         for iCoupling = 1:nCoupling
-            for m = 1:nMethods
+            for m = 1:nMethods % ignorando o primeiro método
                 plot(range_ISR_dB, squeeze(BER_mean(m, iSNR, :, iRadius, iCoupling))*100, ...
                     markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
             end
         end
-        for m = 1:nMethods
+        for m = 1:nMethods % ignorando o primeiro método
             legend_strings(end+1) = methods(m);
         end
 
         xlabel("ISR (dB)",'Interpreter','latex');
         ylabel("BER (%)",'Interpreter','latex');
-        ylim([0 80]);
+        ylim([0 60]);
         % title(sprintf('BER vs SNR | ISR=%d dB | Snapshots=%d', ...
         %     range_ISR_dB(iISR), range_snapshots(end)), 'FontSize', 12);
 
@@ -711,7 +727,7 @@ return;
 
 %% GRÁFICOS EVM
 
-%  GRÁFICOS: Varredura de ISR
+%  GRÁFICOS: Varredura de SNR
 
 for iRadius = 1:nRadius
     for iISR = 1:nISR

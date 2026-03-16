@@ -4,8 +4,6 @@
 %  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
 %where you can also make suggestions and rate matlab2tikz.
 %
-\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
-%
 \begin{tikzpicture}
 
 \begin{axis}[%
@@ -15,29 +13,19 @@ at={(0\figurewidth,0\figureheight)},
 scale only axis,
 xmin=-6,
 xmax=6,
-xlabel style={font=\color{mycolor1}},
+xlabel style={font=\color{white!15!black}},
 xlabel={SNR (dB)},
 ymin=0,
-ymax=80,
-ylabel style={font=\color{mycolor1}},
-ylabel={RBER (%)},
+ymax=60,
+ylabel style={font=\color{white!15!black}},
+ylabel={BER (%)},
 axis background/.style={fill=white},
 axis x line*=bottom,
 axis y line*=left,
 xmajorgrids,
 ymajorgrids,
-legend style={legend cell align=left, align=left}
+legend style={legend cell align=left, align=left, draw=white!15!black}
 ]
-\addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
-  table[row sep=crcr]{%
--6	45.8839147959\\
--3	40.5951370035043\\
-0	24.2492016600687\\
-3	6.00399468969394\\
-6	0.333688151080599\\
-};
-\addlegendentry{NOISE}
-
 \addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
 -6	45.9903601200799\\
@@ -68,14 +56,6 @@ legend style={legend cell align=left, align=left}
 };
 \addlegendentry{DAS}
 
-\addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
-  table[row sep=crcr]{%
--6	46.0716891318128\\
--3	40.2781930607217\\
-0	24.6522586740979\\
-3	5.91309755893363\\
-6	0.370764612311777\\
-};
 \addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
   table[row sep=crcr]{%
 -6	30.3464855102797\\
@@ -100,5 +80,21 @@ legend style={legend cell align=left, align=left}
 3	0\\
 6	0\\
 };
+\end{axis}
+
+\begin{axis}[%
+width=1.227\figurewidth,
+height=1.227\figureheight,
+at={(-0.16\figurewidth,-0.135\figureheight)},
+scale only axis,
+xmin=0,
+xmax=1,
+ymin=0,
+ymax=1,
+axis line style={draw=none},
+ticks=none,
+axis x line*=bottom,
+axis y line*=left
+]
 \end{axis}
 \end{tikzpicture}%

@@ -4,8 +4,6 @@
 %  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
 %where you can also make suggestions and rate matlab2tikz.
 %
-\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
-%
 \begin{tikzpicture}
 
 \begin{axis}[%
@@ -13,84 +11,84 @@ width=0.951\figurewidth,
 height=\figureheight,
 at={(0\figurewidth,0\figureheight)},
 scale only axis,
-xmin=-12,
-xmax=-3,
-xlabel style={font=\color{mycolor1}},
+xmin=-6,
+xmax=3,
+xlabel style={font=\color{white!15!black}},
 xlabel={ISR (dB)},
 ymin=0,
-ymax=80,
-ylabel style={font=\color{mycolor1}},
+ymax=60,
+ylabel style={font=\color{white!15!black}},
 ylabel={BER (%)},
 axis background/.style={fill=white},
 axis x line*=bottom,
 axis y line*=left,
 xmajorgrids,
 ymajorgrids,
-legend style={legend cell align=left, align=left}
+legend style={legend cell align=left, align=left, draw=white!15!black}
 ]
 \addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
--12	46.044180789609\\
--9	45.8839147959\\
--6	46.044180789609\\
--3	46.4269055507051\\
+-6	0\\
+-3	0\\
+0	0\\
+3	0\\
 };
-\addlegendentry{NOISE}
+\addlegendentry{SINAL ORIGINAL}
 
 \addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--12	45.8300941263709\\
--9	45.9903601200799\\
--6	45.6315556565524\\
--3	45.4832498116277\\
+-6	45.8097618734377\\
+-3	45.5023860496824\\
+0	45.2882993864444\\
+3	43.9834471540826\\
 };
-\addlegendentry{w/o BF}
+\addlegendentry{SEM BF}
 
 \addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--12	6.68691918527466\\
--9	7.40333209745129\\
--6	8.58738682709213\\
--3	9.92811950580665\\
+-6	8.82539378789873\\
+-3	10.0620731721903\\
+0	12.0175574984153\\
+3	13.8558323665546\\
 };
 \addlegendentry{MPDR}
 
 \addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--12	6.50034086424035\\
--9	7.2035976127543\\
--6	8.57183863367261\\
--3	10.6134360311442\\
+-6	8.72851658274629\\
+-3	10.5309110045329\\
+0	13.9180251402327\\
+3	18.2236787025631\\
 };
 \addlegendentry{DAS}
 
 \addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
   table[row sep=crcr]{%
--12	46.2463073040629\\
--9	46.0716891318128\\
--6	46.1805264857495\\
--3	46.1302938608556\\
+-6	0\\
+-3	0\\
+0	0\\
+3	0\\
 };
 \addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
   table[row sep=crcr]{%
--12	29.8752556481802\\
--9	30.3464855102797\\
--6	30.3297413019818\\
--3	31.9108729712598\\
+-6	37.2391192546435\\
+-3	37.7797179796917\\
+0	38.787958522204\\
+3	40.5843728695985\\
 };
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
   table[row sep=crcr]{%
--12	42.9345421057038\\
--9	42.9345421057038\\
--6	42.3760031574793\\
--3	42.4872325411728\\
+-6	44.2106899809834\\
+-3	43.801652892562\\
+0	43.9164703208908\\
+3	44.1855736685364\\
 };
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
   table[row sep=crcr]{%
--12	0.114817428328808\\
--9	0.205714559089115\\
--6	0.714020882419777\\
--3	2.3980098312423\\
+-6	14.6667304541269\\
+-3	16.9726471397304\\
+0	21.1706593630025\\
+3	26.5036897058999\\
 };
 \end{axis}
 \end{tikzpicture}%

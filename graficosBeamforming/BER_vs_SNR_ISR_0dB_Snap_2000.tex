@@ -11,10 +11,10 @@ width=0.951\figurewidth,
 height=\figureheight,
 at={(0\figurewidth,0\figureheight)},
 scale only axis,
-xmin=-6,
-xmax=3,
+xmin=-10,
+xmax=4,
 xlabel style={font=\color{white!15!black}},
-xlabel={ISR (dB)},
+xlabel={SNR (dB)},
 ymin=0,
 ymax=60,
 ylabel style={font=\color{white!15!black}},
@@ -28,6 +28,7 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 ]
 \addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
+-9	0\\
 -6	0\\
 -3	0\\
 0	0\\
@@ -37,33 +38,37 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 
 \addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--6	28.24269533913\\
--3	30.7064859886857\\
+-9	48.0881702168375\\
+-6	45.2882993864444\\
+-3	39.4493547499731\\
 0	33.3879513461147\\
-3	38.4901508174762\\
+3	30.2017677099903\\
 };
 \addlegendentry{SEM BF}
 
 \addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--6	0.13634569614046\\
--3	0.779801700733157\\
+-9	27.2093384841707\\
+-6	12.0175574984153\\
+-3	4.75176711198287\\
 0	2.83814330650273\\
-3	5.17156833431008\\
+3	2.64917295571157\\
 };
 \addlegendentry{MPDR}
 
 \addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--6	0.13873772589731\\
--3	0.996280393728098\\
+-9	27.4724617574243\\
+-6	13.9180251402327\\
+-3	7.20000956811903\\
 0	4.74578703759075\\
-3	11.3824735979716\\
+3	3.51269569793448\\
 };
 \addlegendentry{DAS}
 
 \addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
   table[row sep=crcr]{%
+-9	0\\
 -6	0\\
 -3	0\\
 0	0\\
@@ -71,24 +76,27 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 };
 \addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
   table[row sep=crcr]{%
--6	22.5640166963677\\
--3	25.561229981701\\
+-9	43.928430469675\\
+-6	38.787958522204\\
+-3	33.7096793484111\\
 0	29.32867684874\\
-3	34.0242312614369\\
+3	27.0191721185011\\
 };
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
   table[row sep=crcr]{%
--6	46.8299625647343\\
--3	46.9268397698867\\
+-9	44.6065709057421\\
+-6	43.9164703208908\\
+-3	45.3552762196362\\
 0	46.9758763799022\\
-3	46.8514908325459\\
+3	48.1372068268529\\
 };
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
   table[row sep=crcr]{%
--6	0.397076939637129\\
--3	1.91960387987227\\
+-9	32.8629008144861\\
+-6	21.1706593630025\\
+-3	12.0127734389016\\
 0	6.85794931288945\\
-3	16.1928454389973\\
+3	4.74219899295547\\
 };
 \end{axis}
 \end{tikzpicture}%
