@@ -42,12 +42,12 @@ alpha  = 0.3;           % roll-off do RRC
 span   = 8;             % comprimento do RRC em símbolos (TX/RX)
 fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
 
-range_SNR_dB = -6:3:6; %-9:3:9;
-range_ISR_dB = -12:3:-3; %-9:3:3;
+range_SNR_dB = -6:6:6; %-6:3:6; %-9:3:9;
+range_ISR_dB = -12:6:0; %-12:3:-3; %-9:3:3;
 range_snapshots = 2000:3000:N_DOA;
-range_radius = [0.25]; %[0.25 0.2 0.15]; %0:0.3:0.6;
+range_radius = [0.5 0.3 0.25 0.2 0.15 0.1]; %[0.25];
 range_coupling = [0 1]; % com e sem acoplamento
-range_phi = -180:36:180;
+range_phi = -180:18:180;
 nMethods = 4;
 methods = ["KW","DAS","MPDR","MUSIC"];
 
@@ -68,7 +68,7 @@ RMSE = zeros(nMethods, nSNR, nISR, nRadius, nCoupling, nSnapshots, nPhi*nPhi);
 Z0 = 50; % Impedância de referência
 
 % R_list = [0.05 0.10 0.15 0.20 0.30];   % metros (ajuste)
-R_list = [0.025 0.125 0.25 0.375 0.5];   % metros (ajuste)
+R_list = [0.01 0.025 0.125 0.25 0.375 0.5];   % metros (ajuste)
 use_dB = false;
 
 % --------- Pré-alocação ---------
@@ -148,11 +148,16 @@ legend(compose('R = %.3f $\\lambda_0$', R_list), ...
        'Interpreter','latex', ...
        'Location','best');
 
-
-% Matriz a ser usada nas simulações
-Ctx = compute_Ctx_for_R(fc, M, r, Z0);
+Coupling_matrices = zeros(M, M, nRadius); 
+% Matrizes a ser usada nas simulações
+for iRadius = 1:nRadius
+    radius = range_radius(iRadius)*lambda;
+    Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
+    Coupling_matrices(:,:,iRadius) = 1\Ctx;
+end
 
 %% ======= DoA KW vs Delay and Sum vs Capon =======
+
 
 for iSNR = 1:nSNR
     for iISR = 1:nISR
@@ -189,26 +194,9 @@ for iSNR = 1:nSNR
                             Coupling_matrix_sig = eye(M);
                             Coupling_matrix_int = eye(M);
                         else
-                            g_emb_sig = zeros(1,M);
-                            g_emb_int = zeros(1,M);
-                            % for m = 1:1:M
-                            %     [EmbPattern, azimuth_angles, elevation_angles] = pattern(uca, fc, phi_sig_deg, theta_sig_deg, ...
-                            %         'ElementNumber', m, 'Termination', termination_Z);
-                            %     g_emb_sig(m) = EmbPattern;
-                            %
-                            %     [EmbPattern, azimuth_angles, elevation_angles] = pattern(uca, fc, phi_int_deg, theta_int_deg, ...
-                            %         'ElementNumber', m, 'Termination', termination_Z);
-                            %     g_emb_int(m) = EmbPattern;
-                            % end
-                            % % Create a diagonal matrix from the vector
-                            % G_emb_sig = diag(g_emb_sig);
-                            % G_emb_int = diag(g_emb_int);
-                            %
-                            % Coupling_matrix_sig = G_emb_sig * Coupling_matrix_matlab;
-                            % Coupling_matrix_int = G_emb_int * Coupling_matrix_matlab;
-                            % Coupling_matrix = Coupling_matrix_matlab;
-                            Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
-                            Coupling_matrix = 1\Ctx;
+                            % Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
+                            % Coupling_matrix = 1\Ctx;
+                            Coupling_matrix = Coupling_matrices(:,:,iRadius);
                         end
 
                         % X = Coupling_matrix * X;
@@ -312,8 +300,8 @@ K_fixed = numel(range_snapshots);
 
 methods = ["KW","DAS","Capon","MUSIC"];
 markers = ["o-","x-","s-","d-","^-","v-","*-","+-"];
-colors =  ["red", "green", "blue", "black", "red", "green", "blue", "black"];
-line_style =   ["-", "--", ":"]; % linha continua sem acoplamento % linha tracejada com acoplamento
+colors =  ["red", "green", "blue", "black", "magenta", "cyan", "yellow"];
+line_style =   ["-", "--", ":","-."]; % linha continua sem acoplamento % linha tracejada com acoplamento
 
 % Criar pasta 'graficos'
 outDir = fullfile(pwd, 'graficos');
@@ -323,50 +311,55 @@ end
 
 %  GRÁFICOS: Varredura de SNR
 
-for iRadius = 1:nRadius
+for iRadius = 3:nRadius
     for iISR = 1:nISR
-        fig = figure('Name', "RMSE vs SNR | ISR=" + string(range_ISR_dB(iISR)) + " (r = " + string(range_radius(iRadius)) + ")", ...
-            'NumberTitle', 'off');
-        hold on; grid on;
+        if (range_ISR_dB(iISR) == -6)
 
-        legend_strings = strings(0);   % inicializa como array de strings vazio
+            fig = figure('Name', "RMSE vs SNR | ISR=" + string(range_ISR_dB(iISR)) + " (r = " + string(range_radius(iRadius)) + ")", ...
+                'NumberTitle', 'off');
+            hold on; grid on;
 
-        for iCoupling = 1:nCoupling
-            for m = 1:nMethods
-                plot(range_SNR_dB, squeeze(RMSE_mean(m, :, iISR, iRadius, iCoupling, K_fixed)), ...
-                    markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
+            legend_strings = strings(0);   % inicializa como array de strings vazio
+
+            for iCoupling = 1:nCoupling
+                if(range_coupling(iCoupling) == 1)
+                    for m = 1:nMethods
+                        plot(range_SNR_dB, squeeze(RMSE_mean(m, :, iISR, iRadius, iCoupling, K_fixed)), ...
+                            markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
+                    end
+                end
             end
+            for m = 1:nMethods
+                legend_strings(end+1) = methods(m);
+            end
+
+            xlabel("SNR (dB)",'Interpreter','latex');
+            ylabel("RMSE (degrees)",'Interpreter','latex');
+            yscale("log");
+            ytickformat('%.2f') % 'f' forces fixed-point notation instead of scientific
+            ylim([-10 100]);
+            % title(sprintf('RMSE vs SNR | ISR=%d dB | Snapshots=%d', ...
+            %     range_ISR_dB(iISR), range_snapshots(end)));
+
+            % legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
+            legend(legend_strings, 'Location', 'best','Interpreter','latex');
+
+            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.png', ...
+                range_ISR_dB(iISR), range_snapshots(end));
+
+            exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
+
+            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.tex', ...
+                range_ISR_dB(iISR), range_snapshots(end));
+
+            %cleanfigure;
+            % Define LaTeX macros for width and height (you will define these in your .tex file)
+            matlab2tikz(fullfile(outDir, fileName), 'width', '\figurewidth', 'height', '\figureheight');
         end
-        for m = 1:nMethods
-            legend_strings(end+1) = methods(m);
-        end
-
-        xlabel("SNR (dB)",'Interpreter','latex');
-        ylabel("RMSE (degrees)",'Interpreter','latex');
-        yscale("log");
-        ytickformat('%.2f') % 'f' forces fixed-point notation instead of scientific
-        ylim([-10 100]);
-        % title(sprintf('RMSE vs SNR | ISR=%d dB | Snapshots=%d', ...
-        %     range_ISR_dB(iISR), range_snapshots(end)));
-
-        % legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
-        legend(legend_strings, 'Location', 'best','Interpreter','latex');
-
-        fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.png', ...
-            range_ISR_dB(iISR), range_snapshots(end));
-
-        exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
-
-        fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.tex', ...
-            range_ISR_dB(iISR), range_snapshots(end));
-
-        %cleanfigure;
-        % Define LaTeX macros for width and height (you will define these in your .tex file)
-        matlab2tikz(fullfile(outDir, fileName), 'width', '\figurewidth', 'height', '\figureheight');
     end
 end
 
-%  GRÁFICOS: Varredura de ISR
+%%  GRÁFICOS: Varredura de ISR
 
 for iRadius = 1:nRadius
     for iSNR = 1:nSNR
@@ -412,47 +405,96 @@ for iRadius = 1:nRadius
 end
 
 
-%%  GRÁFICOS: Snapshots
+%%  GRÁFICOS: Varredura de SNR por Raio
 
-for iSNR = 1:nSNR
+for m = 1:nMethods
     for iISR = 1:nISR
-        fig = figure('Name', "RMSE vs Snapshots | SNR=" + string(range_SNR_dB(iSNR)) + ...
-            " | ISR=" + string(range_ISR_dB(iISR)), ...
+        if (range_ISR_dB(iISR) == -6)
+            fig = figure('Name', "RMSE vs SNR | ISR=" + string(range_ISR_dB(iISR)) + " (" + methods(m) + ")", ...
+                'NumberTitle', 'off');
+            hold on; grid on;
+
+            legend_strings = strings(0);   % inicializa como array de strings vazio
+
+            for iCoupling = 1:nCoupling
+                for iRadius = 3:nRadius
+                    plot(range_SNR_dB, squeeze(RMSE_mean(m, :, iISR, iRadius, iCoupling, K_fixed)), ...
+                        markers(iRadius), 'Color', colors(iRadius),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
+                end
+            end
+            for iRadius = 3:nRadius
+                legend_strings(end+1) = "r = " + string(range_radius(iRadius));
+            end
+
+            xlabel("SNR (dB)",'Interpreter','latex');
+            ylabel("RMSE (degrees)",'Interpreter','latex');
+            yscale("log");
+            ytickformat('%.2f') % 'f' forces fixed-point notation instead of scientific
+            ylim([-10 100]);
+            % title(sprintf('RMSE vs SNR | ISR=%d dB | Snapshots=%d', ...
+            %     range_ISR_dB(iISR), range_snapshots(end)));
+
+            % legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
+            legend(legend_strings, 'Location', 'best','Interpreter','latex');
+
+            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.png', ...
+                range_ISR_dB(iISR), range_snapshots(end));
+
+            exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
+
+            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.tex', ...
+                range_ISR_dB(iISR), range_snapshots(end));
+
+            %cleanfigure;
+            % Define LaTeX macros for width and height (you will define these in your .tex file)
+            matlab2tikz(fullfile(outDir, fileName), 'width', '\figurewidth', 'height', '\figureheight');
+        end
+    end
+end
+
+
+for iISR = 1:nISR
+    if (range_ISR_dB(iISR) == -6)
+        fig = figure('Name', "RMSE vs SNR | ISR=" + string(range_ISR_dB(iISR)), ...
             'NumberTitle', 'off');
         hold on; grid on;
 
         legend_strings = strings(0);   % inicializa como array de strings vazio
 
-        for iRadius = 1:nRadius
+        for m = 1:nMethods
             for iCoupling = 1:nCoupling
-                for m = 1:nMethods
-                    y = squeeze(RMSE_mean(m, iSNR, iISR, iRadius, iCoupling, :));
-                    plot(range_snapshots, y, markers(iRadius), 'Color', colors(m), 'LineWidth', 2, 'LineStyle', line_style(iRadius));
+                if(range_coupling(iCoupling) == 1)
+                    for iRadius = 3:nRadius
+                        plot(range_SNR_dB, squeeze(RMSE_mean(m, :, iISR, iRadius, iCoupling, K_fixed)), ...
+                            markers(m), 'Color', colors(iRadius),'LineWidth', 2, 'LineStyle', line_style(m));
+                    end
                 end
             end
         end
-        for m = 1:nMethods
-            legend_strings(end+1) = methods(m);
+        for iRadius = 3:nRadius
+            legend_strings(end+1) = "r = " + string(range_radius(iRadius));
         end
 
-        xlabel("Snapshots (K)",'Interpreter','latex');
+        xlabel("SNR (dB)",'Interpreter','latex');
         ylabel("RMSE (degrees)",'Interpreter','latex');
         yscale("log");
         ytickformat('%.2f') % 'f' forces fixed-point notation instead of scientific
-        % title(sprintf('RMSE vs Snapshots | SNR=%d dB | ISR=%d dB', ...
-        %     range_SNR_dB(iSNR), range_ISR_dB(iISR)));
+        ylim([-10 100]);
+        % title(sprintf('RMSE vs SNR | ISR=%d dB | Snapshots=%d', ...
+        %     range_ISR_dB(iISR), range_snapshots(end)));
 
-        legend(legend_strings, 'Location', 'northeast','Interpreter','latex');
-        ylim([0 90]);
-        fileName = sprintf('RMSE_vs_Snap_SNR_%ddB_ISR_%ddB.png', ...
-            range_SNR_dB(iSNR), range_ISR_dB(iISR));
+        % legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
+        legend(legend_strings, 'Location', 'best','Interpreter','latex');
+
+        fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.png', ...
+            range_ISR_dB(iISR), range_snapshots(end));
 
         exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
 
-        fileName = sprintf('RMSE_vs_Snap_SNR_%ddB_ISR_%ddB.tex', ...
-            range_SNR_dB(iSNR), range_ISR_dB(iISR));
+        fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.tex', ...
+            range_ISR_dB(iISR), range_snapshots(end));
 
-        cleanfigure;
+        %cleanfigure;
         % Define LaTeX macros for width and height (you will define these in your .tex file)
         matlab2tikz(fullfile(outDir, fileName), 'width', '\figurewidth', 'height', '\figureheight');
     end
@@ -461,7 +503,64 @@ end
 
 
 
+return;
+
+%%  GRÁFICOS: Snapshots
+
+% for iSNR = 1:nSNR
+%     for iISR = 1:nISR
+%         fig = figure('Name', "RMSE vs Snapshots | SNR=" + string(range_SNR_dB(iSNR)) + ...
+%             " | ISR=" + string(range_ISR_dB(iISR)), ...
+%             'NumberTitle', 'off');
+%         hold on; grid on;
+% 
+%         legend_strings = strings(0);   % inicializa como array de strings vazio
+% 
+%         for iRadius = 1:nRadius
+%             for iCoupling = 1:nCoupling
+%                 for m = 1:nMethods
+%                     y = squeeze(RMSE_mean(m, iSNR, iISR, iRadius, iCoupling, :));
+%                     plot(range_snapshots, y, markers(iRadius), 'Color', colors(m), 'LineWidth', 2, 'LineStyle', line_style(iRadius));
+%                 end
+%             end
+%         end
+%         for m = 1:nMethods
+%             legend_strings(end+1) = methods(m);
+%         end
+% 
+%         xlabel("Snapshots (K)",'Interpreter','latex');
+%         ylabel("RMSE (degrees)",'Interpreter','latex');
+%         yscale("log");
+%         ytickformat('%.2f') % 'f' forces fixed-point notation instead of scientific
+%         % title(sprintf('RMSE vs Snapshots | SNR=%d dB | ISR=%d dB', ...
+%         %     range_SNR_dB(iSNR), range_ISR_dB(iISR)));
+% 
+%         legend(legend_strings, 'Location', 'northeast','Interpreter','latex');
+%         ylim([0 90]);
+%         fileName = sprintf('RMSE_vs_Snap_SNR_%ddB_ISR_%ddB.png', ...
+%             range_SNR_dB(iSNR), range_ISR_dB(iISR));
+% 
+%         exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
+% 
+%         fileName = sprintf('RMSE_vs_Snap_SNR_%ddB_ISR_%ddB.tex', ...
+%             range_SNR_dB(iSNR), range_ISR_dB(iISR));
+% 
+%         cleanfigure;
+%         % Define LaTeX macros for width and height (you will define these in your .tex file)
+%         matlab2tikz(fullfile(outDir, fileName), 'width', '\figurewidth', 'height', '\figureheight');
+%     end
+% end
+
+
+
+
 %% ======= Calculo do Beamforming  =======
+
+% Testando outros ranges no beamforming
+range_SNR_dB = -9:3:3; %-9:3:9;
+range_ISR_dB = -6:3:3; %-9:3:3;
+
+nulo_no_interferidor = 0;
 
 TotalSim = nSNR*nISR*nRadius*nCoupling*nPhi*nPhi;
 iTotal = 0;
@@ -509,9 +608,9 @@ for iSNR = 1:nSNR
                             Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
                             Coupling_matrix = 1\Ctx;
                         end
-                        % X = Coupling_matrix * X;
+                        X = Coupling_matrix * X;
                         % X = Coupling_matrix_sig * Xsig + Coupling_matrix_int * Xint + Xn;
-                        X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
+                        % X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
 
 
                         iTotal = iTotal + 1;
@@ -531,15 +630,21 @@ for iSNR = 1:nSNR
 
                         % --- Matriz de restrições C ---
                         % Cada coluna de C é um vetor de direção (sinal + interferentes)
-                        C = a_sig;                                    % primeira coluna = sinal desejado
-                        for k = 1:Nnull
-                            a_null = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_nulls(k));  % vetor de direção Mx1
-                            C = [C, a_null];                          % adiciona interferente
+                        C = a_sig;                                   % primeira coluna = sinal desejado
+                        if nulo_no_interferidor
+                            for k = 1:Nnull
+                                a_null = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_nulls(k));  % vetor de direção Mx1
+                                C = [C, a_null];                          % adiciona interferente
+                            end
                         end
 
                         % --- Vetor de ganhos desejados f ---
                         % Ganho = 1 para o sinal desejado, 0 para cada nulo
-                        f = [1; zeros(Nnull,1)];
+                        if nulo_no_interferidor
+                            f = [1; zeros(Nnull,1)];
+                        else
+                            f = [1];
+                        end
 
                         % --- Matriz de projeção e vetor de correção
                         P   = eye(M) - C * ((C' * C) \ C');
@@ -558,18 +663,20 @@ for iSNR = 1:nSNR
 
                         % ======= Demodulação =======
 
-                        [bits_hat_q, BER_q, pam_rx_mf0, sym_rx0]        = utils.fsk2_demod(qn, bits, Rs, sps, alpha, span, fd);
-                        [bits_hat_in, BER_in, pam_rx_mf1, sym_rx1]      = utils.fsk2_demod(X(1,:), bits, Rs, sps, alpha, span, fd);
+                        [bits_hat_q, BER_q, pam_rx_mf0, sym_rx0]      = utils.fsk2_demod(qn, bits, Rs, sps, alpha, span, fd);
+                        [bits_hat_controle, BER_controle, pam_rx_mf4, sym_rx4]      = utils.fsk2_demod(Xsig(1,:), bits, Rs, sps, alpha, span, fd);
+                        [bits_hat_in, BER_in, pam_rx_mf1, sym_rx1]    = utils.fsk2_demod(X(1,:), bits, Rs, sps, alpha, span, fd);
                         [bits_hat_das, BER_das, pam_rx_mf2, sym_rx2]  = utils.fsk2_demod(y_das, bits, Rs, sps, alpha, span, fd);
-                        [bits_hat_mvdr, BER_mvdr, pam_rx_mf3, sym_rx3]  = utils.fsk2_demod(y_capon, bits, Rs, sps, alpha, span, fd);
+                        [bits_hat_mvdr, BER_mvdr, pam_rx_mf3, sym_rx3]= utils.fsk2_demod(y_capon, bits, Rs, sps, alpha, span, fd);
 
                         fprintf('BER: RX SEM INT. %.2f%%  / RX %.2f%% / Capon %.2f%% / DAS %.2f%% \n', ...
                             BER_q*100, BER_in*100, BER_mvdr*100, BER_das*100);
 
                         % Calcula EVM
                         [EVM_onlynoise,  EVMdB_onlynoise]   = utils.calc_evm_real(sym_rx0,  sym_tx);
+                        [EVM_controle,  EVMdB_controle]   = utils.calc_evm_real(sym_rx4,  sym_tx);
                         [EVM_in,  EVMdB_in]                 = utils.calc_evm_real(sym_rx1,  sym_tx);
-                        [EVM_das, EVMdB_das]              = utils.calc_evm_real(sym_rx2, sym_tx);
+                        [EVM_das, EVMdB_das]                = utils.calc_evm_real(sym_rx2, sym_tx);
                         [EVM_mvdr,EVMdB_mvdr]               = utils.calc_evm_real(sym_rx3, sym_tx);
 
                         fprintf('EVM (dB): Rx Sem Int. %.2f | Rx: %.2f | Capon: %.2f | DAS: %.2f\n', ...
@@ -577,14 +684,16 @@ for iSNR = 1:nSNR
 
                         % Salvando EVM e BER
                         BER(:,iSNR,iISR,iRadius, iCoupling, ii) = [
-                            BER_q;
+                            % BER_q;
+                            BER_controle;
                             BER_in;
                             BER_mvdr;
                             BER_das
                             ];
 
                         EVM(:,iSNR,iISR,iRadius, iCoupling, ii) = [
-                            EVMdB_onlynoise;
+                            % EVMdB_onlynoise;
+                            BER_controle;
                             EVMdB_in;
                             EVMdB_mvdr;
                             EVMdB_das
@@ -605,7 +714,7 @@ EVM_mean = mean(EVM, 6);
 
 %% ======= Gráficos de BER e EVM por SNR, ISR, CF após beamforming =======
 
-methods = ["NOISE", "w/o BF","MPDR","DAS"];
+methods = ["SINAL ORIGINAL", "SEM BF","MPDR","DAS"];
 nMethods = 4;
 markers = ["o-","x-","s-","d-","^-","v-","*-","+-"];
 colors =  ["red", "green", "blue", "black", "red", "green", "blue", "black"];
@@ -629,19 +738,19 @@ for iRadius = 1:nRadius
 
         legend_strings = strings(0);   % inicializa como array de strings vazio
 
-        for iCoupling = 1:nCoupling
-            for m = 1:nMethods
+        for iCoupling = 1:nCoupling 
+            for m = 1:nMethods % ignorando o primeiro método
                 plot(range_SNR_dB, squeeze(BER_mean(m, :, iISR, iRadius, iCoupling))*100, ...
                     markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
             end
         end
-        for m = 1:nMethods
+        for m = 1:nMethods % ignorando o primeiro método
             legend_strings(end+1) = methods(m);
         end
 
         xlabel("SNR (dB)",'Interpreter','latex');
         ylabel("BER (%)",'Interpreter','latex');
-        ylim([0 80]);
+        ylim([0 60]);
         % title(sprintf('BER vs SNR | ISR=%d dB | Snapshots=%d', ...
         %     range_ISR_dB(iISR), range_snapshots(end)), 'FontSize', 12);
 
@@ -662,7 +771,7 @@ for iRadius = 1:nRadius
     end
 end
 
-%  GRÁFICOS: Varredura de SNR
+%  GRÁFICOS: Varredura de ISR
 
 for iRadius = 1:nRadius
     for iSNR = 1:nSNR
@@ -673,18 +782,18 @@ for iRadius = 1:nRadius
         legend_strings = strings(0);   % inicializa como array de strings vazio
 
         for iCoupling = 1:nCoupling
-            for m = 1:nMethods
+            for m = 1:nMethods % ignorando o primeiro método
                 plot(range_ISR_dB, squeeze(BER_mean(m, iSNR, :, iRadius, iCoupling))*100, ...
                     markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
             end
         end
-        for m = 1:nMethods
+        for m = 1:nMethods % ignorando o primeiro método
             legend_strings(end+1) = methods(m);
         end
 
         xlabel("ISR (dB)",'Interpreter','latex');
         ylabel("BER (%)",'Interpreter','latex');
-        ylim([0 80]);
+        ylim([0 60]);
         % title(sprintf('BER vs SNR | ISR=%d dB | Snapshots=%d', ...
         %     range_ISR_dB(iISR), range_snapshots(end)), 'FontSize', 12);
 
@@ -711,7 +820,7 @@ return;
 
 %% GRÁFICOS EVM
 
-%  GRÁFICOS: Varredura de ISR
+%  GRÁFICOS: Varredura de SNR
 
 for iRadius = 1:nRadius
     for iISR = 1:nISR
