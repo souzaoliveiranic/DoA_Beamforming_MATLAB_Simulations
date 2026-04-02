@@ -16,7 +16,7 @@ xmax=6,
 xlabel style={font=\color{white!15!black}},
 xlabel={SNR (dB)},
 ymode=log,
-ymin=-10,
+ymin=1,
 ymax=100,
 yminorticks=true,
 ylabel style={font=\color{white!15!black}},
@@ -27,37 +27,45 @@ axis y line*=left,
 xmajorgrids,
 ymajorgrids,
 yminorgrids,
-legend style={legend cell align=left, align=left, draw=white!15!black}
+legend style={at={(0.03,0.97)}, anchor=north west, legend cell align=left, align=left, draw=white!15!black}
 ]
 \addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
--6	9.84275554705282\\
-0	8.67956196356018\\
-6	9.83154620648975\\
+-6	1.38026519260621\\
+-3	1.25129875260396\\
+0	1.21276379480015\\
+3	1.15306143519838\\
+6	1.03265653314228\\
 };
 \addlegendentry{KW}
 
 \addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--6	10.9609523809524\\
-0	9.75990929705216\\
-6	11.7355555555556\\
+-6	3.05328798185941\\
+-3	3.14993197278911\\
+0	2.96646258503401\\
+3	2.79294784580499\\
+6	3.00485260770975\\
 };
 \addlegendentry{DAS}
 
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--6	25.8102494331065\\
-0	33.7275283446712\\
-6	44.0453061224489\\
+-6	2.32945578231293\\
+-3	2.51106575963719\\
+0	3.33487528344671\\
+3	4.439410430839\\
+6	5.43609977324263\\
 };
 \addlegendentry{Capon}
 
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--6	74.4515192743764\\
-0	80.6303854875283\\
-6	77.2108163265306\\
+-6	43.6338775510204\\
+-3	53.558163265306\\
+0	51.6752154195012\\
+3	51.1773015873016\\
+6	50.5879818594105\\
 };
 \addlegendentry{MUSIC}
 

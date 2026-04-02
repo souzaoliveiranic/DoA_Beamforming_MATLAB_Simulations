@@ -26,69 +26,46 @@ xmajorgrids,
 ymajorgrids,
 legend style={legend cell align=left, align=left, draw=white!15!black}
 ]
-\addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
-  table[row sep=crcr]{%
--6	0\\
--3	0\\
-0	0\\
-3	0\\
-};
-\addlegendentry{SINAL ORIGINAL}
-
 \addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--6	45.461721543816\\
--3	45.6961404599873\\
-0	45.0694286636926\\
-3	44.1664374304816\\
+-6	45.8604474109953\\
+-3	45.6632242863379\\
+0	44.8976310253961\\
+3	44.0270271157184\\
 };
 \addlegendentry{SEM BF}
 
 \addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--6	8.48452954754757\\
--3	10.0477209936492\\
-0	11.7496501656481\\
-3	13.9311813038954\\
+-6	8.4336677266179\\
+-3	9.99602928484466\\
+0	11.8609527747423\\
+3	13.5342318306966\\
 };
 \addlegendentry{MPDR}
 
 \addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--6	8.52040999390033\\
--3	10.6421403882264\\
-0	13.5640047362189\\
-3	17.8026814653574\\
+-6	8.37788081947685\\
+-3	10.4469187578553\\
+0	13.5955974285517\\
+3	17.8399965871539\\
 };
 \addlegendentry{DAS}
 
-\addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
-  table[row sep=crcr]{%
--6	0\\
--3	0\\
-0	0\\
-3	0\\
-};
-\addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
-  table[row sep=crcr]{%
--6	37.901711497291\\
--3	38.0966619224743\\
-0	38.8178588941646\\
-3	40.8044396072287\\
-};
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
   table[row sep=crcr]{%
--6	43.961918886271\\
--3	44.1628493858464\\
-0	43.9583308416357\\
-3	44.1353410436426\\
+-6	44.0657497924399\\
+-3	44.0060249859712\\
+0	44.0998782532792\\
+3	44.2777400395759\\
 };
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
   table[row sep=crcr]{%
--6	14.7349033021971\\
--3	17.3733121240028\\
-0	21.098898470297\\
-3	26.4367128727081\\
+-6	14.7198676865826\\
+-3	17.3228191421286\\
+0	21.1343775329717\\
+3	26.1922810610013\\
 };
 \end{axis}
 \end{tikzpicture}%

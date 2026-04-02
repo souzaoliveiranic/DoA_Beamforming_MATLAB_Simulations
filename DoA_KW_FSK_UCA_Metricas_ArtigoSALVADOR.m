@@ -42,10 +42,10 @@ alpha  = 0.3;           % roll-off do RRC
 span   = 8;             % comprimento do RRC em símbolos (TX/RX)
 fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
 
-range_SNR_dB = -6:6:6; %-6:3:6; %-9:3:9;
-range_ISR_dB = -12:6:0; %-12:3:-3; %-9:3:3;
+range_SNR_dB = -6:3:6; %-6:6:6; %-9:3:9;
+range_ISR_dB = -6:1:-3; %-12:6:0; %-9:3:3;
 range_snapshots = 2000:3000:N_DOA;
-range_radius = [0.5 0.3 0.25 0.2 0.15 0.1]; %[0.25];
+range_radius = [0.25 0.2 0.15 0.1]; %[0.5 0.3 0.25 0.2 0.15 0.1]; %[0.25];
 range_coupling = [0 1]; % com e sem acoplamento
 range_phi = -180:18:180;
 nMethods = 4;
@@ -309,9 +309,9 @@ if ~exist(outDir, 'dir')
     mkdir(outDir);
 end
 
-%  GRÁFICOS: Varredura de SNR
+%%  GRÁFICOS: Varredura de SNR
 
-for iRadius = 3:nRadius
+for iRadius = 1:nRadius
     for iISR = 1:nISR
         if (range_ISR_dB(iISR) == -6)
 
@@ -337,20 +337,21 @@ for iRadius = 3:nRadius
             ylabel("RMSE (degrees)",'Interpreter','latex');
             yscale("log");
             ytickformat('%.2f') % 'f' forces fixed-point notation instead of scientific
-            ylim([-10 100]);
+            ylim([1 100]);
             % title(sprintf('RMSE vs SNR | ISR=%d dB | Snapshots=%d', ...
             %     range_ISR_dB(iISR), range_snapshots(end)));
 
-            % legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
-            legend(legend_strings, 'Location', 'best','Interpreter','latex');
+            legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
+            % legend(legend_strings, 'Location', 'best','Interpreter','latex');
 
-            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.png', ...
-                range_ISR_dB(iISR), range_snapshots(end));
+            fileName = sprintf(['RMSE_vs_SNR_ISR_%ddB_Radius_%' ...
+                'f.png'], ...
+                range_ISR_dB(iISR), range_radius(iRadius));
 
             exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
 
-            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.tex', ...
-                range_ISR_dB(iISR), range_snapshots(end));
+            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Radius_%f.tex', ...
+                range_ISR_dB(iISR), range_radius(iRadius));
 
             %cleanfigure;
             % Define LaTeX macros for width and height (you will define these in your .tex file)
@@ -358,6 +359,8 @@ for iRadius = 3:nRadius
         end
     end
 end
+
+return
 
 %%  GRÁFICOS: Varredura de ISR
 
@@ -437,13 +440,13 @@ for m = 1:nMethods
             % legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
             legend(legend_strings, 'Location', 'best','Interpreter','latex');
 
-            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.png', ...
-                range_ISR_dB(iISR), range_snapshots(end));
+            fileName = sprintf('RMSE_vs_SNR_vs_Radius_ISR_%ddB_Method_%s.png', ...
+                range_ISR_dB(iISR), methods(m));
 
             exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
 
-            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Snap_%d.tex', ...
-                range_ISR_dB(iISR), range_snapshots(end));
+            fileName = sprintf('RMSE_vs_SNR_vs_Radius_ISR_%ddB_Method_%s.png', ...
+                range_ISR_dB(iISR), methods(m));
 
             %cleanfigure;
             % Define LaTeX macros for width and height (you will define these in your .tex file)
@@ -451,7 +454,7 @@ for m = 1:nMethods
         end
     end
 end
-
+%%  GRÁFICOS: Varredura de ISR por Raio
 
 for iISR = 1:nISR
     if (range_ISR_dB(iISR) == -6)
@@ -501,9 +504,6 @@ for iISR = 1:nISR
 end
 
 
-
-
-return;
 
 %%  GRÁFICOS: Snapshots
 
@@ -557,8 +557,14 @@ return;
 %% ======= Calculo do Beamforming  =======
 
 % Testando outros ranges no beamforming
-range_SNR_dB = -9:3:3; %-9:3:9;
-range_ISR_dB = -6:3:3; %-9:3:3;
+range_SNR_dB = -9:6:3; %-9:3:9;
+range_ISR_dB = -9:6:3; %-9:3:3;
+% range_radius = [0.25];
+range_radius = [0.25 0.2 0.15 0.1];
+
+nSNR = numel(range_SNR_dB);
+nISR = numel(range_ISR_dB);
+nRadius  = numel(range_radius);
 
 nulo_no_interferidor = 0;
 
@@ -738,13 +744,18 @@ for iRadius = 1:nRadius
 
         legend_strings = strings(0);   % inicializa como array de strings vazio
 
-        for iCoupling = 1:nCoupling 
-            for m = 1:nMethods % ignorando o primeiro método
-                plot(range_SNR_dB, squeeze(BER_mean(m, :, iISR, iRadius, iCoupling))*100, ...
-                    markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
+        for iCoupling = 1:nCoupling
+            for m = 2:nMethods % ignorando o primeiro método
+                if(m == 2 && range_coupling(iCoupling) == 1)
+                    % Nesse caso não plota nada pq não faz sentido usar
+                    % acoplamento mútuo com uma antena só, sem BF
+                else
+                    plot(range_SNR_dB, squeeze(BER_mean(m, :, iISR, iRadius, iCoupling))*100, ...
+                        markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
+                end
             end
         end
-        for m = 1:nMethods % ignorando o primeiro método
+        for m = 2:nMethods % ignorando o primeiro método
             legend_strings(end+1) = methods(m);
         end
 
@@ -782,12 +793,17 @@ for iRadius = 1:nRadius
         legend_strings = strings(0);   % inicializa como array de strings vazio
 
         for iCoupling = 1:nCoupling
-            for m = 1:nMethods % ignorando o primeiro método
-                plot(range_ISR_dB, squeeze(BER_mean(m, iSNR, :, iRadius, iCoupling))*100, ...
-                    markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
+            for m = 2:nMethods % ignorando o primeiro método
+                if(m == 2 && range_coupling(iCoupling) == 1)
+                    % Nesse caso não plota nada pq não faz sentido usar
+                    % acoplamento mútuo com uma antena só, sem BF
+                else
+                    plot(range_ISR_dB, squeeze(BER_mean(m, iSNR, :, iRadius, iCoupling))*100, ...
+                        markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
+                end
             end
         end
-        for m = 1:nMethods % ignorando o primeiro método
+        for m = 2:nMethods % ignorando o primeiro método
             legend_strings(end+1) = methods(m);
         end
 

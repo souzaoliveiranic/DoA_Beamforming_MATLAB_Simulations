@@ -11,8 +11,8 @@ width=0.951\figurewidth,
 height=\figureheight,
 at={(0\figurewidth,0\figureheight)},
 scale only axis,
-xmin=-6,
-xmax=6,
+xmin=-10,
+xmax=4,
 xlabel style={font=\color{white!15!black}},
 xlabel={SNR (dB)},
 ymin=0,
@@ -28,57 +28,39 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 ]
 \addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--6	45.9903601200799\\
--3	39.8691559723003\\
-0	26.6268792383777\\
-3	11.0332372534714\\
-6	2.24970398631759\\
+-9	48.2044819857513\\
+-3	40.0024940029075\\
+3	11.009382045148\\
 };
-\addlegendentry{w/o BF}
+\addlegendentry{SEM BF}
 
 \addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--6	7.40333209745129\\
--3	0.778605685854732\\
-0	0.0299003719606272\\
-3	0\\
-6	0\\
+-9	26.0327961382334\\
+-3	1.48097830545629\\
+3	0.00196894966380184\\
 };
 \addlegendentry{MPDR}
 
 \addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--6	7.2035976127543\\
--3	0.697276674121826\\
-0	0.027508342203777\\
-3	0\\
-6	0\\
+-9	25.758127660133\\
+-3	1.48655699617039\\
+3	0.000656316554600615\\
 };
 \addlegendentry{DAS}
 
-\addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
-  table[row sep=crcr]{%
--6	30.3464855102797\\
--3	22.6955783329945\\
-0	15.0817476169403\\
-3	9.5298465512911\\
-6	6.38432742103312\\
-};
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
   table[row sep=crcr]{%
--6	42.9345421057038\\
--3	46.1745464113573\\
-0	47.6157443398596\\
-3	49.1275071461889\\
-6	49.6083051273158\\
+-9	47.7037124545911\\
+-3	47.8110202112683\\
+3	47.9370329897516\\
 };
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
   table[row sep=crcr]{%
--6	0.205714559089115\\
--3	0.00478405951370035\\
-0	0\\
-3	0\\
-6	0\\
+-9	30.9482789739147\\
+-3	3.65174530979782\\
+3	0.00393789932760369\\
 };
 \end{axis}
 

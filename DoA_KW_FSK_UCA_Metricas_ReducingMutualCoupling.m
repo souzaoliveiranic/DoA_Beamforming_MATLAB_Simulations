@@ -1,0 +1,650 @@
+% Antes esse código era phase-only, agora ele é delay+phase
+clear; clc; 
+%rng(1);
+close all;
+%% Parâmetros do array
+M      = 8;           % nº de elementos do ULA
+fc     = 500e6;         % Hz 
+c      = 3e8;        
+lambda = c/fc;        
+r = 0.25 * lambda;    % raio 1/4 λ
+
+theta_sig_deg = 90;   % plano XY
+theta_int_deg = 90;
+sigma_erro_phi = 0; %10; 
+
+%nTrials  = 10; %360;   % nº de realizações 
+fs     = 288000;       % taxa de amostragem (Hz) para formar snapshots
+N      = 21000;        % nº de amostras
+N_DOA  = 2100;
+t      = (0:N-1).' / fs;
+N_fm   = 10000;      % nº de amostras do sinal fm
+
+fm_msg = 1000;        % Hz - frequência da mensagem
+delta_f   = 5000;     % desvio FM 
+phi0   = 2*pi*rand;   % fase inicial aleatória do sinal 
+epsilon = 0.1;
+p = 1.1;
+maxIter = 100;
+eta = 1e-3;
+
+Rs     = 9600;          % taxa de símbolos [sym/s]
+sps    = 30;            % amostras por símbolo
+alpha  = 0.3;           % roll-off do RRC
+span   = 8;             % comprimento do RRC em símbolos (TX/RX)
+fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
+
+range_SNR_dB = -6; %-6:3:6;
+range_ISR_dB = -30; %-6:1:-3; 
+range_snapshots = 2000:3000:N_DOA;
+range_radius = [0.5 0.25 0.15]; %[0.25 0.2 0.15 0.1];
+range_coupling = [0]; %[0 1]; % com e sem acoplamento
+range_phi = [75 125]; %-180:18:180;
+
+methodsDoa = ["KW","DAS","MPDR","MUSIC"];
+methodsBeamforming = ["SEM BF","MPDR","DAS"];
+markers = ["o-","x-","s-","d-","^-","v-","*-","+-"];
+colors =  ["red", "green", "blue", "black", "magenta", "cyan", "yellow"];
+line_style =   ["-", "--", ":","-."]; % linha continua sem acoplamento % linha tracejada com acoplamento
+
+% Criar pasta 'graficos'
+outDir = fullfile(pwd, 'new_graficos');
+if ~exist(outDir, 'dir')
+    mkdir(outDir);
+end
+
+nulo_no_interferidor = 0;
+
+nMethodsDoa = numel(methodsDoa);
+nMethodsBeamforming = numel(methodsBeamforming);
+nSNR = numel(range_SNR_dB);
+nISR = numel(range_ISR_dB);
+nRadius  = numel(range_radius);
+nSnapshots  = numel(range_snapshots);
+nPhi  = numel(range_phi);
+nCoupling  = numel(range_coupling);
+
+TotalSim = nSNR*nISR*nRadius*nCoupling*nSnapshots*nPhi*nPhi;
+iTotal = 0;
+% Armazenamento
+RMSE = zeros(nMethodsDoa, nSNR, nISR, nRadius, nCoupling, nSnapshots, nPhi*nPhi);
+BER = zeros(4, nSNR, nISR, nRadius, nMethodsDoa, nPhi*nPhi);
+EVM = zeros(4, nSNR, nISR, nRadius, nMethodsDoa, nPhi*nPhi);
+
+%% ======= Coupling Matrix Estimation =======
+
+Z0 = 50; % Impedância de referência
+
+Coupling_matrices = zeros(M, M, nRadius); 
+% Matrizes a ser usada nas simulações
+for iRadius = 1:nRadius
+    radius = range_radius(iRadius)*lambda;
+    Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
+    Coupling_matrices(:,:,iRadius) = 1\Ctx;
+end
+
+%% ======= DoA KW vs Delay and Sum vs Capon =======
+
+phi_scan = -10:0.5:10;    % graus
+BER_scan_in = zeros(size(phi_scan));
+BER_scan_mvdr = zeros(size(phi_scan));
+BER_scan_das = zeros(size(phi_scan));
+EVM_scan_in = zeros(size(phi_scan));
+EVM_scan_mvdr = zeros(size(phi_scan));
+EVM_scan_das = zeros(size(phi_scan));
+
+% Armazenamento dos resultados
+phi_bp_all = cell(length(range_radius),1);
+B_dB_DAS_all = cell(length(range_radius),1);
+B_dB_Capon_all = cell(length(range_radius),1);
+legend_entries = cell(length(range_radius),1);
+
+for iSNR = 1:nSNR
+    for iISR = 1:nISR
+        for iCoupling = 1:nCoupling
+            for iRadius = 1:nRadius
+
+                SNR_dB = range_SNR_dB(iSNR);
+                ISR_dB = range_ISR_dB(iISR);
+                radius = range_radius(iRadius)*lambda;
+                Coupling = range_coupling(iCoupling);
+
+                ii = 1;
+                for iPhi = 1:nPhi
+                    phi_sig_deg = range_phi(iPhi);
+
+                    for iiPhi = 1:nPhi
+                        phi_int_deg = range_phi(iiPhi);
+
+                        if(phi_int_deg ~= phi_sig_deg)
+                            j=1;
+
+                            %phi_sig_deg = -180 + 360*rand;
+                            %phi_int_deg = -180 + 360*rand;
+
+                            % ----- Forma de onda conhecida (q) e interferidor "ruído" (r) -----
+
+                            [X, q, r_int, Xsig, Xint, Xn, bits, pam_rrc_tx, pam_rect, sym_tx, qn, taus_sig, taus_int] = ...
+                                utils.simulate_fsk_data_uca(M, radius, lambda, phi_sig_deg, phi_int_deg, ...
+                                theta_sig_deg, theta_int_deg, SNR_dB, ISR_dB, N, fs, Rs, sps, alpha, span, fd);
+
+                            % Aplicando o Mutual Coupling
+                            % Coupling_matrix = utils.coupling_matrix_uca(M, r, lambda, coupling_factor);
+                            if Coupling == 0
+                                Coupling_matrix = eye(M);
+                                Coupling_matrix_sig = eye(M);
+                                Coupling_matrix_int = eye(M);
+                            else
+                                % Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
+                                % Coupling_matrix = 1\Ctx;
+                                Coupling_matrix = Coupling_matrices(:,:,iRadius);
+                            end
+
+                            % X = Coupling_matrix * X;
+                            % X = Coupling_matrix_sig * Xsig + Coupling_matrix_int * Xint + Xn;
+                            X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
+
+                            K = range_snapshots(end);
+                            iTotal = iTotal + 1;
+                            % ----- DoA KW
+                            fprintf('--> Sim %d / %d , ii = %d , j = %d , K = %d / %d \n', iTotal, TotalSim, ...
+                                ii, j, K, N_DOA);
+                            % theta_hat_deg   = doa_kw_2007(X(:,1:K), q(1:K), M, d, lambda, 1);        % ell = 1 com M=4
+
+                            beta = 2*pi*(0:M-1)'/M;
+                            [theta_hat_deg, phi_hat_deg] = doa_kw_uca(X(:,1:K), q(1:K).', radius, lambda, beta);
+                            % [theta_new_hat_deg, phi_new_hat_deg] = new_doa_kw_uca(X(:,1:K), q(1:K).', radius, lambda, beta);
+
+                            fprintf('Estimativa KW: %+5.4f° | Vdd: %+5.4f°\n', phi_hat_deg, phi_sig_deg);
+
+                                                        % Matriz de covariância
+                            Rxx = (X(:,1:K)*X(:,1:K)')/size(X(:,1:K),2);
+                            delta = 1e-3 * trace(Rxx)/M;
+                            Rxx_dl = Rxx + delta*eye(M);
+
+                            % Decomposição espectral
+                            [eigvec, eigval] = eig(Rxx_dl);
+                            [lambda_eig, idx] = sort(diag(eigval), 'descend');
+                            E = eigvec(:, idx);
+
+                            % Número de fontes conhecidas (K)
+                            Ksrc = 2;   % ajuste se tiver mais fontes
+                            En = E(:, Ksrc+1:end);  % subespaço do ruído
+
+                            % Varredura angular (azimute, plano horizontal)
+                            phi_scan = -180:0.1:180;    % graus
+                            theta_scan = 90;            % fixa em 90° (plano XY)
+
+                            P_DAS   = zeros(size(phi_scan));
+                            P_MVDR  = zeros(size(phi_scan));
+                            P_MUSIC = zeros(size(phi_scan));
+
+                            Rinv = inv(Rxx_dl);
+
+                            for ang = 1:numel(phi_scan)
+                                % Estimando apenas o angulo phi
+                                a = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_scan(ang));  % Mx1
+                                % ----- Delay-and-Sum -----
+                                P_DAS(ang)  = abs(a' * Rxx * a);
+                                % ----- Capon (MPDR) -----
+                                denom     = real(a' * Rinv * a);
+                                P_MVDR(ang) = 1 ./ max(denom, eps);
+                                % ----- MUSIC -----
+                                P_MUSIC(ang) = 1 ./ real(a' * (En * En') * a);
+                            end
+
+                            % Normalização (dB) e estimativa dos picos
+                            P_DAS_dB   = 10*log10(P_DAS / max(P_DAS));
+                            P_MVDR_dB  = 10*log10(P_MVDR / max(P_MVDR));
+                            P_MUSIC_dB = 10*log10(P_MUSIC / max(P_MUSIC));
+
+                            [~,i_das ] = max(P_DAS);
+                            [~,i_mvdr] = max(P_MVDR);
+                            [~, idx_music] = max(P_MUSIC);
+
+                            phi_DAS  = phi_scan(i_das);
+                            phi_MVDR = phi_scan(i_mvdr);
+                            phi_MUSIC = phi_scan(idx_music);
+
+                            % ----- PLOT DOA -----
+                            if Coupling == 1
+                                name_string = 'Coupling';
+                            else
+                                name_string = 'No Coupling';
+                            end
+                            fig_name = "DoA DAS (" + string(phi_sig_deg) + " graus) with " + name_string + ...
+                                " (SNR=" + string(range_SNR_dB(iSNR)) + " | ISR=" + string(range_ISR_dB(iISR)) + " | r=" + string(range_radius(iRadius)) + ")";
+                            fig = figure( 'Name', fig_name, 'NumberTitle', 'off');
+                            hold on; grid on;
+
+                            plot(phi_scan, P_MVDR_dB, 'LineWidth', 2);
+                            plot(phi_scan, P_DAS_dB, 'LineWidth', 2);
+                            xline(phi_sig_deg, '--r', sprintf('\\phi=%.1f°', phi_sig_deg));
+                            legend('Capon/MVDR', 'DAS','Location','best');
+                            % fileName = fig_name + ".png";
+                            % % Limpar nome
+                            % fileName = replace(fileName, "|", "-");
+                            % fileName = regexprep(fileName, '[^a-zA-Z0-9 _\-\.\(\)]', '');
+                            % exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
+
+                            % ----- BEAMFORMING -----
+
+                            % Varredura angular (azimute, plano horizontal)
+                            phi_scan = -180:0.5:180;    % graus
+                            % phi_scan = phi_hat_deg-30:0.5:phi_hat_deg+30;
+                            for ang = 1:numel(phi_scan)
+                                % ----- Restrições angulares
+                                a_sig = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_scan(ang));  % vetor de direção Mx1
+                                % --- Direções dos interferentes (onde queremos forçar nulos) ---
+                                phi_nulls = [phi_int_deg];                 % vetor com 1 ou mais ângulos de nulo (ex: [100 120])
+                                Nnull = length(phi_nulls);
+
+                                % --- Matriz de restrições C ---
+                                % Cada coluna de C é um vetor de direção (sinal + interferentes)
+                                C = a_sig;                                   % primeira coluna = sinal desejado
+                                if nulo_no_interferidor
+                                    for k = 1:Nnull
+                                        a_null = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_nulls(k));  % vetor de direção Mx1
+                                        C = [C, a_null];                          % adiciona interferente
+                                    end
+                                end
+
+                                % --- Vetor de ganhos desejados f ---
+                                % Ganho = 1 para o sinal desejado, 0 para cada nulo
+                                if nulo_no_interferidor
+                                    f = [1; zeros(Nnull,1)];
+                                else
+                                    f = [1];
+                                end
+
+                                % --- Matriz de projeção e vetor de correção
+                                P   = eye(M) - C * ((C' * C) \ C');
+                                f_c = C * ((C' * C) \ f);
+
+                                % ---- Capon ----
+                                Rxx = (X(:,1:N_DOA)*X(:,1:N_DOA)')/N_DOA;
+                                delta = 1e-3 * trace(Rxx)/M;
+                                Rinv = inv(Rxx + delta*eye(M));
+                                w_capon = (Rinv*a_sig) / (a_sig' * Rinv * a_sig);
+                                y_capon = w_capon' * X;
+
+                                % ---- Delay-and-Sum (DAS) ----
+                                w_das = a_sig / M;
+                                y_das = w_das' * X;       % saída DAS
+
+                                % ======= Beampattern m 90° para conhecimento =======
+                                if abs(phi_scan(ang) - 75) < 1e-9
+                                    [phi_beampattern, B_dB_DAS] = utils.beampattern_db_uca(w_das, M, radius, lambda, phi_scan);
+                                    [~,               B_dB_Capon] = utils.beampattern_db_uca(w_capon, M, radius, lambda, phi_scan);
+
+                                    phi_bp_all{iRadius}      = phi_beampattern;
+                                    B_dB_DAS_all{iRadius}    = B_dB_DAS;
+                                    B_dB_Capon_all{iRadius}  = B_dB_Capon;
+
+                                    legend_entries{iRadius} = sprintf('raio = %.2f m', radius);
+                                end
+
+                                % ======= Demodulação =======
+                                [bits_hat_in, BER_in, pam_rx_mf1, sym_rx1]    = utils.fsk2_demod(X(1,:), bits, Rs, sps, alpha, span, fd);
+                                [bits_hat_das, BER_das, pam_rx_mf2, sym_rx2]  = utils.fsk2_demod(y_das, bits, Rs, sps, alpha, span, fd);
+                                [bits_hat_mvdr, BER_mvdr, pam_rx_mf3, sym_rx3]= utils.fsk2_demod(y_capon, bits, Rs, sps, alpha, span, fd);
+                                
+                                % Calcula BER
+                                BER_scan_in(ang) = BER_in*100;
+                                BER_scan_mvdr(ang) = BER_mvdr*100;
+                                BER_scan_das(ang) = BER_das*100;
+
+                                fprintf('BER: RX %.2f%% / Capon %.2f%% / DAS %.2f%% \n', ...
+                                    BER_in*100, BER_mvdr*100, BER_das*100);
+
+                                % Calcula EVM
+                                [EVM_in,  EVMdB_in]                 = utils.calc_evm_real(sym_rx1,  sym_tx);
+                                [EVM_das, EVMdB_das]                = utils.calc_evm_real(sym_rx2, sym_tx);
+                                [EVM_mvdr,EVMdB_mvdr]               = utils.calc_evm_real(sym_rx3, sym_tx);
+
+                                EVM_scan_in(ang) = 20*log10(EVM_in);
+                                EVM_scan_mvdr(ang) = 20*log10(EVM_mvdr);
+                                EVM_scan_das(ang) = 20*log10(EVM_das);
+
+                                fprintf('EVM (dB): Rx: %.2f | Capon: %.2f | DAS: %.2f\n', ...
+                                    EVMdB_in, EVMdB_mvdr, EVMdB_das);
+
+                            end
+
+                            % ======= Plot BER ======= 
+
+                            % fig = figure('Name', "BER vs Ângulo (" + string(phi_hat_deg) + "°) with " + name_string + " (SNR=" + string(range_SNR_dB(iSNR)) + " | ISR=" + string(range_ISR_dB(iISR)) + ")", ...
+                            %     'NumberTitle', 'off');
+                            % hold on; grid on;
+                            % 
+                            % plot(phi_scan, BER_scan_in, 'LineWidth', 2);
+                            % plot(phi_scan, BER_scan_mvdr, 'LineWidth', 2);
+                            % plot(phi_scan, BER_scan_das, 'LineWidth', 2);
+                            % % --- Encontrar mínimos ---
+                            % [~, idx_in]   = min(BER_scan_in);
+                            % [~, idx_mvdr] = min(BER_scan_mvdr);
+                            % [~, idx_das]  = min(BER_scan_das);
+                            % 
+                            % phi_min_in   = phi_scan(idx_in);
+                            % phi_min_mvdr = phi_scan(idx_mvdr);
+                            % phi_min_das  = phi_scan(idx_das);
+                            % 
+                            % % --- Plotar linhas verticais ---
+                            % % xline(phi_min_in,   '--b', sprintf('\\phi_{Beamin}=%.1f°', phi_min_in));
+                            % xline(phi_min_mvdr, '--r', sprintf('\\phi_{mvdr}=%.1f°', phi_min_mvdr));
+                            % xline(phi_min_das,  '--k', sprintf('\\phi_{das}=%.1f°', phi_min_das));
+                            % 
+                            % xline(phi_hat_deg,  'g--', sprintf('\\phi_{hat}=%.1f°', phi_hat_deg));
+                            % 
+                            % xlabel("angulo (graus)",'Interpreter','latex');
+                            % ylabel("BER (%)",'Interpreter','latex');
+                            % legend_strings = methodsBeamforming;
+                            % legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
+                            % 
+                            % % ======= Plot EVM ======= 
+                            % fig = figure('Name', "EVM vs Ângulo (" + string(phi_hat_deg) + "°) with " + name_string + " (SNR=" + string(range_SNR_dB(iSNR)) + " | ISR=" + string(range_ISR_dB(iISR)) + ")", ...
+                            %     'NumberTitle', 'off');
+                            % hold on; grid on;
+                            % 
+                            % plot(phi_scan, EVM_scan_in, 'LineWidth', 2);
+                            % plot(phi_scan, EVM_scan_mvdr, 'LineWidth', 2);
+                            % plot(phi_scan, EVM_scan_das, 'LineWidth', 2);
+                            % 
+                            % % --- Encontrar mínimos ---
+                            % [~, idx_in]   = min(EVM_scan_in);
+                            % [~, idx_mvdr] = min(EVM_scan_mvdr);
+                            % [~, idx_das]  = min(EVM_scan_das);
+                            % 
+                            % phi_min_in   = phi_scan(idx_in);
+                            % phi_min_mvdr = phi_scan(idx_mvdr);
+                            % phi_min_das  = phi_scan(idx_das);
+                            % 
+                            % % --- Plotar linhas verticais ---
+                            % % xline(phi_min_in,   '--b', sprintf('\\phi_{in}=%.1f°', phi_min_in));
+                            % xline(phi_min_mvdr, '--r', sprintf('\\phi_{mvdr}=%.1f°', phi_min_mvdr));
+                            % xline(phi_min_das,  '--k', sprintf('\\phi_{das}=%.1f°', phi_min_das));
+                            % 
+                            % xline(phi_hat_deg,  'g--', sprintf('\\phi_{hat}=%.1f°', phi_hat_deg));
+                            % 
+                            % xlabel("angulo (graus)",'Interpreter','latex');
+                            % ylabel("EVM (dB)",'Interpreter','latex');
+                            % legend_strings = methodsBeamforming;
+                            % legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
+
+                            fig_name = "BER e EVM vs Ângulo (" + string(phi_sig_deg) + " graus) with " + name_string + ...
+                                " (SNR=" + string(range_SNR_dB(iSNR)) + " | ISR=" + string(range_ISR_dB(iISR)) + " | r=" + string(range_radius(iRadius)) + ")";
+                            fig = figure( 'Name', fig_name, 'NumberTitle', 'off');
+
+                            % ======= SUBPLOT 1: BER =======
+                            subplot(2,1,1);  % 2 linhas, 1 coluna, posição 1
+                            hold on; grid on;
+
+                            plot(phi_scan, BER_scan_in, 'Color', colors(1), 'LineWidth', 2);
+                            plot(phi_scan, BER_scan_mvdr, 'Color', colors(2), 'LineWidth', 2);
+                            plot(phi_scan, BER_scan_das, 'Color', colors(3), 'LineWidth', 2);
+
+                            [~, idx_mvdr] = min(BER_scan_mvdr);
+                            [~, idx_das]  = min(BER_scan_das);
+
+                            xline(phi_MVDR, '--g', sprintf('\\phi_{mvdr}=%.1f°', phi_MVDR));
+                            xline(phi_DAS,  '--b', sprintf('\\phi_{das}=%.1f°', phi_DAS));
+                            xline(phi_hat_deg, '--k', sprintf('\\phi_{hat}=%.1f°', phi_hat_deg));
+                            xline(phi_sig_deg, '--r', sprintf('\\phi=%.1f°', phi_sig_deg));
+
+                            ylabel("BER (%)",'Interpreter','latex');
+                            legend(methodsBeamforming, 'Location', 'northwest','Interpreter','latex');
+                            title('BER');
+
+                            % ======= SUBPLOT 2: EVM =======
+                            subplot(2,1,2);  % posição 2
+                            hold on; grid on;
+
+                            plot(phi_scan, EVM_scan_in, 'Color', colors(1), 'LineWidth', 2);
+                            plot(phi_scan, EVM_scan_mvdr, 'Color', colors(2), 'LineWidth', 2);
+                            plot(phi_scan, EVM_scan_das, 'Color', colors(3), 'LineWidth', 2);
+
+                            [~, idx_mvdr] = min(EVM_scan_mvdr);
+                            [~, idx_das]  = min(EVM_scan_das);
+
+                            xline(phi_MVDR, '--g', sprintf('\\phi_{mvdr}=%.1f°', phi_MVDR));
+                            xline(phi_DAS,  '--b', sprintf('\\phi_{das}=%.1f°', phi_DAS));
+                            xline(phi_hat_deg, '--k', sprintf('\\phi_{hat}=%.1f°', phi_hat_deg));
+                            xline(phi_sig_deg, '--r', sprintf('\\phi=%.1f°', phi_sig_deg));
+
+                            xlabel("angulo (graus)",'Interpreter','latex');
+                            ylabel("EVM (dB)",'Interpreter','latex');
+                            legend(methodsBeamforming, 'Location', 'northwest','Interpreter','latex');
+                            title('EVM');
+
+                            fileName = fig_name + ".png";
+                            % Limpar nome
+                            fileName = replace(fileName, "|", "-");
+                            fileName = regexprep(fileName, '[^a-zA-Z0-9 _\-\.\(\)]', '');
+
+                            exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
+
+                            % Salvando EVM e BER
+                            % BER(:,iSNR,iISR,iRadius, iCoupling, m, ii) = [
+                            %     BER_in;
+                            %     BER_das
+                            %     ];
+                            %
+                            % EVM(:,iSNR,iISR,iRadius, iCoupling, m, ii) = [
+                            %     EVMdB_in;
+                            %     EVMdB_das
+                            %     ];
+                        end
+                        ii = ii + 1;
+
+                    end
+                end
+            end
+                                        if Coupling == 1
+                                name_string = 'Coupling';
+                            else
+                                name_string = 'No Coupling';
+                            end
+
+                            % ======= Plot BEAMPATTERN =======
+
+                            figure('Name',"Beampattern DAS with " + name_string);
+                            hold on; grid on; box on;
+
+                            for ir = 1:length(range_radius)
+                                if ~isempty(B_dB_DAS_all{ir})
+                                    plot(phi_bp_all{ir}, B_dB_DAS_all{ir}, 'LineWidth', 1.4);
+                                end
+                            end
+
+                            xline(75, 'g--', 'phi\_hat\_deg');
+
+                            xlabel('\phi (graus)');
+                            ylabel('Resposta (dB)');
+                            title('Padrão de radiação - DAS');
+                            legend(legend_entries(~cellfun('isempty', legend_entries)), 'Location', 'best');
+
+                            ylim([-40 5]);
+                            xlim([-180 180]);
+
+                            % ---
+                            figure('Name',"Beampattern Capon with " + name_string);
+                            hold on; grid on; box on;
+
+                            for ir = 1:length(range_radius)
+                                if ~isempty(B_dB_Capon_all{ir})
+                                    plot(phi_bp_all{ir}, B_dB_Capon_all{ir}, 'LineWidth', 1.4);
+                                end
+                            end
+
+                            xline(75, 'g--', 'phi\_hat\_deg');
+
+                            xlabel('\phi (graus)');
+                            ylabel('Resposta (dB)');
+                            title('Padrão de radiação - Capon');
+                            legend(legend_entries(~cellfun('isempty', legend_entries)), 'Location', 'best');
+
+                            ylim([-40 5]);
+                            xlim([-180 180]);
+        end
+    end
+end
+
+return;
+
+RMSE_mean = mean(RMSE, 7);   % média ao longo da 7ª dimensão (trials)
+BER_mean = mean(BER, 7);   % média ao longo da 7ª dimensão (trials)
+EVM_mean = mean(EVM, 7);
+K_fixed = numel(range_snapshots);
+
+%%  GRÁFICOS
+
+for iRadius = 1:nRadius
+    for iISR = 1:nISR
+        for iSNR = 1:nSNR
+            fig = figure('Name', "RMSE vs SNR | ISR=" + string(range_ISR_dB(iISR)) + " (r = " + string(range_radius(iRadius)) + ")", ...
+                'NumberTitle', 'off');
+            hold on; grid on;
+
+            legend_strings = strings(0);   % inicializa como array de strings vazio
+
+            for iCoupling = 1:nCoupling
+                for m = 1:nMethods
+                    plot(range_SNR_dB, squeeze(RMSE_mean(m, :, iISR, iRadius, iCoupling, K_fixed)), ...
+                        markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
+                end
+
+            end
+            for m = 1:nMethods
+                legend_strings(end+1) = methods(m);
+            end
+
+            xlabel("SNR (dB)",'Interpreter','latex');
+            ylabel("RMSE (degrees)",'Interpreter','latex');
+            yscale("log");
+            ytickformat('%.2f') % 'f' forces fixed-point notation instead of scientific
+            ylim([1 100]);
+            % title(sprintf('RMSE vs SNR | ISR=%d dB | Snapshots=%d', ...
+            %     range_ISR_dB(iISR), range_snapshots(end)));
+
+            legend(legend_strings, 'Location', 'northwest','Interpreter','latex');
+            % legend(legend_strings, 'Location', 'best','Interpreter','latex');
+
+            fileName = sprintf(['RMSE_vs_SNR_ISR_%ddB_Radius_%' ...
+                'f.png'], ...
+                range_ISR_dB(iISR), range_radius(iRadius));
+
+            exportgraphics(fig, fullfile(outDir, fileName), 'Resolution', 300);
+
+            fileName = sprintf('RMSE_vs_SNR_ISR_%ddB_Radius_%f.tex', ...
+                range_ISR_dB(iISR), range_radius(iRadius));
+
+            %cleanfigure;
+            % Define LaTeX macros for width and height (you will define these in your .tex file)
+            matlab2tikz(fullfile(outDir, fileName), 'width', '\figurewidth', 'height', '\figureheight');
+        end
+    end
+end
+
+
+return;
+
+
+%% ======= Beampatterns =======
+ang_array = -180:0.01:180;    % graus
+
+[phi_beampattern, B_dB_CAPON] = utils.beampattern_db_uca(w_capon, M, r, lambda, ang_array);
+
+figure('Name','Beampattern','Position',[100 100 900 500]);
+hold on; grid on; box on;
+
+plot(phi_beampattern, B_dB_CAPON,'LineWidth',1.4);
+
+xline(phi_hat_deg,'g--','phi\_hat\_deg');
+% xline(phi_hat_deg_noisy,'g--','phi\_hat\_deg\_noisy');
+xline(phi_hat_int_deg,'g--','phi\_hat\_int\_deg');
+% xline(phi_hat_int_deg_noisy,'g--','phi\_hat\_int\_deg\_noisy');
+
+xlabel('\phi (graus)');
+ylabel('Resposta (dB)');
+title('Padrão de radiação');
+legend('Capon', ...
+    'Location','best');
+
+% add_test_parameters(params);
+
+ylim([-40 5]);                 % piso visual
+xlim([-180 180]);                % faixa angular total
+
+
+
+
+
+
+
+
+
+
+
+% =======================================================================
+%% Funções auxiliares
+% =======================================================================
+
+
+function P = uca_positions(uca)
+    % Retorna P = Mx3 (x,y,z) em metros
+    
+    M = uca.NumElements;
+    R = uca.Radius;
+    
+    phi0 = uca.AngleOffset;
+    
+    % Tenta ser robusto: se parecer graus, converte pra rad
+    if abs(phi0) > 2*pi
+        phi0 = deg2rad(phi0);
+    end
+    
+    phi = phi0 + (0:M-1).' * (2*pi/M);
+    
+    P = [R*cos(phi), R*sin(phi), zeros(M,1)];
+end
+
+
+
+function Ctx = compute_Ctx_for_R(fc, M, R, Z0)
+    % Monta UCA e calcula Z via S-parameters, depois Ctx (pág. 29)
+    
+    c = 3e8;
+    lambda = c/fc;
+    
+    % --- Elemento ---
+    mp = dipole;
+    mp.Length  = 0.5*lambda;
+    mp.Width  = 0.01*lambda;
+    
+    % --- UCA ---
+    uca = circularArray;
+    uca.Element = mp;
+    uca.NumElements = M;
+    uca.Radius = R;
+    
+    % --- S-parameters = matriz de acoplamento ---
+    Sobj = sparameters(uca, fc);
+    S_matrix = Sobj.Parameters(:,:,1);
+    
+    Z_matrix = s2z(S_matrix, Z0); % conversão Z corrijida
+    
+    Zg = Z0;
+    Zself = diag(Z_matrix);          % Z11, Z22, ..., ZNN
+    denom = Zself + Zg;              % (Zjj + Zg,j)
+    
+    Ctx = eye(M);
+    
+    % fora-diagonais: C(i,j) = Z(i,j)/(Z(j,j)+Zg(j))
+    for j = 1:M
+        for i = 1:M
+            if i ~= j
+                Ctx(i,j) = Z_matrix(i,j) / denom(j);
+            end
+        end
+    end
+end

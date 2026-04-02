@@ -26,77 +26,57 @@ xmajorgrids,
 ymajorgrids,
 legend style={legend cell align=left, align=left, draw=white!15!black}
 ]
-\addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
-  table[row sep=crcr]{%
--9	0\\
--6	0\\
--3	0\\
-0	0\\
-3	0\\
-};
-\addlegendentry{SINAL ORIGINAL}
-
 \addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--9	48.0331535324299\\
--6	45.6961404599873\\
--3	39.2950688306563\\
-0	30.5773163818158\\
-3	21.8356436354068\\
+-9	48.0820789483183\\
+-3	39.490567090319\\
+3	21.8431994119404\\
 };
 \addlegendentry{SEM BF}
 
 \addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--9	26.4211646792886\\
--6	10.0477209936492\\
--3	2.61807656887252\\
-0	0.801329968544809\\
-3	0.205714559089115\\
+-9	28.9255113526356\\
+-3	6.39153876697809\\
+3	0.583137258762647\\
 };
 \addlegendentry{MPDR}
 
 \addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--9	26.183157718482\\
--6	10.6421403882264\\
--3	3.40505435887622\\
-0	1.01661264666132\\
-3	0.192558395426439\\
+-9	28.9123850215436\\
+-3	8.5350686343037\\
+3	0.494862682168864\\
 };
 \addlegendentry{DAS}
 
-\addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
-  table[row sep=crcr]{%
--9	0\\
--6	0\\
--3	0\\
-0	0\\
-3	0\\
-};
-\addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
-  table[row sep=crcr]{%
--9	44.0456399277607\\
--6	38.0966619224743\\
--3	30.940904904857\\
-0	25.7848847639665\\
-3	20.9912571312387\\
-};
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
   table[row sep=crcr]{%
--9	44.6520194711222\\
--6	44.1628493858464\\
--3	44.870890193874\\
-0	46.7199291959192\\
-3	48.2603963593307\\
+-9	47.4037757891386\\
+-3	46.3211816323249\\
+3	46.1525082777926\\
 };
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
   table[row sep=crcr]{%
--9	32.2146607503797\\
--6	17.3733121240028\\
--3	6.39748358469579\\
-0	1.88970350791164\\
-3	0.399468969393979\\
+-9	32.8768651696086\\
+-3	15.5333720560101\\
+3	2.36963092038552\\
 };
+\end{axis}
+
+\begin{axis}[%
+width=1.227\figurewidth,
+height=1.227\figureheight,
+at={(-0.16\figurewidth,-0.135\figureheight)},
+scale only axis,
+xmin=0,
+xmax=1,
+ymin=0,
+ymax=1,
+axis line style={draw=none},
+ticks=none,
+axis x line*=bottom,
+axis y line*=left
+]
 \end{axis}
 \end{tikzpicture}%
