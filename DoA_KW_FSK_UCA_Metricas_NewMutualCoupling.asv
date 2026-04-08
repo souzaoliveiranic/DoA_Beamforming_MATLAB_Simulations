@@ -45,7 +45,7 @@ fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
 range_SNR_dB = -6:6:6; %-6:6:6; %-9:3:9;
 range_ISR_dB = -6; %-6:1:-3; %-12:6:0; %-9:3:3;
 range_snapshots = 2000:3000:N_DOA;
-range_radius = [0.25];%[0.25 0.2 0.15 0.1]; %[0.5 0.3 0.25 0.2 0.15 0.1]; %[0.25];
+range_radius = [0.2];%[0.25 0.2 0.15 0.1]; %[0.5 0.3 0.25 0.2 0.15 0.1]; %[0.25];
 range_coupling = [0 1]; % com e sem acoplamento
 range_phi = -180:72:180; %-180:18:180;
 nMethods = 4;
@@ -67,6 +67,10 @@ RMSE = zeros(nMethods, nSNR, nISR, nRadius, nCoupling, nSnapshots, nPhi*nPhi);
 
 Z0 = 50; % Impedância de referência
 
+% --- Parametros da antena para calculo EMF (slide 43) ---
+antenna_type = 'dipole';   % 'dipole' ou 'monopole'
+L_lambda     = 0.5;        % comprimento do dipolo em lambdas (0.5 = half-wave)
+
 % R_list = [0.05 0.10 0.15 0.20 0.30];   % metros (ajuste)
 R_list = [0.01 0.025 0.125 0.25 0.375 0.5];   % metros (ajuste)
 use_dB = false;
@@ -79,9 +83,9 @@ Dists = cell(numel(R_list),1);   % guarda distâncias até antena 1
 for k = 1:numel(R_list)
     R = R_list(k)*lambda;
 
-    % 1) Calcula Ctx para esse raio (via S->Z e fórmula da pag 29)
-    Ctx = compute_Ctx_for_R(fc, M, R, Z0);
-    Ctx = inv(Ctx);
+    % 1) Calcula Ctx para esse raio (via EMF - formula do slide 43)
+    Ctx = compute_Ctx_emf(fc, M, R, Z0, antenna_type, L_lambda);
+    %Ctx = inv(Ctx);
     % 2) Coluna 1
     c1 = Ctx(:,1);
 
@@ -148,51 +152,14 @@ legend(compose('R = %.3f $\\lambda_0$', R_list), ...
        'Interpreter','latex', ...
        'Location','best');
 
-% Vetor com os valores únicos de acoplamento (da tabela)
-% Ordem: distância 1 até 7
-Zt_vals = [ ...
-   -0.08 - 1j*11.77;   % Z1
-    7.19 + 1j*2.12;    % Z2
-   -0.06 + 1j*5.96;    % Z3
-   -2.50 + 1j*5.00;    % Z4
-    0.00 + 1j*5.97;    % Z5
-    7.26 + 1j*1.98;    % Z6
-   -0.37 - 1j*11.85    % Z7
-];
-
-% Inicializa matriz Z
-Z = eye(M);
-
-% Preenche matriz
-for i = 1:M
-    for j = 1:M
-        if i ~= j
-            % Distância circular no UCA
-            d = mod(abs(i - j), M);
-            if d == 0
-                d = M;
-            end
-            
-            % Garante menor distância circular
-            d = min(d, M - d);
-            
-            % MATLAB index começa em 1
-            Z(i,j) = - Zt_vals(d) / Z0;
-        end
-    end
-end
-
-% Exibe resultado
-disp(Z)
-
 Coupling_matrices = zeros(M, M, nRadius); 
-% Matrizes a ser usada nas simulações
+% Matrizes a ser usada nas simulações (via EMF - slide 43)
 for iRadius = 1:nRadius
     radius = range_radius(iRadius)*lambda;
-    Ctx = Z; %compute_Ctx_for_R(fc, M, radius, Z0);
+    Ctx = compute_Ctx_emf(fc, M, radius, Z0, antenna_type, L_lambda);
     Coupling_matrices(:,:,iRadius) = inv(Ctx);
 end
-
+return
 %% ======= DoA KW vs Delay and Sum vs Capon =======
 
 
@@ -651,7 +618,7 @@ for iSNR = 1:nSNR
                         else
                             g_emb_sig = zeros(1,M);
                             g_emb_int = zeros(1,M);
-                            Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
+                            Ctx = compute_Ctx_emf(fc, M, radius, Z0, antenna_type, L_lambda);
                             Coupling_matrix = 1\Ctx;
                         end
                         X = Coupling_matrix * X;
@@ -982,41 +949,102 @@ end
 
 
 
-function Ctx = compute_Ctx_for_R(fc, M, R, Z0)
-    % Monta UCA e calcula Z via S-parameters, depois Ctx (pág. 29)
-    
-    c = 3e8;
-    lambda = c/fc;
-    
-    % --- Elemento ---
-    mp = dipole;
-    mp.Length  = 0.5*lambda;
-    mp.Width  = 0.01*lambda;
-    
-    % --- UCA ---
-    uca = circularArray;
-    uca.Element = mp;
-    uca.NumElements = M;
-    uca.Radius = R;
-    
-    % --- S-parameters = matriz de acoplamento ---
-    Sobj = sparameters(uca, fc);
-    S_matrix = Sobj.Parameters(:,:,1);
-    
-    Z_matrix = s2z(S_matrix, Z0); % conversão Z corrijida
-    
-    Zg = Z0;
-    Zself = diag(Z_matrix);          % Z11, Z22, ..., ZNN
-    denom = Zself + Zg;              % (Zjj + Zg,j)
-    
+function Ctx = compute_Ctx_emf(fc, M, R, Z0, antenna_type, L_lambda)
+    % Calcula a matriz de acoplamento mutuo de recepcao para UCA
+    % usando o metodo EMF (Induced EMF Method) - conforme slide 43.
+    %
+    %   Ctx(i,i) = 1
+    %   Ctx(i,j) = -Zt_ij / Z_L    (i ~= j)
+    %
+    % onde Zt_ij eh a impedancia mutua de recepcao entre elementos i e j,
+    % calculada analiticamente para dipolos paralelos lado a lado.
+    %
+    % Entradas:
+    %   fc           - frequencia de operacao (Hz)
+    %   M            - numero de elementos
+    %   R            - raio do UCA (metros)
+    %   Z0           - impedancia de carga (Ohms, tipicamente 50)
+    %   antenna_type - 'dipole' ou 'monopole'
+    %   L_lambda     - comprimento total da antena em lambdas
+    %
+    % Saida:
+    %   Ctx          - matriz de acoplamento MxM (complexa)
+
+    c   = 3e8;
+    lam = c / fc;
+    k   = 2*pi / lam;
+    eta = 120*pi;             % impedancia intrinseca do espaco livre
+
+    % Comprimento do dipolo
+    L = L_lambda * lam;
+    h = L / 2;                % meia-comprimento
+
+    % Posicoes do UCA
+    angles = (0:M-1).' * (2*pi/M);
+    pos_x  = R * cos(angles);
+    pos_y  = R * sin(angles);
+
+    % Constroi a matriz de acoplamento
     Ctx = eye(M);
-    
-    % fora-diagonais: C(i,j) = Z(i,j)/(Z(j,j)+Zg(j))
-    for j = 1:M
-        for i = 1:M
+    for i = 1:M
+        for j = 1:M
             if i ~= j
-                Ctx(i,j) = Z_matrix(i,j) / denom(j);
+                % Distancia entre elementos i e j
+                d_ij = sqrt((pos_x(i)-pos_x(j))^2 + (pos_y(i)-pos_y(j))^2);
+
+                % Impedancia mutua via metodo EMF
+                Z12 = compute_Z12_emf(k, h, d_ij, eta);
+
+                % Para monopolos: Z = Z_dipole / 2
+                if strcmpi(antenna_type, 'monopole')
+                    Z12 = Z12 / 2;
+                end
+
+                Ctx(i,j) = -Z12 / Z0;
             end
         end
     end
+end
+
+
+function Z12 = compute_Z12_emf(k, h, d, eta)
+    % Impedancia mutua entre dois dipolos finos paralelos lado a lado
+    % separados por distancia d, cada um com meia-comprimento h.
+    %
+    % Metodo: Induced EMF (Balanis Cap. 8, Jordan Cap. 11)
+    % Integracao numerica por Simpson para generalidade.
+
+    Npts = 5001;   % numero impar para Simpson 1/3
+    z  = linspace(-h, h, Npts);
+    dz = z(2) - z(1);
+
+    % Corrente senoidal normalizada
+    I_z = sin(k * (h - abs(z)));
+
+    % Distancias auxiliares
+    R0 = sqrt(d^2 + z.^2);
+    R1 = sqrt(d^2 + (z + h).^2);
+    R2 = sqrt(d^2 + (z - h).^2);
+
+    % Kernel do campo (potencial vetorial)
+    psi = exp(-1j*k*R1)./R1 + exp(-1j*k*R2)./R2 ...
+        - 2*cos(k*h) * exp(-1j*k*R0)./R0;
+
+    integrand = I_z .* psi;
+
+    % Integracao Simpson 1/3
+    n = length(integrand);
+    if mod(n,2) == 0, n = n-1; end
+    I_val = integrand(1) + integrand(n) ...
+          + 4*sum(integrand(2:2:n-1)) ...
+          + 2*sum(integrand(3:2:n-2));
+    I_val = I_val * dz / 3;
+
+    % Normaliza pela corrente maxima
+    I_max = sin(k * h);
+    if abs(I_max) < 1e-10
+        I_max = 1;   % evita divisao por zero (dipolo full-wave)
+    end
+
+    Z12 = 1j * eta / (4 * pi * I_max^2) * I_val;
 end

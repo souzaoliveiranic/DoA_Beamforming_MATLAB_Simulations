@@ -31,43 +31,51 @@ legend style={at={(0.03,0.97)}, anchor=north west, legend cell align=left, align
 ]
 \addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
--6	1.74219831276544\\
--3	1.62015036998402\\
-0	1.55727189250837\\
-3	1.58295780987613\\
-6	1.58397072155142\\
+-6	147.74200197388\\
+0	147.515357538195\\
+6	147.447549310416\\
 };
 \addlegendentry{KW}
 
 \addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--6	3.45938775510204\\
--3	3.49292517006802\\
-0	3.51224489795918\\
-3	3.41757369614512\\
-6	3.3878231292517\\
+-6	139.265277777778\\
+0	138.388611111111\\
+6	137.648333333333\\
 };
 \addlegendentry{DAS}
 
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--6	6.56573696145125\\
--3	9.13244897959184\\
-0	11.5351020408163\\
-3	14.1838321995465\\
-6	16.4430612244898\\
+-6	134.806666666667\\
+0	130.905277777778\\
+6	117.312777777778\\
 };
 \addlegendentry{Capon}
 
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--6	59.7686167800453\\
--3	64.677619047619\\
-0	69.5483446712018\\
-3	65.3879591836735\\
-6	65.2738775510204\\
+-6	83.8144444444444\\
+0	78.0330555555555\\
+6	91.0122222222222\\
 };
 \addlegendentry{MUSIC}
 
+\end{axis}
+
+\begin{axis}[%
+width=1.227\figurewidth,
+height=1.227\figureheight,
+at={(-0.16\figurewidth,-0.135\figureheight)},
+scale only axis,
+xmin=0,
+xmax=1,
+ymin=0,
+ymax=1,
+axis line style={draw=none},
+ticks=none,
+axis x line*=bottom,
+axis y line*=left
+]
 \end{axis}
 \end{tikzpicture}%

@@ -491,5 +491,45 @@ classdef utils
             end
         end
 
+        function Ctx = compute_Ctx_for_R(fc, M, R, Z0)
+            % Monta UCA e calcula Z via S-parameters, depois Ctx (pág. 29)
+
+            c = 3e8;
+            lambda = c/fc;
+
+            % --- Elemento ---
+            mp = dipole;
+            mp.Length  = 0.5*lambda;
+            mp.Width  = 0.01*lambda;
+
+            % --- UCA ---
+            uca = circularArray;
+            uca.Element = mp;
+            uca.NumElements = M;
+            uca.Radius = R;
+
+            % --- S-parameters = matriz de acoplamento ---
+            Sobj = sparameters(uca, fc);
+            S_matrix = Sobj.Parameters(:,:,1);
+
+            Z_matrix = s2z(S_matrix, Z0); % conversão Z corrijida
+
+            Zg = Z0;
+            Zself = diag(Z_matrix);          % Z11, Z22, ..., ZNN
+            denom = Zself + Zg;              % (Zjj + Zg,j)
+
+            Ctx = eye(M);
+
+            % fora-diagonais: C(i,j) = Z(i,j)/(Z(j,j)+Zg(j))
+            for j = 1:M
+                for i = 1:M
+                    if i ~= j
+                        Ctx(i,j) = Z_matrix(i,j) / denom(j);
+                    end
+                end
+            end
+        end
+
+
     end
 end
