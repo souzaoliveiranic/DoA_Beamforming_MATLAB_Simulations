@@ -189,8 +189,9 @@ Coupling_matrices = zeros(M, M, nRadius);
 % Matrizes a ser usada nas simulações
 for iRadius = 1:nRadius
     radius = range_radius(iRadius)*lambda;
-    Ctx = Z; %compute_Ctx_for_R(fc, M, radius, Z0);
-    Coupling_matrices(:,:,iRadius) = inv(Ctx);
+    % Ctx = Z; 
+    Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
+    Coupling_matrices(:,:,iRadius) = Ctx; %inv(Ctx);
 end
 
 %% ======= DoA KW vs Delay and Sum vs Capon =======
@@ -239,8 +240,10 @@ for iSNR = 1:nSNR
                             % X = Coupling_matrix * X;
                             % X = Coupling_matrix_sig * Xsig + Coupling_matrix_int * Xint + Xn;
                             Xq = Xsig + Xint + Xn;
-                            X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
-                            X = X * sqrt(sum(abs(Xq(:)).^2) / sum(abs(X(:)).^2));
+                            % X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
+                            X = Coupling_matrix * Xsig + Coupling_matrix * Xint;
+                            % X = X ./ sqrt(mean(abs(X).^2));                           
+                            X = X + Xn;
 
                             for K = range_snapshots
                                 iTotal = iTotal + 1;
@@ -984,33 +987,33 @@ end
 
 function Ctx = compute_Ctx_for_R(fc, M, R, Z0)
     % Monta UCA e calcula Z via S-parameters, depois Ctx (pág. 29)
-    
+
     c = 3e8;
     lambda = c/fc;
-    
+
     % --- Elemento ---
     mp = dipole;
     mp.Length  = 0.5*lambda;
     mp.Width  = 0.01*lambda;
-    
+
     % --- UCA ---
     uca = circularArray;
     uca.Element = mp;
     uca.NumElements = M;
     uca.Radius = R;
-    
+
     % --- S-parameters = matriz de acoplamento ---
     Sobj = sparameters(uca, fc);
     S_matrix = Sobj.Parameters(:,:,1);
-    
+
     Z_matrix = s2z(S_matrix, Z0); % conversão Z corrijida
-    
+
     Zg = Z0;
     Zself = diag(Z_matrix);          % Z11, Z22, ..., ZNN
     denom = Zself + Zg;              % (Zjj + Zg,j)
-    
+
     Ctx = eye(M);
-    
+
     % fora-diagonais: C(i,j) = Z(i,j)/(Z(j,j)+Zg(j))
     for j = 1:M
         for i = 1:M
@@ -1020,3 +1023,48 @@ function Ctx = compute_Ctx_for_R(fc, M, R, Z0)
         end
     end
 end
+
+% function Ctx = compute_Ctx_for_R(fc, M, R, Z0)
+%     % Calcula a matriz de desacoplamento de RECEPCAO para UCA
+%     % usando os S-parameters DIRETAMENTE (sem conversao para Z).
+%     %
+%     % Os S-parameters do Antenna Toolbox sao medidos com terminacoes Z0
+%     % em todas as portas — isso eh exatamente o cenario de recepcao
+%     % (todos os elementos carregados com Z_L = Z0).
+%     %
+%     % S_ij representa a fracao de tensao acoplada de j para i nessa
+%     % condicao de carga. Portanto:
+%     %
+%     %   V_i = U_i + sum_{j~=i} S_ij * V_j
+%     %
+%     % Rearranjando: U = (I - S_off) * V = C * V
+%     %
+%     %   C(i,i) = 1
+%     %   C(i,j) = -S_ij    (i ~= j)
+%     %
+%     % Para simular acoplamento: V = inv(C) * U
+%     % Para compensar acoplamento: U = C * V
+% 
+%     c = 3e8;
+%     lambda = c/fc;
+% 
+%     % --- Elemento ---
+%     mp = dipole;
+%     mp.Length  = 0.5*lambda;
+%     mp.Width  = 0.01*lambda;
+% 
+%     % --- UCA ---
+%     uca = circularArray;
+%     uca.Element = mp;
+%     uca.NumElements = M;
+%     uca.Radius = R;
+% 
+%     % --- S-parameters ---
+%     Sobj = sparameters(uca, fc);
+%     S_matrix = Sobj.Parameters(:,:,1);
+% 
+%     % --- Matriz de desacoplamento ---
+%     % C = I - S_off  (S_off = S com diagonal zerada)
+%     Ctx = eye(M) - (S_matrix - diag(diag(S_matrix)));
+%     % Equivalente a:  Ctx(i,j) = -S_ij para i~=j, Ctx(i,i) = 1
+% end

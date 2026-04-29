@@ -153,7 +153,7 @@ Coupling_matrices = zeros(M, M, nRadius);
 for iRadius = 1:nRadius
     radius = range_radius(iRadius)*lambda;
     Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
-    Coupling_matrices(:,:,iRadius) = 1\Ctx;
+    Coupling_matrices(:,:,iRadius) = inv(Ctx);
 end
 
 %% ======= DoA KW vs Delay and Sum vs Capon =======

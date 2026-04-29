@@ -1,0 +1,140 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{1.00000,0.00000,1.00000}%
+\definecolor{mycolor2}{rgb}{0.00000,1.00000,1.00000}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.951\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-6,
+xmax=6,
+xlabel style={font=\color{white!15!black}},
+xlabel={SNR (dB)},
+ymode=log,
+ymin=-10,
+ymax=100,
+yminorticks=true,
+ylabel style={font=\color{white!15!black}},
+ylabel={RMSE (degrees)},
+axis background/.style={fill=white},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left, draw=white!15!black}
+]
+\addplot [color=blue, line width=2.0pt, mark=o, mark options={solid, blue}]
+  table[row sep=crcr]{%
+-6	35.832823026165\\
+0	33.5456049322053\\
+6	33.8276667921781\\
+};
+\addlegendentry{r = 0.25}
+
+\addplot [color=black, line width=2.0pt, mark=o, mark options={solid, black}]
+  table[row sep=crcr]{%
+-6	63.8674997036237\\
+0	65.1618038422774\\
+6	68.8300774450249\\
+};
+\addlegendentry{r = 0.2}
+
+\addplot [color=mycolor1, line width=2.0pt, mark=o, mark options={solid, mycolor1}]
+  table[row sep=crcr]{%
+-6	98.5719798097408\\
+0	101.796319340847\\
+6	100.195556055141\\
+};
+\addlegendentry{r = 0.15}
+
+\addplot [color=mycolor2, line width=2.0pt, mark=o, mark options={solid, mycolor2}]
+  table[row sep=crcr]{%
+-6	99.6388328078118\\
+0	106.773387489113\\
+6	108.462513144272\\
+};
+\addlegendentry{r = 0.1}
+
+\addplot [color=blue, dashed, line width=2.0pt, mark=x, mark options={solid, blue}, forget plot]
+  table[row sep=crcr]{%
+-6	2.0431746031746\\
+0	1.65106575963719\\
+6	1.5756462585034\\
+};
+\addplot [color=black, dashed, line width=2.0pt, mark=x, mark options={solid, black}, forget plot]
+  table[row sep=crcr]{%
+-6	2.79383219954649\\
+0	1.97879818594104\\
+6	1.81421768707483\\
+};
+\addplot [color=mycolor1, dashed, line width=2.0pt, mark=x, mark options={solid, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-6	4.60943310657597\\
+0	2.64124716553288\\
+6	2.41285714285714\\
+};
+\addplot [color=mycolor2, dashed, line width=2.0pt, mark=x, mark options={solid, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-6	22.315328798186\\
+0	6.4959410430839\\
+6	5.62816326530612\\
+};
+\addplot [color=blue, dotted, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
+  table[row sep=crcr]{%
+-6	2.27369614512472\\
+0	2.06795918367347\\
+6	2.58755102040816\\
+};
+\addplot [color=black, dotted, line width=2.0pt, mark=square, mark options={solid, black}, forget plot]
+  table[row sep=crcr]{%
+-6	3.11403628117914\\
+0	2.3650566893424\\
+6	2.81038548752835\\
+};
+\addplot [color=mycolor1, dotted, line width=2.0pt, mark=square, mark options={solid, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-6	5.09138321995465\\
+0	2.98673469387755\\
+6	2.98251700680272\\
+};
+\addplot [color=mycolor2, dotted, line width=2.0pt, mark=square, mark options={solid, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-6	24.0061904761905\\
+0	7.18986394557824\\
+6	5.99775510204081\\
+};
+\addplot [color=blue, dashdotted, line width=2.0pt, mark=diamond, mark options={solid, blue}, forget plot]
+  table[row sep=crcr]{%
+-6	25.8128344671202\\
+0	38.7512244897959\\
+6	46.3359410430839\\
+};
+\addplot [color=black, dashdotted, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
+  table[row sep=crcr]{%
+-6	27.392925170068\\
+0	40.7954648526077\\
+6	45.260022675737\\
+};
+\addplot [color=mycolor1, dashdotted, line width=2.0pt, mark=diamond, mark options={solid, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-6	31.9560317460317\\
+0	45.7813378684807\\
+6	41.3967573696146\\
+};
+\addplot [color=mycolor2, dashdotted, line width=2.0pt, mark=diamond, mark options={solid, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-6	40.4780272108843\\
+0	48.0963038548753\\
+6	52.9619954648526\\
+};
+\end{axis}
+\end{tikzpicture}%
