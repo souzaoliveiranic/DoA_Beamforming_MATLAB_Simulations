@@ -4,7 +4,7 @@ clear; clc;
 close all;
 %% Parâmetros do array
 M      = 8;           % nº de elementos do ULA
-fc     = 2400e6; %500e6;         % Hz
+fc     = 500e6; %2400e6         % Hz
 c      = 3e8;
 lambda = c/fc;
 r = 0.25 * lambda;    % raio 1/4 λ
@@ -15,7 +15,7 @@ sigma_erro_phi = 0; %10;
 
 %nTrials  = 10; %360;   % nº de realizações
 fs     = 288000;       % taxa de amostragem (Hz) para formar snapshots
-N      = 21000;        % nº de amostras
+N      = 2100;        % nº de amostras
 N_DOA  = 2100;
 t      = (0:N-1).' / fs;
 N_fm   = 10000;      % nº de amostras do sinal fm
@@ -34,41 +34,45 @@ alpha  = 0.3;           % roll-off do RRC
 span   = 8;             % comprimento do RRC em símbolos (TX/RX)
 fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
 
-range_SNR_dB = -3; %-6:3:6;
-range_ISR_dB = -3; %-6:1:-3;
+range_SNR_dB = 6; %-6:3:6;
+range_ISR_dB = -1; %-6:1:-3;
 range_snapshots = 2000:3000:N_DOA;
-range_radius = [0.5]; %[0.25 0.2 0.15 0.1];
-% Codigos de Coupling:
+range_radius = [0.15]; %[0.25 0.2 0.15 0.1];
+% Codigos de Coupling (renumerados):
 %   0 = sem coupling (ideal)
 %   1 = com coupling, SEM compensacao
-%   2 = com coupling, comp. via estimacao por sinal piloto (KW LS 1-dir)
-%   3 = (a) com coupling, comp. via modelo IDEAL  (D = inv(C_true))   "oracle"
-%   4 = (b) com coupling, comp. via modelo PERTURBADO (Z_t com erro aleatorio)
-%   5 = com coupling, comp. via DAVIES MODAL  (FFT/IFFT, 5 linhas)
-%   6 = com coupling, comp. via MULTI-DIRECAO (P direcoes calibrac., alternante)
-%   7 = com coupling, comp. via SELF-CAL      (sem direcao conhecida; usa o
-%                                              proprio sinal operacional)
-range_coupling = [0, 1, 2, 3, 4, 5, 6, 7];
+%   2 = com coupling, comp. via modelo IDEAL  (D = inv(C_true))   "oracle"
+%   3 = com coupling, comp. via modelo PERTURBADO (Z_t com erro aleatorio)
+%   4 = com coupling, comp. via KW LS 1-direcao
+%   5 = com coupling, comp. via KW LS varias-direcoes (P direcoes)
+%   6 = com coupling, comp. via SELF-CAL com DAS
+%   7 = com coupling, comp. via SELF-CAL com CAPON
+%   8 = com coupling, comp. via SELF-CAL com MUSIC
+%   9 = com coupling, comp. via SELF-CAL com KW
+range_coupling = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 % --- parametros da calibracao (Khan 2020): UMA medicao de uma direcao conhecida ---
-phi_cal_deg   = 0;     % azimute da fonte de calibracao (Coupling 2 e 5)
+phi_cal_deg   = 0;     % azimute da fonte de calibracao (Coupling=4)
 theta_cal_deg = 90;    % elevacao (plano XY)
-SNR_cal_dB    = 6;    % SNR alto (camara anecoica)
+SNR_cal_dB    = 10;    % SNR alto (camara anecoica)
 ISR_cal_dB    = -40;   % praticamente sem interferente
 
-% --- (b) Modelo perturbado: incerteza relativa em Z_t (Re e Im independentes) ---
+% --- Modelo perturbado (Coupling=3): incerteza relativa em Z_t ---
 %       Simula erro de simulacao EM / variabilidade de fabricacao do PCB.
-pert_level_rel = 0.15;     % 5% de incerteza relativa nos coeficientes do modelo
-rng(2025, 'twister');      % reprodutibilidade da perturbacao
+pert_level_rel = 0.15;     % 5% de incerteza relativa nos coeficientes
+rng(2025, 'twister');      % reprodutibilidade
 
-% --- Multi-direcao (Coupling=6): direcoes de calibracao adicionais ---
-phi_cal_multi_deg = [0, 30, 60, 90];   % P direcoes; evita 22.5 (singular UCA-8)
+% --- KW varias direcoes (Coupling=5): P direcoes de calibracao ---
+phi_cal_multi_deg = [0, 30, 60, 90];   % evita 22.5 (singular UCA-8)
 P_multi = numel(phi_cal_multi_deg);
 
-% --- Self-cal (Coupling=7): parametros do alternante ---
+% --- Self-cal (Coupling=6..9): parametros do alternante ---
 selfcal_max_iter = 12;
 selfcal_grid_deg = -180:0.5:180;
-range_phi = [75 125]; %-180:18:180;
+selfcal_methods  = {'DAS', 'CAPON', 'MUSIC', 'KW'};   % ordem para Coupling 6..9
+selfcal_damping  = 0.5;        % subrelaxacao: suaviza oscilacoes (1.0 = sem damping)
+selfcal_init     = 'identity';       % 'identity' ou 'kw' (recomendado quando ha interferentes)
+range_phi = [75 100]; %-180:18:180;
 teste_phi = 75;
 
 methodsDoa = ["KW","DAS","MPDR","MUSIC"];
@@ -160,8 +164,8 @@ Coupling_matrices = zeros(M, M, nRadius);
 % Matrizes a ser usada nas simulações
 for iRadius = 1:nRadius
     radius = range_radius(iRadius)*lambda;
-    Ctx = Z;
-    % Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
+    % Ctx = Z;
+    Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
     Coupling_matrices(:,:,iRadius) = Ctx; %inv(Ctx);
 end
 
@@ -175,22 +179,20 @@ end
 %   Cada raio tem sua propria D_hat (na simulacao atual, range_radius=[0.5]).
 %% ============================================================================
 
-D_hats_kw    = cell(nRadius, 1);   % (Coupling=2) D estimada por sinal piloto (KW LS 1-dir)
-D_model_a    = cell(nRadius, 1);   % (Coupling=3) D oraculo: inv(C_true)
-D_model_b    = cell(nRadius, 1);   % (Coupling=4) D modelo perturbado
-D_davies     = cell(nRadius, 1);   % (Coupling=5) D via Davies modal
-D_multidir   = cell(nRadius, 1);   % (Coupling=6) D via multi-direcao
-C_hats       = cell(nRadius, 1);   % matriz de acoplamento estimada (KW)
+D_model_a    = cell(nRadius, 1);   % (Coupling=2) D oraculo: inv(C_true)
+D_model_b    = cell(nRadius, 1);   % (Coupling=3) D modelo perturbado
+D_kw_1dir    = cell(nRadius, 1);   % (Coupling=4) D via KW LS 1-direcao
+D_kw_multi   = cell(nRadius, 1);   % (Coupling=5) D via KW LS varias-direcoes
+C_kw_1dir    = cell(nRadius, 1);
 C_model_a    = cell(nRadius, 1);
 C_model_b    = cell(nRadius, 1);
-C_davies     = cell(nRadius, 1);
-C_multidir   = cell(nRadius, 1);
-err_C_F      = zeros(nRadius, 1);  % KW vs C_true
+C_kw_multi   = cell(nRadius, 1);
+err_C_kw1    = zeros(nRadius, 1);  % KW 1-dir vs C_true
 err_Cb_F     = zeros(nRadius, 1);  % modelo perturbado
-err_Cdav_F   = zeros(nRadius, 1);  % Davies vs C_true
-err_Cmd_F    = zeros(nRadius, 1);  % multi-dir vs C_true
+err_C_kwmd   = zeros(nRadius, 1);  % KW multi-dir vs C_true
 c_hat_vec    = cell(nRadius, 1);
 c_pert_vec   = cell(nRadius, 1);
+c_md_vec     = cell(nRadius, 1);
 
 for iRadius = 1:nRadius
     radius_cal = range_radius(iRadius)*lambda;
@@ -215,22 +217,20 @@ for iRadius = 1:nRadius
     % --- 3. Vetor de direcao ideal na direcao de calibracao ---
     a_cal = utils.steering_vec_uca(M, radius_cal, lambda, theta_cal_deg, phi_cal_deg);
 
-    % --- 4. LS linear (estrutura circulante UCA-M) ---
-    [C_hat_iR, c_hat_iR, alpha_hat_iR, residual_iR] = ...
+    % --- 4. (Coupling=4) KW LS 1-direcao ---------------------------------
+    [C_kw1_iR, c_hat_iR, alpha_hat_iR, residual_iR] = ...
         estimate_C_circulant_uca(b_hat_cal, a_cal, M);
 
-    C_hats{iRadius}    = C_hat_iR;
-    D_hats_kw{iRadius} = inv(C_hat_iR);     % (Coupling=2) decoupling via KW
-    err_C_F(iRadius)   = norm(C_hat_iR - C_true, 'fro') / norm(C_true, 'fro');
+    C_kw_1dir{iRadius} = C_kw1_iR;
+    D_kw_1dir{iRadius} = inv(C_kw1_iR);
+    err_C_kw1(iRadius) = norm(C_kw1_iR - C_true, 'fro') / norm(C_true, 'fro');
     c_hat_vec{iRadius} = c_hat_iR;
 
-    % --- 4a. (a) Modelo IDEAL: D = inv(C_true) (oracle) -------------------
+    % --- (Coupling=2) Modelo IDEAL: D = inv(C_true) (oracle) -------------
     C_model_a{iRadius} = C_true;
     D_model_a{iRadius} = inv(C_true);
 
-    % --- 4b. (b) Modelo PERTURBADO: Z_t com erro relativo gaussiano -------
-    %      Erro independente em Re e Im de cada Z_t unico. Mantem estrutura
-    %      circulante (so os 4 coef. unicos sao perturbados).
+    % --- (Coupling=3) Modelo PERTURBADO: Z_t com erro relativo gaussiano -
     Zt_pert = Zt_vals .* ( 1 + pert_level_rel * ...
               ( randn(size(Zt_vals)) + 1j*randn(size(Zt_vals)) ) / sqrt(2) );
     c_pert  = -Zt_pert / Z0;
@@ -246,13 +246,7 @@ for iRadius = 1:nRadius
     err_Cb_F(iRadius)   = norm(C_pert - C_true, 'fro') / norm(C_true, 'fro');
     c_pert_vec{iRadius} = c_pert;
 
-    % --- 4c. DAVIES MODAL (Coupling=5): mesma medida b_hat_cal ----------
-    [C_dav_iR, lambda_dav, alpha_dav, ~] = estimate_C_davies(b_hat_cal, a_cal, M);
-    C_davies{iRadius} = C_dav_iR;
-    D_davies{iRadius} = inv(C_dav_iR);
-    err_Cdav_F(iRadius) = norm(C_dav_iR - C_true, 'fro') / norm(C_true, 'fro');
-
-    % --- 4d. MULTI-DIRECAO (Coupling=6): coleta P direcoes ---------------
+    % --- (Coupling=5) KW LS varias-direcoes ------------------------------
     B_multi = zeros(M, P_multi);
     A_multi = zeros(M, P_multi);
     for pp = 1:P_multi
@@ -271,103 +265,71 @@ for iRadius = 1:nRadius
     end
     [C_md_iR, c_md_iR, alpha_md, ~, n_iter_md] = ...
         estimate_C_multidir(B_multi, A_multi, M, 30, 1e-10);
-    C_multidir{iRadius} = C_md_iR;
-    D_multidir{iRadius} = inv(C_md_iR);
-    err_Cmd_F(iRadius) = norm(C_md_iR - C_true, 'fro') / norm(C_true, 'fro');
+    C_kw_multi{iRadius}  = C_md_iR;
+    D_kw_multi{iRadius}  = inv(C_md_iR);
+    err_C_kwmd(iRadius)  = norm(C_md_iR - C_true, 'fro') / norm(C_true, 'fro');
+    c_md_vec{iRadius}    = c_md_iR;
 
-    fprintf('  alpha_hat (KW) = %+.4f %+.4fj\n', real(alpha_hat_iR), imag(alpha_hat_iR));
-    fprintf('  ||residuo|| LS = %.3e\n', norm(residual_iR));
+    fprintf('  alpha_hat (KW 1-dir) = %+.4f %+.4fj\n', real(alpha_hat_iR), imag(alpha_hat_iR));
+    fprintf('  ||residuo|| LS       = %.3e\n', norm(residual_iR));
     fprintf('  Erros Frobenius relativos:\n');
-    fprintf('    KW estim. (1 dir, LS) : %.4e\n', err_C_F(iRadius));
-    fprintf('    Davies modal          : %.4e   (mesma medida do KW)\n', err_Cdav_F(iRadius));
-    fprintf('    Multi-dir P=%d (%d it.) : %.4e\n', P_multi, n_iter_md, err_Cmd_F(iRadius));
-    fprintf('    Modelo IDEAL (oracle) : %.4e   (sempre 0)\n', 0);
-    fprintf('    Modelo perturb. %.0f%%   : %.4e\n', 100*pert_level_rel, err_Cb_F(iRadius));
+    fprintf('    Modelo IDEAL (oracle)        : %.4e   (sempre 0)\n', 0);
+    fprintf('    Modelo perturb. %.0f%%          : %.4e\n', 100*pert_level_rel, err_Cb_F(iRadius));
+    fprintf('    KW LS 1-dir                  : %.4e\n', err_C_kw1(iRadius));
+    fprintf('    KW LS varias-dir P=%d (%d it.) : %.4e\n', P_multi, n_iter_md, err_C_kwmd(iRadius));
+    fprintf('  (Coupling 6..9 sao SELF-CAL: estimam C dentro do loop principal)\n');
 
     fprintf('  Coeficientes c_k:\n');
-    fprintf('    k |       true             |     KW estim.          |    modelo perturb.\n');
-    fprintf('    --+------------------------+------------------------+------------------------\n');
+    fprintf('    k |       true             |  KW LS 1-dir           |  KW LS varias-dir      |  modelo perturb.\n');
+    fprintf('    --+------------------------+------------------------+------------------------+------------------------\n');
     for kk = 1:numel(c_true_vec)
-        fprintf('    %d | %+.4f %+.4fj | %+.4f %+.4fj | %+.4f %+.4fj\n', kk, ...
+        fprintf('    %d | %+.4f %+.4fj | %+.4f %+.4fj | %+.4f %+.4fj | %+.4f %+.4fj\n', kk, ...
             real(c_true_vec(kk)),  imag(c_true_vec(kk)), ...
             real(c_hat_iR(kk)),    imag(c_hat_iR(kk)), ...
+            real(c_md_iR(kk)),     imag(c_md_iR(kk)), ...
             real(c_pert(kk)),      imag(c_pert(kk)));
     end
 end
 
 % --- Plot de diagnostico da calibracao ---
-fig_cal = figure('Name', 'Calibracao - C_true vs estimativas', 'Color', 'w', ...
-                 'Position', [50 50 1700 900]);
+fig_cal = figure('Name', 'Calibracao - C_true vs estimativas (offline)', ...
+                 'Color', 'w', 'Position', [50 50 1500 800]);
 
-% Linha 1: |C_true|, |KW LS 1-dir|, |Davies|, |Multi-dir|
-subplot(3,4,1);
+subplot(2,3,1);
 imagesc(abs(C_true)); colorbar; axis equal tight;
 title('|C_{true}|'); xlabel('coluna'); ylabel('linha');
 
-subplot(3,4,2);
-imagesc(abs(C_hats{1})); colorbar; axis equal tight;
-title(sprintf('|C^{KW}|  (LS 1-dir, err=%.2e)', err_C_F(1)));
-xlabel('coluna');
+subplot(2,3,2);
+imagesc(abs(C_kw_1dir{1})); colorbar; axis equal tight;
+title(sprintf('|C^{KW LS 1-dir}|  (err=%.2e)', err_C_kw1(1)));
 
-subplot(3,4,3);
-imagesc(abs(C_davies{1})); colorbar; axis equal tight;
-title(sprintf('|C^{Davies}|  (FFT, err=%.2e)', err_Cdav_F(1)));
+subplot(2,3,3);
+imagesc(abs(C_kw_multi{1})); colorbar; axis equal tight;
+title(sprintf('|C^{KW LS Multi P=%d}|  (err=%.2e)', P_multi, err_C_kwmd(1)));
 
-subplot(3,4,4);
-imagesc(abs(C_multidir{1})); colorbar; axis equal tight;
-title(sprintf('|C^{Multi}| P=%d (err=%.2e)', P_multi, err_Cmd_F(1)));
-
-% Linha 2: |modelo (a) ideal|, |modelo (b) perturb.|, |diff KW|, |diff Davies|
-subplot(3,4,5);
-imagesc(abs(C_model_a{1})); colorbar; axis equal tight;
-title('|C^{(a)}_{model}| = |C_{true}|  (oracle)');
-xlabel('coluna'); ylabel('linha');
-
-subplot(3,4,6);
+subplot(2,3,4);
 imagesc(abs(C_model_b{1})); colorbar; axis equal tight;
-title(sprintf('|C^{(b)}_{model}|  (Z_t pert. %.0f%%, err=%.2e)', ...
+title(sprintf('|C^{Modelo Pert. %.0f%%}|  (err=%.2e)', ...
     100*pert_level_rel, err_Cb_F(1)));
-
-subplot(3,4,7);
-imagesc(abs(C_hats{1} - C_true)); colorbar; axis equal tight;
-title('|C^{KW} - C_{true}|');
-
-subplot(3,4,8);
-imagesc(abs(C_davies{1} - C_true)); colorbar; axis equal tight;
-title('|C^{Davies} - C_{true}|');
-
-% Linha 3: |diff Multi|, |diff modelo perturb.|, autovalores Davies, comparativo
-subplot(3,4,9);
-imagesc(abs(C_multidir{1} - C_true)); colorbar; axis equal tight;
-title('|C^{Multi} - C_{true}|');
 xlabel('coluna'); ylabel('linha');
 
-subplot(3,4,10);
-imagesc(abs(C_model_b{1} - C_true)); colorbar; axis equal tight;
-title('|C^{(b)} - C_{true}|');
+subplot(2,3,5);
+imagesc(abs(C_kw_1dir{1} - C_true)); colorbar; axis equal tight;
+title('|C^{KW 1-dir} - C_{true}|');
 
-% Autovalores modais Davies (mostra se algum modo e' cego)
-subplot(3,4,11);
-lambda_show = fft(C_davies{1}(1,:).');
-lambda_true = fft(C_true(1,:).');
-stem(0:M-1, abs(lambda_true), 'k', 'LineWidth', 2.0, 'DisplayName','|\lambda_m^{true}|');
-hold on;
-stem(0:M-1, abs(lambda_show), 'r--', 'LineWidth', 1.4, 'DisplayName','|\lambda_m^{est}|');
-grid on; xlabel('modo m'); ylabel('|\lambda_m|');
-title('Autovalores modais (Davies)'); legend('Location','best');
-
-% Comparativo de erros (barras)
-subplot(3,4,12);
-bar_data = [err_C_F(1), err_Cdav_F(1), err_Cmd_F(1), 0, err_Cb_F(1)];
-bar(bar_data); set(gca, 'XTickLabel', ...
-    {'KW LS','Davies',sprintf('Multi P=%d',P_multi),'Ideal','Pert.'});
+subplot(2,3,6);
+% Comparativo de erros (barras log)
+err_data = [0, err_Cb_F(1), err_C_kw1(1), err_C_kwmd(1)];
+labels_err = {'Ideal','Pert.','KW 1-dir', sprintf('KW Multi P=%d', P_multi)};
+bar(err_data); set(gca, 'XTickLabel', labels_err, 'XTickLabelRotation', 15);
 ylabel('||C - C_{true}||_F / ||C_{true}||_F');
 set(gca,'YScale','log'); grid on;
-title('Comparativo de erros');
+title('Erros Frobenius relativos (offline)');
 
-sgtitle(sprintf(['Calibracao: SNR_{cal}=%d dB, \\phi_{cal}=%d°, \\theta_{cal}=%d°, ' ...
-                 'N=%d  |  pert. modelo (b)=%.0f%%  |  Multi: \\phi_{cal}=[%s]°'], ...
-    SNR_cal_dB, phi_cal_deg, theta_cal_deg, N, 100*pert_level_rel, ...
+sgtitle(sprintf(['Calibracao OFFLINE (Coupling 2..5): SNR_{cal}=%d dB, ' ...
+                 '\\phi_{cal}=%d°, N=%d  |  pert. modelo=%.0f%%  |  ' ...
+                 'Multi: \\phi=[%s]°'], ...
+    SNR_cal_dB, phi_cal_deg, N, 100*pert_level_rel, ...
     num2str(phi_cal_multi_deg)), 'FontWeight','bold');
 exportgraphics(fig_cal, fullfile(outDir, 'calibracao_C_hat_vs_C_true.png'), 'Resolution', 200);
 
@@ -387,24 +349,26 @@ B_dB_DAS_all = cell(length(range_radius),1);
 B_dB_Capon_all = cell(length(range_radius),1);
 legend_entries = cell(length(range_radius),1);
 
-% --- NOVO: estrutura de comparacao entre os 3 cenarios ---
-% Salva resultados no caso de referencia (phi_sig=75, primeiro phi_int diferente)
-% para depois plotar tudo junto.
+% --- Estrutura de comparacao entre os cenarios ---
+% Salva resultados no caso de referencia (phi_sig=75, phi_int=100)
 results_cmp(nCoupling) = struct( ...
     'label',[], ...
     'phi_KW',NaN, 'phi_DAS',NaN, 'phi_MVDR',NaN, 'phi_MUSIC',NaN, ...
     'P_DAS_dB',[], 'P_MVDR_dB',[], 'P_MUSIC_dB',[], 'phi_scan',[], ...
     'BP_DAS_dB',[], 'BP_Capon_dB',[], 'phi_bp',[], ...
     'BER_in',NaN, 'BER_DAS',NaN, 'BER_MVDR',NaN, ...
-    'EVM_in',NaN, 'EVM_DAS',NaN, 'EVM_MVDR',NaN);
+    'EVM_in',NaN, 'EVM_DAS',NaN, 'EVM_MVDR',NaN, ...
+    'sc_history',[]);   % NOVO: history struct retornado por estimate_C_selfcal
 labels_cmp = ["No coupling (ideal)", ...
               "Coupling, no comp.", ...
+              "Coupling, comp. modelo ideal", ...
+              "Coupling, comp. modelo perturb.", ...
               "Coupling, comp. KW LS 1-dir", ...
-              "Coupling, comp. modelo ideal (a)", ...
-              "Coupling, comp. modelo perturb. (b)", ...
-              "Coupling, comp. Davies modal", ...
-              "Coupling, comp. Multi-direcao", ...
-              "Coupling, comp. Self-cal"];
+              "Coupling, comp. KW LS varias-dir", ...
+              "Coupling, self-cal DAS", ...
+              "Coupling, self-cal CAPON", ...
+              "Coupling, self-cal MUSIC", ...
+              "Coupling, self-cal KW"];
 for ic = 1:nCoupling
     results_cmp(ic).label = labels_cmp(range_coupling(ic)+1);
 end
@@ -459,24 +423,26 @@ for iSNR = 1:nSNR
                             X = X ./ sqrt(mean(abs(X).^2));                           
                             X = X + Xn;
 
-                            % --- Casos com compensacao (Coupling 2..7) ---
+                            % --- Casos com compensacao (Coupling 2..9) ---
                             % O receptor compensa o acoplamento (sem saber a DoA do sinal).
+                            sc_hist_iter = [];   % history p/ logging (so para self-cal)
                             switch Coupling
-                                case 2   % comp. via KW LS 1-dir
-                                    X = D_hats_kw{iRadius} * X;
-                                case 3   % (a) comp. via modelo IDEAL (oracle)
+                                case 2   % modelo IDEAL (oracle)
                                     X = D_model_a{iRadius} * X;
-                                case 4   % (b) comp. via modelo PERTURBADO
+                                case 3   % modelo PERTURBADO
                                     X = D_model_b{iRadius} * X;
-                                case 5   % comp. via Davies modal
-                                    X = D_davies{iRadius} * X;
-                                case 6   % comp. via Multi-direcao
-                                    X = D_multidir{iRadius} * X;
-                                case 7   % Self-cal: estima C usando o proprio X+q
+                                case 4   % KW LS 1-dir
+                                    X = D_kw_1dir{iRadius} * X;
+                                case 5   % KW LS varias-dir
+                                    X = D_kw_multi{iRadius} * X;
+                                case {6, 7, 8, 9}   % SELF-CAL com DAS/CAPON/MUSIC/KW
                                     radius_m_sc = range_radius(iRadius)*lambda;
-                                    [C_sc, ~, ~, ~, ~] = estimate_C_selfcal(...
+                                    sc_method = selfcal_methods{Coupling - 5};
+                                    [C_sc, ~, ~, ~, sc_hist_iter] = estimate_C_selfcal(...
                                         X, q, M, radius_m_sc, lambda, ...
-                                        selfcal_grid_deg, selfcal_max_iter);
+                                        sc_method, selfcal_grid_deg, ...
+                                        selfcal_max_iter, [], [], C_true, ...
+                                        selfcal_damping, selfcal_init);
                                     X = (C_sc \ X);   % equivalente a inv(C_sc)*X
                                 % case 0 ou 1: nao faz nada
                             end
@@ -554,17 +520,23 @@ for iSNR = 1:nSNR
                                 results_cmp(iCoupling).P_MVDR_dB  = P_MVDR_dB;
                                 results_cmp(iCoupling).P_MUSIC_dB = P_MUSIC_dB;
                                 results_cmp(iCoupling).phi_scan   = phi_scan;
+                                % Para self-cal (Coupling 6..9), salva history
+                                if ~isempty(sc_hist_iter)
+                                    results_cmp(iCoupling).sc_history = sc_hist_iter;
+                                end
                             end
 
                             switch Coupling
                                 case 0, name_string = 'No Coupling';
                                 case 1, name_string = 'Coupling (uncomp.)';
-                                case 2, name_string = 'Coupling (comp. KW LS)';
-                                case 3, name_string = 'Coupling (comp. ideal)';
-                                case 4, name_string = 'Coupling (comp. pert.)';
-                                case 5, name_string = 'Coupling (comp. Davies)';
-                                case 6, name_string = 'Coupling (comp. Multi-dir)';
-                                case 7, name_string = 'Coupling (comp. Self-cal)';
+                                case 2, name_string = 'Coupling (comp. ideal)';
+                                case 3, name_string = 'Coupling (comp. pert.)';
+                                case 4, name_string = 'Coupling (KW LS 1-dir)';
+                                case 5, name_string = 'Coupling (KW LS Multi)';
+                                case 6, name_string = 'Coupling (Self-cal DAS)';
+                                case 7, name_string = 'Coupling (Self-cal CAPON)';
+                                case 8, name_string = 'Coupling (Self-cal MUSIC)';
+                                case 9, name_string = 'Coupling (Self-cal KW)';
                             end
                              % ----- PLOT DOA -----
                             % fig_name = "DoA DAS (" + string(phi_sig_deg) + " graus) with " + name_string + ...
@@ -689,59 +661,59 @@ for iSNR = 1:nSNR
                                     else 
                                     fig_name = 'Cadeia de Sinal: Ideal -> Beamforming'
                                     end
-                                    figure('Position', [50 50 1500 900], 'Color', 'w', ...
-                                        'Name', fig_name);
-            
-                                    % (1) Sinal ideal (sem acoplamento)
-                                    subplot(5,1,1);
-                                    plot(real(q(1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
-                                    plot(imag(q(1:N_plot)), 'r-', 'LineWidth', 0.8);
-                                    grid on;
-                                    ylabel('Amplitude');
-                                    title(sprintf('(a) Sem ideal', ant_idx));
-                                    % legend('Re\{x_{ideal}(t)\}', 'Simbolo', 'Location', 'northeast');
-
-                                    % (1) Sinal ideal (sem acoplamento)
-                                    subplot(5,1,2);
-                                    plot(real(Xq(ant_idx,1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
-                                    plot(imag(Xq(ant_idx,1:N_plot)), 'r-', 'LineWidth', 0.8);
-                                    grid on;
-                                    ylabel('Amplitude');
-                                    title(sprintf('(b) Sem acoplamento - Antena %d', ant_idx));
-                                    % legend('Re\{x_{ideal}(t)\}', 'Simbolo', 'Location', 'northeast');
-
-                                    % (2) Sinal com acoplamento (sem beamforming)
-                                    subplot(5,1,3);
-                                    plot(real(X(ant_idx,1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
-                                    plot(imag(X(ant_idx,1:N_plot)), 'r-', 'LineWidth', 0.8);
-                                    grid on;
-                                    ylabel('Amplitude');
-                                    title(sprintf('(b) Com acoplamento (C^{-1}) - Antena %d', ant_idx));
-                                    % legend('Re\{x_{acoplado}(t)\}', 'Simbolo', 'Location', 'northeast');
-
-                                    % (3) Saida Capon (MVDR)
-                                    subplot(5,1,4);
-                                    plot(real(y_capon(1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
-                                    plot(imag(y_capon(1:N_plot)), 'r-', 'LineWidth', 0.8);
-                                    grid on;
-                                    ylabel('Amplitude');
-                                    title('(c) Saida Capon (MVDR) - apos acoplamento + beamforming');
-                                    % legend('Re\{y_{Capon}(t)\}', 'Simbolo', 'Location', 'northeast');
-
-                                    % (4) Saida DAS
-                                    subplot(5,1,5);
-                                    plot(real(y_das(1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
-                                    plot(imag(y_das(1:N_plot)), 'r-', 'LineWidth', 0.8);
-                                    grid on;
-                                    hold off; grid on;
-                                    xlabel('Tempo (ms)');
-                                    ylabel('Amplitude');
-                                    title('(d) Saida DAS - apos acoplamento + beamforming');
-                                    % legend('Re\{y_{DAS}(t)\}', 'Simbolo', 'Location', 'northeast');
-
-                                    sgtitle(sprintf('Cadeia de sinal | Coupling %d | SNR=%d dB | ISR=%d dB | R=%.2f\\lambda | \\phi_{sig}=%.0f° | \\phi_{int}=%.0f°', ...
-                                        Coupling, SNR_dB, ISR_dB, range_radius(iRadius), phi_sig_deg, phi_int_deg), ...
-                                        'FontSize', 13, 'FontWeight', 'bold');
+                                    % figure('Position', [50 50 1500 900], 'Color', 'w', ...
+                                    %     'Name', fig_name);
+                                    % 
+                                    % % (1) Sinal ideal (sem acoplamento)
+                                    % subplot(5,1,1);
+                                    % plot(real(q(1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
+                                    % plot(imag(q(1:N_plot)), 'r-', 'LineWidth', 0.8);
+                                    % grid on;
+                                    % ylabel('Amplitude');
+                                    % title(sprintf('(a) Sem ideal', ant_idx));
+                                    % % legend('Re\{x_{ideal}(t)\}', 'Simbolo', 'Location', 'northeast');
+                                    % 
+                                    % % (1) Sinal ideal (sem acoplamento)
+                                    % subplot(5,1,2);
+                                    % plot(real(Xq(ant_idx,1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
+                                    % plot(imag(Xq(ant_idx,1:N_plot)), 'r-', 'LineWidth', 0.8);
+                                    % grid on;
+                                    % ylabel('Amplitude');
+                                    % title(sprintf('(b) Sem acoplamento - Antena %d', ant_idx));
+                                    % % legend('Re\{x_{ideal}(t)\}', 'Simbolo', 'Location', 'northeast');
+                                    % 
+                                    % % (2) Sinal com acoplamento (sem beamforming)
+                                    % subplot(5,1,3);
+                                    % plot(real(X(ant_idx,1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
+                                    % plot(imag(X(ant_idx,1:N_plot)), 'r-', 'LineWidth', 0.8);
+                                    % grid on;
+                                    % ylabel('Amplitude');
+                                    % title(sprintf('(b) Com acoplamento (C^{-1}) - Antena %d', ant_idx));
+                                    % % legend('Re\{x_{acoplado}(t)\}', 'Simbolo', 'Location', 'northeast');
+                                    % 
+                                    % % (3) Saida Capon (MVDR)
+                                    % subplot(5,1,4);
+                                    % plot(real(y_capon(1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
+                                    % plot(imag(y_capon(1:N_plot)), 'r-', 'LineWidth', 0.8);
+                                    % grid on;
+                                    % ylabel('Amplitude');
+                                    % title('(c) Saida Capon (MVDR) - apos acoplamento + beamforming');
+                                    % % legend('Re\{y_{Capon}(t)\}', 'Simbolo', 'Location', 'northeast');
+                                    % 
+                                    % % (4) Saida DAS
+                                    % subplot(5,1,5);
+                                    % plot(real(y_das(1:N_plot)), 'b-', 'LineWidth', 0.8); hold on;
+                                    % plot(imag(y_das(1:N_plot)), 'r-', 'LineWidth', 0.8);
+                                    % grid on;
+                                    % hold off; grid on;
+                                    % xlabel('Tempo (ms)');
+                                    % ylabel('Amplitude');
+                                    % title('(d) Saida DAS - apos acoplamento + beamforming');
+                                    % % legend('Re\{y_{DAS}(t)\}', 'Simbolo', 'Location', 'northeast');
+                                    % 
+                                    % sgtitle(sprintf('Cadeia de sinal | Coupling %d | SNR=%d dB | ISR=%d dB | R=%.2f\\lambda | \\phi_{sig}=%.0f° | \\phi_{int}=%.0f°', ...
+                                    %     Coupling, SNR_dB, ISR_dB, range_radius(iRadius), phi_sig_deg, phi_int_deg), ...
+                                    %     'FontSize', 13, 'FontWeight', 'bold');
 
                                     % ---- Figura 2: Sobreposicao de todos ----
 
@@ -837,12 +809,14 @@ for iSNR = 1:nSNR
                                 switch Coupling
                                     case 0, name_string = 'No Coupling';
                                     case 1, name_string = 'Coupling (uncomp.)';
-                                    case 2, name_string = 'Coupling (comp. KW LS)';
-                                    case 3, name_string = 'Coupling (comp. ideal)';
-                                    case 4, name_string = 'Coupling (comp. pert.)';
-                                    case 5, name_string = 'Coupling (comp. Davies)';
-                                    case 6, name_string = 'Coupling (comp. Multi-dir)';
-                                    case 7, name_string = 'Coupling (comp. Self-cal)';
+                                    case 2, name_string = 'Coupling (comp. ideal)';
+                                    case 3, name_string = 'Coupling (comp. pert.)';
+                                    case 4, name_string = 'Coupling (KW LS 1-dir)';
+                                    case 5, name_string = 'Coupling (KW LS Multi)';
+                                    case 6, name_string = 'Coupling (Self-cal DAS)';
+                                    case 7, name_string = 'Coupling (Self-cal CAPON)';
+                                    case 8, name_string = 'Coupling (Self-cal MUSIC)';
+                                    case 9, name_string = 'Coupling (Self-cal KW)';
                                 end
 
                                 % ======= SUBPLOT 3: BEAMPATTERN =======
@@ -959,10 +933,10 @@ end
 
 % =========================================================================
 % PLOT FINAL: Comparacao dos cenarios (sem acoplamento / com / compensado)
-% phi_sig = 75 deg, phi_int = 125 deg, teste_phi = 75
+% phi_sig = 75 deg, phi_int = 100 deg, teste_phi = 75
 % =========================================================================
 phi_sig_ref = 75;
-phi_int_ref = 125;
+phi_int_ref = 100;
 teste_phi_ref = teste_phi;
 
 % --- Identifica quais cenarios foram efetivamente preenchidos ---
@@ -1014,14 +988,16 @@ if ~isempty(ic_valid)
     short_labels_map = containers.Map( ...
         {'No coupling (ideal)', ...
          'Coupling, no comp.', ...
+         'Coupling, comp. modelo ideal', ...
+         'Coupling, comp. modelo perturb.', ...
          'Coupling, comp. KW LS 1-dir', ...
-         'Coupling, comp. modelo ideal (a)', ...
-         'Coupling, comp. modelo perturb. (b)', ...
-         'Coupling, comp. Davies modal', ...
-         'Coupling, comp. Multi-direcao', ...
-         'Coupling, comp. Self-cal'}, ...
-        {'No Coup.', 'No comp.', 'KW LS', 'Ideal (a)', 'Pert. (b)', ...
-         'Davies', 'Multi-dir', 'Self-cal'});
+         'Coupling, comp. KW LS varias-dir', ...
+         'Coupling, self-cal DAS', ...
+         'Coupling, self-cal CAPON', ...
+         'Coupling, self-cal MUSIC', ...
+         'Coupling, self-cal KW'}, ...
+        {'No Coup.', 'No comp.', 'Ideal', 'Pert.', 'KW 1-dir', 'KW Multi', ...
+         'SC-DAS', 'SC-CAPON', 'SC-MUSIC', 'SC-KW'});
     short_labels = cell(numel(ic_valid),1);
     for k = 1:numel(ic_valid)
         ic = ic_valid(k);
@@ -1098,14 +1074,123 @@ if ~isempty(ic_valid)
     title('EVM por cenario × beamformer');
     legend({'Rx (1 antena)','DAS','MVDR/Capon'}, 'Location','best');
 
-    sgtitle(sprintf(['Comparacao: 8 cenarios de acoplamento\n' ...
+    sgtitle(sprintf(['Comparacao: 10 cenarios de acoplamento\n' ...
                      '\\phi_{sig}=%g°, \\phi_{int}=%g°, SNR=%g dB, ISR=%g dB, ' ...
-                     'raio=%.2f \\lambda, pert. modelo (b)=%.0f%%, Multi P=%d'], ...
+                     'raio=%.2f \\lambda, pert. modelo=%.0f%%, KW Multi P=%d'], ...
             phi_sig_ref, phi_int_ref, range_SNR_dB(end), range_ISR_dB(end), ...
             range_radius(end), 100*pert_level_rel, P_multi));
 
     exportgraphics(fig_cmp, fullfile(outDir, 'comparacao_cenarios_acoplamento.png'), ...
                    'Resolution', 200);
+
+    % =====================================================================
+    % PLOT EXTRA: Curva de aprendizado da self-cal (4 metodos de DoA)
+    % Mostra erro Frobenius || C_t - C_true ||_F / ||C_true||_F vs iteracao,
+    % alem da DoA estimada por iteracao e o salto |C_t - C_{t-1}|.
+    % =====================================================================
+    sc_indices_in_results = [];   % indices dentro de results_cmp que tem sc_history
+    sc_method_names = {};
+    for ic = 1:nCoupling
+        coup_code = range_coupling(ic);
+        if coup_code >= 6 && coup_code <= 9 && ~isempty(results_cmp(ic).sc_history)
+            sc_indices_in_results(end+1) = ic; %#ok<AGROW>
+            sc_method_names{end+1}       = selfcal_methods{coup_code - 5}; %#ok<AGROW>
+        end
+    end
+
+    if ~isempty(sc_indices_in_results)
+        fig_lc = figure('Name','Learning curve - Self-cal por metodo de DoA', ...
+                        'NumberTitle','off', 'Position',[100 100 1400 850]);
+        cmap_sc = lines(numel(sc_indices_in_results));
+
+        % --- (1) Erro Frobenius vs iteracao -------------------------------
+        subplot(2,2,1); hold on; grid on;
+        for kk = 1:numel(sc_indices_in_results)
+            ic = sc_indices_in_results(kk);
+            h = results_cmp(ic).sc_history;
+            it_axis = 1:numel(h.err_F_per_iter);
+            plot(it_axis, h.err_F_per_iter, 'o-', ...
+                 'LineWidth', 1.8, 'Color', cmap_sc(kk,:), ...
+                 'MarkerFaceColor', cmap_sc(kk,:), ...
+                 'DisplayName', sprintf('SC-%s', sc_method_names{kk}));
+        end
+        % Linha de referencia: erro do KW LS 1-dir
+        kw1_idx = find(range_coupling == 4, 1);
+        if ~isempty(kw1_idx)
+            yline(err_C_kw1(1), 'k--', 'LineWidth', 1.2, ...
+                  'DisplayName', 'KW LS 1-dir (offline)');
+        end
+        kwmd_idx = find(range_coupling == 5, 1);
+        if ~isempty(kwmd_idx)
+            yline(err_C_kwmd(1), 'k:', 'LineWidth', 1.2, ...
+                  'DisplayName', sprintf('KW LS Multi P=%d (offline)', P_multi));
+        end
+        set(gca, 'YScale', 'log');
+        xlabel('iteracao'); ylabel('||C_t - C_{true}||_F / ||C_{true}||_F');
+        title('Curva de aprendizado: erro Frobenius vs iteracao');
+        legend('Location','northeast');
+
+        % --- (2) DoA estimada por iteracao --------------------------------
+        subplot(2,2,2); hold on; grid on;
+        for kk = 1:numel(sc_indices_in_results)
+            ic = sc_indices_in_results(kk);
+            h = results_cmp(ic).sc_history;
+            it_axis = 1:numel(h.phi_per_iter);
+            plot(it_axis, h.phi_per_iter, 'o-', ...
+                 'LineWidth', 1.6, 'Color', cmap_sc(kk,:), ...
+                 'MarkerFaceColor', cmap_sc(kk,:), ...
+                 'DisplayName', sprintf('SC-%s', sc_method_names{kk}));
+        end
+        yline(phi_sig_ref, 'k--', 'LineWidth', 1.4, 'DisplayName','\phi_{sig}');
+        xlabel('iteracao'); ylabel('\phi estimada (°)');
+        title('DoA estimada por iteracao');
+        legend('Location','best');
+
+        % --- (3) |C_t - C_{t-1}| (criterio interno de convergencia) -------
+        subplot(2,2,3); hold on; grid on;
+        for kk = 1:numel(sc_indices_in_results)
+            ic = sc_indices_in_results(kk);
+            h = results_cmp(ic).sc_history;
+            it_axis = 1:numel(h.delta_C);
+            plot(it_axis, h.delta_C, 'o-', ...
+                 'LineWidth', 1.6, 'Color', cmap_sc(kk,:), ...
+                 'MarkerFaceColor', cmap_sc(kk,:), ...
+                 'DisplayName', sprintf('SC-%s', sc_method_names{kk}));
+        end
+        set(gca, 'YScale', 'log');
+        xlabel('iteracao'); ylabel('||C_t - C_{t-1}||_F / ||C_{t-1}||_F');
+        title('Salto entre iteracoes (criterio de parada)');
+        legend('Location','best');
+
+        % --- (4) Tabela de iteracoes ate convergencia ---------------------
+        subplot(2,2,4); axis off;
+        txt = {'\bf{Resumo Self-Cal:}', ''};
+        txt{end+1} = sprintf('  %-10s | %5s | %s', 'metodo', 'n_it', 'err.Frob.final');
+        txt{end+1} = repmat('-', 1, 45);
+        for kk = 1:numel(sc_indices_in_results)
+            ic = sc_indices_in_results(kk);
+            h  = results_cmp(ic).sc_history;
+            txt{end+1} = sprintf('  %-10s | %5d | %.3e', ...
+                sprintf('SC-%s', sc_method_names{kk}), h.n_iter, ...
+                h.err_F_per_iter(end));
+        end
+        txt{end+1} = '';
+        txt{end+1} = '\bf{Referencias offline:}';
+        txt{end+1} = sprintf('  KW LS 1-dir : %.3e', err_C_kw1(1));
+        txt{end+1} = sprintf('  KW LS Multi : %.3e', err_C_kwmd(1));
+        txt{end+1} = sprintf('  Modelo pert.: %.3e', err_Cb_F(1));
+        text(0.05, 0.95, txt, 'Units','normalized', ...
+             'VerticalAlignment','top', 'FontName','Courier', ...
+             'Interpreter','tex', 'FontSize', 11);
+
+        sgtitle(sprintf(['Self-cal: convergencia por metodo de DoA\n' ...
+                         '\\phi_{sig}=%g°, \\phi_{int}=%g°, SNR=%g dB, ISR=%g dB'], ...
+                phi_sig_ref, phi_int_ref, range_SNR_dB(end), range_ISR_dB(end)), ...
+                'FontWeight','bold');
+
+        exportgraphics(fig_lc, fullfile(outDir, 'selfcal_learning_curve.png'), ...
+                       'Resolution', 200);
+    end
 else
     warning(['Nenhum cenario foi preenchido em results_cmp. ' ...
              'Verifique se phi_sig=75 e teste_phi=75 estao no range simulado.']);
