@@ -52,17 +52,30 @@ quick_run = false;   % <-- alterar conforme necessidade
 clean_simulation = true;   % <-- alterar conforme necessidade
 
 % =========================================================================
+% Numero de ensembles (rodadas Monte Carlo por ponto de operacao).
+% Para cada combinacao de parametros, geram-se n_ensemble realizacoes
+% independentes (novos sinais/ruido) e as metricas sao a MEDIA das rodadas.
+% n_ensemble = 1 recupera o comportamento antigo.
+% =========================================================================
+n_ensemble = 10;   % <-- numero de rodadas Monte Carlo por ponto
+
+% =========================================================================
 % Modo de varredura angular:
 %   'cross'      -> phi_sig e phi_int varrem o mesmo conjunto via produto
 %                   cartesiano (modo classico). nPhi x nPhi simulacoes.
 %   'accuracy'   -> phi_sig varre o cone fundamental [0,45) do UCA-8 e
-%                   phi_int = phi_sig + 90 (separacao fixa e larga). PAREADO,
-%                   nPhi simulacoes. Mede acuracia media sobre direcoes.
-%   'resolution' -> phi_sig fixo, phi_int varre separacoes crescentes em
-%                   relacao a phi_sig. PAREADO, nPhi simulacoes. Mede limite
-%                   de resolucao entre fontes proximas.
+%                   phi_int = phi_sig + 90 (separacao fixa e larga). PAREADO.
+%   'resolution' -> phi_sig fixo, phi_int varre separacoes crescentes.
+%                   PAREADO.
+%   'aleatory'   -> phi_sig e phi_int sorteados aleatoriamente em [-180,180]
+%                   a cada ponto, respeitando separacao minima. PAREADO,
+%                   n_rand_angles pares por ensemble.
 % =========================================================================
-experiment_mode = 'accuracy';   % 'cross' | 'accuracy' | 'resolution'
+experiment_mode = 'accuracy';   % 'cross' | 'accuracy' | 'resolution' | 'aleatory'
+
+% Parametros do modo 'aleatory'
+n_rand_angles  = 20;    % quantos pares (phi_sig, phi_int) sortear
+min_sep_deg    = 30;    % separacao angular minima entre sinal e interferente
 
 if quick_run
     range_SNR_dB = 6;
@@ -88,6 +101,26 @@ else
             sep_grid = [5 10 15 20 30 45 60 90 120];
             range_phi_sig = repmat(phi_sig_fixed, size(sep_grid));
             range_phi_int = phi_sig_fixed + sep_grid;
+            pair_mode = 'paired';
+        case 'aleatory'
+            % Sorteia n_rand_angles pares respeitando separacao minima.
+            % Os angulos sao FIXADOS aqui (mesmos pares para todos os
+            % ensembles); o que varia entre ensembles e' o sinal/ruido.
+            rng(12345, 'twister');   % reprodutibilidade dos angulos
+            range_phi_sig = zeros(1, n_rand_angles);
+            range_phi_int = zeros(1, n_rand_angles);
+            for kk = 1:n_rand_angles
+                ps = -180 + 360*rand;
+                pi_ = -180 + 360*rand;
+                % Garante separacao minima (distancia circular)
+                d = abs(ps - pi_); d = min(d, 360 - d);
+                while d < min_sep_deg
+                    pi_ = -180 + 360*rand;
+                    d = abs(ps - pi_); d = min(d, 360 - d);
+                end
+                range_phi_sig(kk) = ps;
+                range_phi_int(kk) = pi_;
+            end
             pair_mode = 'paired';
         otherwise
             error('experiment_mode invalido: %s', experiment_mode);
@@ -471,20 +504,23 @@ legend_entries = cell(length(range_radius),1);
 % Indexacao: (iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)
 %   - iPhi  -> indice em range_phi (phi_sig)
 %   - iiPhi -> indice em range_phi (phi_int)
-% NaN como sentinela para combinacoes nao executadas (ex: phi_sig == phi_int).
+% NOTA: com ensembles, os arrays guardam a SOMA das rodadas; a divisao
+% pela contagem (media) e' feita ao final do loop principal. agg_count
+% conta quantas rodadas validas escreveram em cada celula.
 % =========================================================================
 agg_dims = [nCoupling, nInits, nSNR, nISR, nPhi, nPhi];
-agg_phi_err_KW    = nan(agg_dims);   % |phi_KW - phi_sig|
-agg_phi_err_DAS   = nan(agg_dims);
-agg_phi_err_MVDR  = nan(agg_dims);
-agg_phi_err_MUSIC = nan(agg_dims);
-agg_eps_F         = nan(agg_dims);   % erro Frobenius
-agg_phi_sig       = nan(agg_dims);   % guarda phi_sig real (debug)
-agg_phi_KW        = nan(agg_dims);   % phi estimado (para acuracia)
-agg_BER_DAS       = nan(agg_dims);   % BER apos beamforming DAS
-agg_BER_MVDR      = nan(agg_dims);   % BER apos beamforming MVDR/Capon
-agg_EVM_DAS       = nan(agg_dims);   % EVM apos beamforming DAS (em dB)
-agg_EVM_MVDR      = nan(agg_dims);   % EVM apos beamforming MVDR/Capon (em dB)
+agg_phi_err_KW    = zeros(agg_dims);   % SOMA de |phi_KW - phi_sig|
+agg_phi_err_DAS   = zeros(agg_dims);
+agg_phi_err_MVDR  = zeros(agg_dims);
+agg_phi_err_MUSIC = zeros(agg_dims);
+agg_eps_F         = zeros(agg_dims);   % SOMA do erro Frobenius
+agg_phi_sig       = nan(agg_dims);     % phi_sig real (nao acumula; debug)
+agg_phi_KW        = zeros(agg_dims);   % SOMA do phi estimado
+agg_BER_DAS       = zeros(agg_dims);   % SOMA BER apos beamforming DAS
+agg_BER_MVDR      = zeros(agg_dims);   % SOMA BER apos beamforming MVDR/Capon
+agg_EVM_DAS       = zeros(agg_dims);   % SOMA EVM apos beamforming DAS (dB)
+agg_EVM_MVDR      = zeros(agg_dims);   % SOMA EVM apos beamforming MVDR/Capon (dB)
+agg_count         = zeros(agg_dims);   % nº de rodadas validas por celula
 
 results_cmp(nCoupling, nInits) = struct( ...
     'label',[], 'init_label',[], ...
@@ -516,9 +552,10 @@ end
 % =========================================================================
 sweep_t0 = tic;
 if strcmp(pair_mode, 'paired')
-    TotalSim = nSNR * nISR * nRadius * nCoupling * nPhi;
+    TotalSim = nSNR * nISR * nRadius * nCoupling * nPhi * n_ensemble;
 else
-    TotalSim = nSNR * nISR * nRadius * nCoupling * nPhi * nPhi;
+    % modo cross: descarta a diagonal phi_sig==phi_int (nPhi casos pulados)
+    TotalSim = nSNR * nISR * nRadius * nCoupling * (nPhi*nPhi - nPhi) * n_ensemble;
 end
 iTotal   = 0;
 fprintf('\n=== INICIO DO LOOP PRINCIPAL ===\n');
@@ -554,27 +591,34 @@ for iSNR = 1:nSNR
                         iiPhi = iiPhi_range(iiPhi_local);
                         phi_int_deg = phi_int_list(iiPhi_local);
 
-                        % --- Progresso da simulacao ---
-                        iTotal = iTotal + 1;
-                        elapsed = toc(sweep_t0);
-                        if iTotal > 1
-                            eta = elapsed * (TotalSim - iTotal) / (iTotal - 1);
-                            eta_str = datestr(seconds(eta), 'HH:MM:SS');
-                        else
-                            eta_str = '--:--:--';
-                        end
-                        fprintf(['--> Sim %d / %d (%.1f%%)  |  ' ...
-                                 'SNR=%+d  ISR=%+d  Coup=%d  r=%d  ' ...
-                                 'phi_sig=%+d  phi_int=%+d  |  ' ...
-                                 'decorrido %s  ETA %s\n'], ...
-                                iTotal, TotalSim, 100*iTotal/TotalSim, ...
-                                range_SNR_dB(iSNR), range_ISR_dB(iISR), ...
-                                range_coupling(iCoupling), iRadius, ...
-                                phi_sig_deg, phi_int_deg, ...
-                                datestr(seconds(elapsed), 'HH:MM:SS'), eta_str);
-
                         if(phi_int_deg ~= phi_sig_deg)
                             j=1;
+
+                            % ===== LOOP DE ENSEMBLE (Monte Carlo) =====
+                            % Para cada ponto de operacao, geram-se
+                            % n_ensemble realizacoes independentes. As
+                            % metricas sao acumuladas e a media e' feita
+                            % ao final do loop principal.
+                            for iEns = 1:n_ensemble
+
+                            % --- Progresso da simulacao ---
+                            iTotal = iTotal + 1;
+                            elapsed = toc(sweep_t0);
+                            if iTotal > 1
+                                eta = elapsed * (TotalSim - iTotal) / (iTotal - 1);
+                                eta_str = datestr(seconds(eta), 'HH:MM:SS');
+                            else
+                                eta_str = '--:--:--';
+                            end
+                            fprintf(['--> Sim %d / %d (%.1f%%)  |  ' ...
+                                     'SNR=%+d  ISR=%+d  Coup=%d  r=%d  ' ...
+                                     'phi_s=%+.0f  phi_i=%+.0f  ens=%d/%d  |  ' ...
+                                     'decorrido %s  ETA %s\n'], ...
+                                    iTotal, TotalSim, 100*iTotal/TotalSim, ...
+                                    range_SNR_dB(iSNR), range_ISR_dB(iISR), ...
+                                    range_coupling(iCoupling), iRadius, ...
+                                    phi_sig_deg, phi_int_deg, iEns, n_ensemble, ...
+                                    datestr(seconds(elapsed), 'HH:MM:SS'), eta_str);
 
                             %phi_sig_deg = -180 + 360*rand;
                             %phi_int_deg = -180 + 360*rand;
@@ -722,12 +766,15 @@ for iSNR = 1:nSNR
                             % Calcula erro angular de cada metodo vs phi_sig real.
                             % Usa wrap [-180, 180) para evitar pulos.
                             wrap_err = @(e) mod(e + 180, 360) - 180;
-                            agg_phi_err_KW(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)    = abs(wrap_err(phi_hat_deg - phi_sig_deg));
-                            agg_phi_err_DAS(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)   = abs(wrap_err(phi_DAS - phi_sig_deg));
-                            agg_phi_err_MVDR(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)  = abs(wrap_err(phi_MVDR - phi_sig_deg));
-                            agg_phi_err_MUSIC(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi) = abs(wrap_err(phi_MUSIC - phi_sig_deg));
-                            agg_phi_sig(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)       = phi_sig_deg;
-                            agg_phi_KW(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)        = phi_hat_deg;
+                            idx6 = {iCoupling, iInit, iSNR, iISR, iPhi, iiPhi};
+                            agg_phi_err_KW(idx6{:})    = agg_phi_err_KW(idx6{:})    + abs(wrap_err(phi_hat_deg - phi_sig_deg));
+                            agg_phi_err_DAS(idx6{:})   = agg_phi_err_DAS(idx6{:})   + abs(wrap_err(phi_DAS - phi_sig_deg));
+                            agg_phi_err_MVDR(idx6{:})  = agg_phi_err_MVDR(idx6{:})  + abs(wrap_err(phi_MVDR - phi_sig_deg));
+                            agg_phi_err_MUSIC(idx6{:}) = agg_phi_err_MUSIC(idx6{:}) + abs(wrap_err(phi_MUSIC - phi_sig_deg));
+                            agg_phi_sig(idx6{:})       = phi_sig_deg;   % constante; nao acumula
+                            agg_phi_KW(idx6{:})        = agg_phi_KW(idx6{:})        + phi_hat_deg;
+                            % conta a rodada para esta celula (por init)
+                            agg_count(idx6{:}) = agg_count(idx6{:}) + 1;
 
                             % Erro Frobenius da matriz de acoplamento usada nesta combinacao
                             switch Coupling
@@ -744,7 +791,9 @@ for iSNR = 1:nSNR
                                 otherwise
                                     eps_F_here = NaN;   % Coupling 0 e 1: sem ^C
                             end
-                            agg_eps_F(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi) = eps_F_here;
+                            if ~isnan(eps_F_here)
+                                agg_eps_F(idx6{:}) = agg_eps_F(idx6{:}) + eps_F_here;
+                            end
 
                             % --- NOVO: armazenar para comparacao final
                             % (caso de referencia: phi_sig=75) ---
@@ -995,15 +1044,18 @@ for iSNR = 1:nSNR
                                 % Salva apenas quando o beamformer aponta para a direcao
                                 % verdadeira do sinal (apontamento correto).
                                 if abs(phi_scan(ang) - phi_sig_deg) < 1e-9
-                                    agg_BER_DAS(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)  = BER_das  * 100;
-                                    agg_BER_MVDR(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi) = BER_mvdr * 100;
-                                    agg_EVM_DAS(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)  = 20*log10(EVM_das);
-                                    agg_EVM_MVDR(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi) = 20*log10(EVM_mvdr);
+                                    idxB = {iCoupling, iInit, iSNR, iISR, iPhi, iiPhi};
+                                    agg_BER_DAS(idxB{:})  = agg_BER_DAS(idxB{:})  + BER_das  * 100;
+                                    agg_BER_MVDR(idxB{:}) = agg_BER_MVDR(idxB{:}) + BER_mvdr * 100;
+                                    agg_EVM_DAS(idxB{:})  = agg_EVM_DAS(idxB{:})  + 20*log10(EVM_das);
+                                    agg_EVM_MVDR(idxB{:}) = agg_EVM_MVDR(idxB{:}) + 20*log10(EVM_mvdr);
                                 end
 
                             end
 
                             end   % --- fim do for iInit ---
+
+                            end   % --- fim do for iEns (ensemble) ---
 
 
                             if abs(phi_sig_deg - 75) < 1e-9 && quick_run
@@ -1183,6 +1235,25 @@ end
 %%
 fprintf('\n=== LOOP PRINCIPAL CONCLUIDO em %s ===\n', ...
         datestr(seconds(toc(sweep_t0)), 'HH:MM:SS'));
+
+% =========================================================================
+% MEDIA DOS ENSEMBLES: divide a soma acumulada pelo numero de rodadas.
+% Celulas com contagem zero (combinacoes nao executadas, ex: phi_sig==phi_int)
+% viram NaN para serem ignoradas na agregacao posterior ('omitnan').
+% =========================================================================
+cnt = agg_count;
+cnt(cnt == 0) = NaN;   % evita divisao por zero -> NaN
+agg_phi_err_KW    = agg_phi_err_KW    ./ cnt;
+agg_phi_err_DAS   = agg_phi_err_DAS   ./ cnt;
+agg_phi_err_MVDR  = agg_phi_err_MVDR  ./ cnt;
+agg_phi_err_MUSIC = agg_phi_err_MUSIC ./ cnt;
+agg_phi_KW        = agg_phi_KW        ./ cnt;
+agg_eps_F         = agg_eps_F         ./ cnt;
+agg_BER_DAS       = agg_BER_DAS       ./ cnt;
+agg_BER_MVDR      = agg_BER_MVDR      ./ cnt;
+agg_EVM_DAS       = agg_EVM_DAS       ./ cnt;
+agg_EVM_MVDR      = agg_EVM_MVDR      ./ cnt;
+fprintf('Media de %d ensemble(s) aplicada.\n', n_ensemble);
 fprintf('Gerando plots...\n\n');
 
 % =========================================================================
