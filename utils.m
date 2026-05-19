@@ -372,7 +372,7 @@ classdef utils
             bits_ref = bits(1:length(bits_hat));
             BER      = mean(bits_hat ~= bits_ref);
 
-            fprintf('BER: %.2f%% \n', BER*100);
+            % fprintf('BER: %.2f%% \n', BER*100);
 
             %% Plot 4×1 dos sinais citados
             nsym_view = 100;                         % quantos símbolos mostrar

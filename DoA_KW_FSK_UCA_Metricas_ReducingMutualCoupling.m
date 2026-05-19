@@ -34,10 +34,73 @@ alpha  = 0.3;           % roll-off do RRC
 span   = 8;             % comprimento do RRC em símbolos (TX/RX)
 fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
 
-range_SNR_dB = 6; %-6:3:6;
-range_ISR_dB = -1; %-6:1:-3;
+% =========================================================================
+% Modo de execucao: quick_run = true para testes rapidos (poucos angulos),
+% false para varredura completa de producao (todos angulos x SNRs x ISRs).
+% =========================================================================
+quick_run = false;   % <-- alterar conforme necessidade
+
+% =========================================================================
+% Modo "limpo" para validacao do pipeline:
+%   clean_simulation = true   -> zera todas as imperfeicoes (nao-circulancia,
+%                                erro de sync, perturbacao do modelo).
+%                                Recupera resultados teoricos: KW LS 1-dir
+%                                deve dar erro Frobenius ~1e-4.
+%   clean_simulation = false  -> usa os valores definidos abaixo
+%                                (cenario realista com imperfeicoes).
+% =========================================================================
+clean_simulation = true;   % <-- alterar conforme necessidade
+
+% =========================================================================
+% Modo de varredura angular:
+%   'cross'      -> phi_sig e phi_int varrem o mesmo conjunto via produto
+%                   cartesiano (modo classico). nPhi x nPhi simulacoes.
+%   'accuracy'   -> phi_sig varre o cone fundamental [0,45) do UCA-8 e
+%                   phi_int = phi_sig + 90 (separacao fixa e larga). PAREADO,
+%                   nPhi simulacoes. Mede acuracia media sobre direcoes.
+%   'resolution' -> phi_sig fixo, phi_int varre separacoes crescentes em
+%                   relacao a phi_sig. PAREADO, nPhi simulacoes. Mede limite
+%                   de resolucao entre fontes proximas.
+% =========================================================================
+experiment_mode = 'accuracy';   % 'cross' | 'accuracy' | 'resolution'
+
+if quick_run
+    range_SNR_dB = 6;
+    range_ISR_dB = -1;
+    range_phi_sig = [75 100];
+    range_phi_int = [];               % nao usado no modo 'cross'
+    pair_mode = 'cross';
+else
+    range_SNR_dB = -12:6:12;
+    range_ISR_dB = -40;%-6:1:-3;
+
+    switch experiment_mode
+        case 'cross'
+            range_phi_sig = -180:36:180;
+            range_phi_int = [];                            % nao usado
+            pair_mode = 'cross';
+        case 'accuracy'
+            range_phi_sig = 0:5:45;                        % cone fundamental
+            range_phi_int = range_phi_sig + 90;            % separacao fixa
+            pair_mode = 'paired';
+        case 'resolution'
+            phi_sig_fixed = 30;                            % direcao "boa" fixa
+            sep_grid = [5 10 15 20 30 45 60 90 120];
+            range_phi_sig = repmat(phi_sig_fixed, size(sep_grid));
+            range_phi_int = phi_sig_fixed + sep_grid;
+            pair_mode = 'paired';
+        otherwise
+            error('experiment_mode invalido: %s', experiment_mode);
+    end
+end
+
+% Para compatibilidade com o resto do script (que ainda usa range_phi):
+% no modo 'cross', range_phi e' o conjunto unico; nos demais, e' range_phi_sig
+% (apenas para nPhi).
+range_phi = range_phi_sig;
 range_snapshots = 2000:3000:N_DOA;
-range_radius = [0.15]; %[0.25 0.2 0.15 0.1];
+range_radius = [0.20]; %[0.25 0.2 0.15 0.1];
+
 % Codigos de Coupling (renumerados):
 %   0 = sem coupling (ideal)
 %   1 = com coupling, SEM compensacao
@@ -66,13 +129,37 @@ rng(2025, 'twister');      % reprodutibilidade
 phi_cal_multi_deg = [0, 30, 60, 90];   % evita 22.5 (singular UCA-8)
 P_multi = numel(phi_cal_multi_deg);
 
+% --- IMPERFEICOES DO MUNDO REAL ---
+% (a) Quebra de circulancia: matriz de acoplamento real tem desvios em
+%     relacao ao modelo circulante perfeito (variabilidade de fabricacao,
+%     comprimentos de cabos diferentes, etc.). Modelado como perturbacao
+%     aditiva complexa.
+C_noncirc_level = 0.02;        % 2% de quebra de circulancia (fixo)
+
+% (b) Erro de sincronismo temporal: receptor correlaciona X com q assumindo
+%     alinhamento perfeito; na pratica ha offset fracionario de amostras.
+%     Modelado como deslocamento (shift) aplicado ao q usado pelo receptor.
+sync_error_samples = 0.5;      % offset fracionario em amostras (fixo)
+
+% --- Override: se clean_simulation=true, zera todas as imperfeicoes ---
+if clean_simulation
+    pert_level_rel     = 0;
+    C_noncirc_level    = 0;
+    sync_error_samples = 0;
+    fprintf('=== MODO LIMPO ATIVADO: imperfeicoes zeradas ===\n');
+    fprintf('    (pert_level_rel=0, C_noncirc_level=0, sync_error_samples=0)\n');
+end
+
 % --- Self-cal (Coupling=6..9): parametros do alternante ---
 selfcal_max_iter = 12;
 selfcal_grid_deg = -180:0.5:180;
 selfcal_methods  = {'DAS', 'CAPON', 'MUSIC', 'KW'};   % ordem para Coupling 6..9
 selfcal_damping  = 0.5;        % subrelaxacao: suaviza oscilacoes (1.0 = sem damping)
-selfcal_init     = 'identity';       % 'identity' ou 'kw' (recomendado quando ha interferentes)
-range_phi = [75 100]; %-180:18:180;
+
+% --- Inits da self-cal: roda DUAS VEZES, uma com cada init, e duplica plots ---
+range_selfcal_init = {'identity'}; %, 'kw_offline'};
+nInits             = numel(range_selfcal_init);
+
 teste_phi = 75;
 
 methodsDoa = ["KW","DAS","MPDR","MUSIC"];
@@ -82,7 +169,7 @@ colors =  ["red", "green", "blue", "black", "magenta", "cyan", "yellow"];
 line_style =   ["-", "--", ":","-."]; % linha continua sem acoplamento % linha tracejada com acoplamento
 
 % Criar pasta 'graficos'
-outDir = fullfile(pwd, 'new_graficos');
+outDir = fullfile(pwd, 'new_graficos2');
 if ~exist(outDir, 'dir')
     mkdir(outDir);
 end
@@ -150,23 +237,41 @@ disp(Z)
 % C_true = matriz de acoplamento verdadeira (igual a Z aqui).
 % (no codigo original havia um loop que acabava deixando C_true = eye(M); isso
 %  era um bug porque a metrica de erro de Frobenius ficava sem sentido).
-C_true = Z;
+% C_true sera redefinido abaixo, apos aplicar a quebra de circulancia.
 
 % Coeficientes unicos da estrutura circulante (para diagnostico e plot)
 % Para M=8: c1, c2, c3 aparecem em 2 posicoes; c4 (distancia M/2) aparece em 1.
-c_true_vec = zeros(M/2, 1);
-for k = 1:M/2
-    c_true_vec(k) = C_true(1, 1 + k);   % primeira linha, posicao 1+k
-end
+% Sao apenas referenciais; a matriz REAL do canal pode nao ser perfeitamente circulante.
 
 
-Coupling_matrices = zeros(M, M, nRadius); 
+Coupling_matrices = zeros(M, M, nRadius);  % matriz IDEAL circulante (referencia)
+Coupling_matrices_real = zeros(M, M, nRadius); % matriz REAL aplicada no canal
 % Matrizes a ser usada nas simulações
 for iRadius = 1:nRadius
     radius = range_radius(iRadius)*lambda;
     % Ctx = Z;
     Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
-    Coupling_matrices(:,:,iRadius) = Ctx; %inv(Ctx);
+    Coupling_matrices(:,:,iRadius) = Ctx; % matriz ideal circulante
+
+    % --- IMPERFEICAO 1: Quebra de circulancia ---
+    % Adiciona perturbacao aleatoria (NAO circulante) com intensidade
+    % proporcional a magnitude media dos elementos de Ctx. A matriz "real"
+    % do canal e' ligeiramente nao-circulante; a estimacao continua
+    % assumindo circulancia, e o desvio aparece como erro residual.
+    pert_aditiva = (randn(M) + 1j*randn(M)) / sqrt(2) * ...
+                   C_noncirc_level * mean(abs(Ctx(:)));
+    Coupling_matrices_real(:,:,iRadius) = Ctx + pert_aditiva;
+end
+
+% Para fins de comparacao com C_hat, usamos a matriz "real" (nao-circulante)
+% como ground-truth: e' essa que esta efetivamente no canal e que queremos
+% inverter. A estimacao por LS circulante NUNCA conseguira recupera-la
+% perfeitamente, porque assume circulancia; o erro Frobenius residual
+% reflete justamente esse limite imposto pela imperfeicao do modelo.
+C_true = Coupling_matrices_real(:,:,1);  % redefine para refletir realidade
+c_true_vec = zeros(M/2, 1);
+for k = 1:M/2
+    c_true_vec(k) = Coupling_matrices(1, 1+k, 1);   % coef. ideais (p/ diagnostico)
 end
 
 %% ============================================================================
@@ -206,13 +311,20 @@ for iRadius = 1:nRadius
             SNR_cal_dB, ISR_cal_dB, N, fs, Rs, sps, alpha, span, fd);
 
     % Aplica acoplamento verdadeiro (mesmo modelo do loop principal)
-    X_cal = Coupling_matrices(:,:,iRadius) * Xsig_cal + Coupling_matrices(:,:,iRadius) * Xint_cal;
-    X_cal = X_cal ./ sqrt(mean(abs(X_cal).^2));
-    X_cal = X_cal + Xn_cal;
+    % - usa a matriz REAL (nao-circulante), pois o sinal de calibracao
+    %   tambem passa pelo mesmo hardware imperfeito.
+    X_cal = Coupling_matrices_real(:,:,iRadius) * Xsig_cal + ...
+            Coupling_matrices_real(:,:,iRadius) * Xint_cal + Xn_cal;
 
     % --- 2. Estimativa da assinatura espacial via formas de onda conhecidas ---
     %  b_hat = X * q* / (q'*q)   (mesma logica do KW-DoA)
-    b_hat_cal = X_cal * conj(q_cal(:)) / (q_cal(:)' * q_cal(:));
+    %
+    % IMPERFEICAO 2: Erro de sincronismo. O receptor "acha" que o q
+    % usado na correlacao esta alinhado com o sinal recebido, mas na
+    % pratica ha um offset fracionario. Modelado aplicando shift no q
+    % usado pelo receptor.
+    q_cal_misaligned = apply_fractional_shift(q_cal(:), sync_error_samples);
+    b_hat_cal = X_cal * conj(q_cal_misaligned) / (q_cal_misaligned' * q_cal_misaligned);
 
     % --- 3. Vetor de direcao ideal na direcao de calibracao ---
     a_cal = utils.steering_vec_uca(M, radius_cal, lambda, theta_cal_deg, phi_cal_deg);
@@ -255,11 +367,11 @@ for iRadius = 1:nRadius
                 phi_cal_multi_deg(pp), phi_cal_multi_deg(pp) + 90, ...
                 theta_cal_deg, theta_cal_deg, ...
                 SNR_cal_dB, ISR_cal_dB, N, fs, Rs, sps, alpha, span, fd);
-        X_p = Coupling_matrices(:,:,iRadius) * Xs_p + ...
-              Coupling_matrices(:,:,iRadius) * Xi_p;
-        X_p = X_p ./ sqrt(mean(abs(X_p).^2));
-        X_p = X_p + Xn_p;
-        B_multi(:, pp) = X_p * conj(q_p(:)) / (q_p(:)' * q_p(:));
+        X_p = Coupling_matrices_real(:,:,iRadius) * Xs_p + ...
+              Coupling_matrices_real(:,:,iRadius) * Xi_p + Xn_p;
+        % Imperfeicao 2: q desalinhado tambem aqui
+        q_p_misaligned = apply_fractional_shift(q_p(:), sync_error_samples);
+        B_multi(:, pp) = X_p * conj(q_p_misaligned) / (q_p_misaligned' * q_p_misaligned);
         A_multi(:, pp) = utils.steering_vec_uca(M, radius_cal, lambda, ...
                             theta_cal_deg, phi_cal_multi_deg(pp));
     end
@@ -350,15 +462,38 @@ B_dB_Capon_all = cell(length(range_radius),1);
 legend_entries = cell(length(range_radius),1);
 
 % --- Estrutura de comparacao entre os cenarios ---
-% Salva resultados no caso de referencia (phi_sig=75, phi_int=100)
-results_cmp(nCoupling) = struct( ...
-    'label',[], ...
+% Salva resultados no caso de referencia (phi_sig=75, phi_int=100).
+% MATRIZ 2D: results_cmp(iCoupling, iInit), onde iInit varia em 1..nInits
+% para Coupling 6..9 (self-cal) e ignora-se iInit > 1 para Coupling 0..5.
+
+% =========================================================================
+% Arrays de agregacao estatistica (varredura completa SNR x ISR x phi_sig x phi_int).
+% Indexacao: (iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)
+%   - iPhi  -> indice em range_phi (phi_sig)
+%   - iiPhi -> indice em range_phi (phi_int)
+% NaN como sentinela para combinacoes nao executadas (ex: phi_sig == phi_int).
+% =========================================================================
+agg_dims = [nCoupling, nInits, nSNR, nISR, nPhi, nPhi];
+agg_phi_err_KW    = nan(agg_dims);   % |phi_KW - phi_sig|
+agg_phi_err_DAS   = nan(agg_dims);
+agg_phi_err_MVDR  = nan(agg_dims);
+agg_phi_err_MUSIC = nan(agg_dims);
+agg_eps_F         = nan(agg_dims);   % erro Frobenius
+agg_phi_sig       = nan(agg_dims);   % guarda phi_sig real (debug)
+agg_phi_KW        = nan(agg_dims);   % phi estimado (para acuracia)
+agg_BER_DAS       = nan(agg_dims);   % BER apos beamforming DAS
+agg_BER_MVDR      = nan(agg_dims);   % BER apos beamforming MVDR/Capon
+agg_EVM_DAS       = nan(agg_dims);   % EVM apos beamforming DAS (em dB)
+agg_EVM_MVDR      = nan(agg_dims);   % EVM apos beamforming MVDR/Capon (em dB)
+
+results_cmp(nCoupling, nInits) = struct( ...
+    'label',[], 'init_label',[], ...
     'phi_KW',NaN, 'phi_DAS',NaN, 'phi_MVDR',NaN, 'phi_MUSIC',NaN, ...
     'P_DAS_dB',[], 'P_MVDR_dB',[], 'P_MUSIC_dB',[], 'phi_scan',[], ...
     'BP_DAS_dB',[], 'BP_Capon_dB',[], 'phi_bp',[], ...
     'BER_in',NaN, 'BER_DAS',NaN, 'BER_MVDR',NaN, ...
     'EVM_in',NaN, 'EVM_DAS',NaN, 'EVM_MVDR',NaN, ...
-    'sc_history',[]);   % NOVO: history struct retornado por estimate_C_selfcal
+    'sc_history',[]);
 labels_cmp = ["No coupling (ideal)", ...
               "Coupling, no comp.", ...
               "Coupling, comp. modelo ideal", ...
@@ -370,8 +505,25 @@ labels_cmp = ["No coupling (ideal)", ...
               "Coupling, self-cal MUSIC", ...
               "Coupling, self-cal KW"];
 for ic = 1:nCoupling
-    results_cmp(ic).label = labels_cmp(range_coupling(ic)+1);
+    for iI = 1:nInits
+        results_cmp(ic, iI).label      = labels_cmp(range_coupling(ic)+1);
+        results_cmp(ic, iI).init_label = range_selfcal_init{iI};
+    end
 end
+
+% =========================================================================
+% Inicializa cronometro e contador de progresso
+% =========================================================================
+sweep_t0 = tic;
+if strcmp(pair_mode, 'paired')
+    TotalSim = nSNR * nISR * nRadius * nCoupling * nPhi;
+else
+    TotalSim = nSNR * nISR * nRadius * nCoupling * nPhi * nPhi;
+end
+iTotal   = 0;
+fprintf('\n=== INICIO DO LOOP PRINCIPAL ===\n');
+fprintf('Total de simulacoes: %d  (SNR x ISR x Radius x Coupling x phi_sig x phi_int)\n', TotalSim);
+fprintf('================================\n\n');
 
 for iSNR = 1:nSNR
     for iISR = 1:nISR
@@ -385,10 +537,41 @@ for iSNR = 1:nSNR
 
                 ii = 1;
                 for iPhi = 1:nPhi
-                    phi_sig_deg = range_phi(iPhi);
+                    phi_sig_deg = range_phi_sig(iPhi);
 
-                    for iiPhi = 1:nPhi
-                        phi_int_deg = range_phi(iiPhi);
+                    % Define range para o segundo loop conforme pair_mode:
+                    %   - 'cross': phi_int varre range_phi_sig (todos)
+                    %   - 'paired': phi_int e' apenas range_phi_int(iPhi)
+                    if strcmp(pair_mode, 'paired')
+                        iiPhi_range  = iPhi;
+                        phi_int_list = range_phi_int(iPhi);
+                    else
+                        iiPhi_range  = 1:nPhi;
+                        phi_int_list = range_phi_sig;   % varre o mesmo conjunto
+                    end
+
+                    for iiPhi_local = 1:numel(iiPhi_range)
+                        iiPhi = iiPhi_range(iiPhi_local);
+                        phi_int_deg = phi_int_list(iiPhi_local);
+
+                        % --- Progresso da simulacao ---
+                        iTotal = iTotal + 1;
+                        elapsed = toc(sweep_t0);
+                        if iTotal > 1
+                            eta = elapsed * (TotalSim - iTotal) / (iTotal - 1);
+                            eta_str = datestr(seconds(eta), 'HH:MM:SS');
+                        else
+                            eta_str = '--:--:--';
+                        end
+                        fprintf(['--> Sim %d / %d (%.1f%%)  |  ' ...
+                                 'SNR=%+d  ISR=%+d  Coup=%d  r=%d  ' ...
+                                 'phi_sig=%+d  phi_int=%+d  |  ' ...
+                                 'decorrido %s  ETA %s\n'], ...
+                                iTotal, TotalSim, 100*iTotal/TotalSim, ...
+                                range_SNR_dB(iSNR), range_ISR_dB(iISR), ...
+                                range_coupling(iCoupling), iRadius, ...
+                                phi_sig_deg, phi_int_deg, ...
+                                datestr(seconds(elapsed), 'HH:MM:SS'), eta_str);
 
                         if(phi_int_deg ~= phi_sig_deg)
                             j=1;
@@ -410,7 +593,7 @@ for iSNR = 1:nSNR
                                 % Casos 1..4: canal SEMPRE com acoplamento real (C_true).
                                 % O que muda entre eles e' a estrategia de
                                 % compensacao aplicada APOS a recepcao.
-                                Coupling_matrix = Coupling_matrices(:,:,iRadius);
+                                Coupling_matrix = Coupling_matrices_real(:,:,iRadius);
                             end
 
                             % X = Coupling_matrix * X;
@@ -419,14 +602,29 @@ for iSNR = 1:nSNR
                             X_1antenna = X_1antenna(1,:);
                             Xq = Xsig + Xint + Xn;
                             % X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
-                            X = Coupling_matrix * Xsig + Coupling_matrix * Xint;
-                            X = X ./ sqrt(mean(abs(X).^2));                           
-                            X = X + Xn;
+                            X = Coupling_matrix * Xsig + Coupling_matrix * Xint + Xn;
 
                             % --- Casos com compensacao (Coupling 2..9) ---
                             % O receptor compensa o acoplamento (sem saber a DoA do sinal).
-                            sc_hist_iter = [];   % history p/ logging (so para self-cal)
-                            switch Coupling
+                            %
+                            % Loop sobre iInit: para Coupling 6..9 (self-cal),
+                            % roda 2 vezes, uma para cada init (identity / kw_offline).
+                            % Para Coupling 0..5, roda apenas iInit=1 (init e' irrelevante).
+                            if Coupling >= 6 && Coupling <= 9
+                                nInitsThis = nInits;
+                            else
+                                nInitsThis = 1;
+                            end
+
+                            X_baseline = X;   % salva X antes da compensacao para reusar
+                            % q desalinhado: usado em todas as correlacoes do receptor
+                            % (compensacao + DoA-KW operacional)
+                            q_misaligned = apply_fractional_shift(q(:), sync_error_samples);
+                            for iInit = 1:nInitsThis
+                                X = X_baseline;   % restaura para cada init
+                                sc_hist_iter = [];
+
+                                switch Coupling
                                 case 2   % modelo IDEAL (oracle)
                                     X = D_model_a{iRadius} * X;
                                 case 3   % modelo PERTURBADO
@@ -438,24 +636,35 @@ for iSNR = 1:nSNR
                                 case {6, 7, 8, 9}   % SELF-CAL com DAS/CAPON/MUSIC/KW
                                     radius_m_sc = range_radius(iRadius)*lambda;
                                     sc_method = selfcal_methods{Coupling - 5};
+
+                                    % Determina o init para esta passada
+                                    init_str = range_selfcal_init{iInit};
+                                    switch init_str
+                                        case 'identity'
+                                            init_arg = 'identity';
+                                        case 'kw_offline'
+                                            % Usa diretamente a matriz da
+                                            % calibracao offline (Coupling 4)
+                                            init_arg = C_kw_1dir{iRadius};
+                                        otherwise
+                                            init_arg = init_str;
+                                    end
+
+                                    % q desalinhado ja' foi calculado acima
                                     [C_sc, ~, ~, ~, sc_hist_iter] = estimate_C_selfcal(...
-                                        X, q, M, radius_m_sc, lambda, ...
+                                        X, q_misaligned, M, radius_m_sc, lambda, ...
                                         sc_method, selfcal_grid_deg, ...
                                         selfcal_max_iter, [], [], C_true, ...
-                                        selfcal_damping, selfcal_init);
-                                    X = (C_sc \ X);   % equivalente a inv(C_sc)*X
-                                % case 0 ou 1: nao faz nada
-                            end
+                                        selfcal_damping, init_arg);
+                                    X = (C_sc \ X);
+                                end
 
                             K = range_snapshots(end);
-                            iTotal = iTotal + 1;
                             % ----- DoA KW
-                            fprintf('--> Sim %d / %d , ii = %d , j = %d , K = %d / %d \n', iTotal, TotalSim, ...
-                                ii, j, K, N_DOA);
                             % theta_hat_deg   = doa_kw_2007(X(:,1:K), q(1:K), M, d, lambda, 1);        % ell = 1 com M=4
 
                             beta = 2*pi*(0:M-1)'/M;
-                            [theta_hat_deg, phi_hat_deg] = doa_kw_uca(X(:,1:K), q(1:K).', radius, lambda, beta);
+                            [theta_hat_deg, phi_hat_deg] = doa_kw_uca(X(:,1:K), q_misaligned(1:K).', radius, lambda, beta);
                             % [theta_new_hat_deg, phi_new_hat_deg] = new_doa_kw_uca(X(:,1:K), q(1:K).', radius, lambda, beta);
 
                             fprintf('Estimativa KW: %+5.4f° | Vdd: %+5.4f°\n', phi_hat_deg, phi_sig_deg);
@@ -509,20 +718,48 @@ for iSNR = 1:nSNR
                             phi_MVDR = phi_scan(i_mvdr);
                             phi_MUSIC = phi_scan(idx_music);
 
+                            % --- Agregacao estatistica (varredura completa) ---
+                            % Calcula erro angular de cada metodo vs phi_sig real.
+                            % Usa wrap [-180, 180) para evitar pulos.
+                            wrap_err = @(e) mod(e + 180, 360) - 180;
+                            agg_phi_err_KW(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)    = abs(wrap_err(phi_hat_deg - phi_sig_deg));
+                            agg_phi_err_DAS(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)   = abs(wrap_err(phi_DAS - phi_sig_deg));
+                            agg_phi_err_MVDR(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)  = abs(wrap_err(phi_MVDR - phi_sig_deg));
+                            agg_phi_err_MUSIC(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi) = abs(wrap_err(phi_MUSIC - phi_sig_deg));
+                            agg_phi_sig(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)       = phi_sig_deg;
+                            agg_phi_KW(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)        = phi_hat_deg;
+
+                            % Erro Frobenius da matriz de acoplamento usada nesta combinacao
+                            switch Coupling
+                                case 2, eps_F_here = 0;   % oracle
+                                case 3, eps_F_here = err_Cb_F(iRadius);
+                                case 4, eps_F_here = err_C_kw1(iRadius);
+                                case 5, eps_F_here = err_C_kwmd(iRadius);
+                                case {6,7,8,9}
+                                    if ~isempty(sc_hist_iter)
+                                        eps_F_here = sc_hist_iter.err_F_per_iter(end);
+                                    else
+                                        eps_F_here = NaN;
+                                    end
+                                otherwise
+                                    eps_F_here = NaN;   % Coupling 0 e 1: sem ^C
+                            end
+                            agg_eps_F(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi) = eps_F_here;
+
                             % --- NOVO: armazenar para comparacao final
                             % (caso de referencia: phi_sig=75) ---
                             if abs(phi_sig_deg - 75) < 1e-9
-                                results_cmp(iCoupling).phi_KW    = phi_hat_deg;
-                                results_cmp(iCoupling).phi_DAS   = phi_DAS;
-                                results_cmp(iCoupling).phi_MVDR  = phi_MVDR;
-                                results_cmp(iCoupling).phi_MUSIC = phi_MUSIC;
-                                results_cmp(iCoupling).P_DAS_dB   = P_DAS_dB;
-                                results_cmp(iCoupling).P_MVDR_dB  = P_MVDR_dB;
-                                results_cmp(iCoupling).P_MUSIC_dB = P_MUSIC_dB;
-                                results_cmp(iCoupling).phi_scan   = phi_scan;
+                                results_cmp(iCoupling, iInit).phi_KW    = phi_hat_deg;
+                                results_cmp(iCoupling, iInit).phi_DAS   = phi_DAS;
+                                results_cmp(iCoupling, iInit).phi_MVDR  = phi_MVDR;
+                                results_cmp(iCoupling, iInit).phi_MUSIC = phi_MUSIC;
+                                results_cmp(iCoupling, iInit).P_DAS_dB   = P_DAS_dB;
+                                results_cmp(iCoupling, iInit).P_MVDR_dB  = P_MVDR_dB;
+                                results_cmp(iCoupling, iInit).P_MUSIC_dB = P_MUSIC_dB;
+                                results_cmp(iCoupling, iInit).phi_scan   = phi_scan;
                                 % Para self-cal (Coupling 6..9), salva history
                                 if ~isempty(sc_hist_iter)
-                                    results_cmp(iCoupling).sc_history = sc_hist_iter;
+                                    results_cmp(iCoupling, iInit).sc_history = sc_hist_iter;
                                 end
                             end
 
@@ -638,9 +875,9 @@ for iSNR = 1:nSNR
                                     legend_entries{iRadius} = sprintf('raio = %.2f m', range_radius(iRadius));
 
                                     % --- NOVO: salvar para comparacao final ---
-                                    results_cmp(iCoupling).phi_bp      = phi_beampattern;
-                                    results_cmp(iCoupling).BP_DAS_dB   = B_dB_DAS;
-                                    results_cmp(iCoupling).BP_Capon_dB = B_dB_Capon;
+                                    results_cmp(iCoupling, iInit).phi_bp      = phi_beampattern;
+                                    results_cmp(iCoupling, iInit).BP_DAS_dB   = B_dB_DAS;
+                                    results_cmp(iCoupling, iInit).BP_Capon_dB = B_dB_Capon;
                                 end
 
                                 % ======= PLOT DIAGNOSTICO: Sinal Antes/Depois do Acoplamento + Beamforming =======
@@ -729,8 +966,8 @@ for iSNR = 1:nSNR
                                 BER_scan_mvdr(ang) = BER_mvdr*100;
                                 BER_scan_das(ang) = BER_das*100;
 
-                                fprintf('BER: RX %.2f%% / Capon %.2f%% / DAS %.2f%% \n', ...
-                                    BER_in*100, BER_mvdr*100, BER_das*100);
+                                % fprintf('BER: RX %.2f%% / Capon %.2f%% / DAS %.2f%% \n', ...
+                                %     BER_in*100, BER_mvdr*100, BER_das*100);
 
                                 % Calcula EVM
                                 [EVM_in,  EVMdB_in]                 = utils.calc_evm_real(sym_rx1,  sym_tx);
@@ -740,24 +977,36 @@ for iSNR = 1:nSNR
                                 EVM_scan_in(ang) = 20*log10(EVM_in);
                                 EVM_scan_mvdr(ang) = 20*log10(EVM_mvdr);
                                 EVM_scan_das(ang) = 20*log10(EVM_das);
-
-                                fprintf('EVM (dB): Rx: %.2f | Capon: %.2f | DAS: %.2f\n', ...
-                                    EVMdB_in, EVMdB_mvdr, EVMdB_das);
+                                 
+                                % fprintf('EVM (dB): Rx: %.2f | Capon: %.2f | DAS: %.2f\n', ...
+                                %     EVMdB_in, EVMdB_mvdr, EVMdB_das);
 
                                 % --- NOVO: salvar BER/EVM para comparacao final entre cenarios ---
                                 if abs(phi_scan(ang) - teste_phi) < 1e-9 && abs(phi_sig_deg - 75) < 1e-9
-                                    results_cmp(iCoupling).BER_in   = BER_in   * 100;
-                                    results_cmp(iCoupling).BER_DAS  = BER_das  * 100;
-                                    results_cmp(iCoupling).BER_MVDR = BER_mvdr * 100;
-                                    results_cmp(iCoupling).EVM_in   = 20*log10(EVM_in);
-                                    results_cmp(iCoupling).EVM_DAS  = 20*log10(EVM_das);
-                                    results_cmp(iCoupling).EVM_MVDR = 20*log10(EVM_mvdr);
+                                    results_cmp(iCoupling, iInit).BER_in   = BER_in   * 100;
+                                    results_cmp(iCoupling, iInit).BER_DAS  = BER_das  * 100;
+                                    results_cmp(iCoupling, iInit).BER_MVDR = BER_mvdr * 100;
+                                    results_cmp(iCoupling, iInit).EVM_in   = 20*log10(EVM_in);
+                                    results_cmp(iCoupling, iInit).EVM_DAS  = 20*log10(EVM_das);
+                                    results_cmp(iCoupling, iInit).EVM_MVDR = 20*log10(EVM_mvdr);
+                                end
+
+                                % --- Agregacao de BER/EVM para todas as combinacoes ---
+                                % Salva apenas quando o beamformer aponta para a direcao
+                                % verdadeira do sinal (apontamento correto).
+                                if abs(phi_scan(ang) - phi_sig_deg) < 1e-9
+                                    agg_BER_DAS(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)  = BER_das  * 100;
+                                    agg_BER_MVDR(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi) = BER_mvdr * 100;
+                                    agg_EVM_DAS(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi)  = 20*log10(EVM_das);
+                                    agg_EVM_MVDR(iCoupling, iInit, iSNR, iISR, iPhi, iiPhi) = 20*log10(EVM_mvdr);
                                 end
 
                             end
 
+                            end   % --- fim do for iInit ---
 
-                            if abs(phi_sig_deg - 75) < 1e-9
+
+                            if abs(phi_sig_deg - 75) < 1e-9 && quick_run
                                 fig_name = "BER, EVM (" + string(phi_sig_deg) + "°) " + name_string + ...
                                     " (r=" + string(range_radius(iRadius))  + " | ISR=" + string(range_ISR_dB(iISR)) + " | SNR=" + string(range_SNR_dB(iSNR)) + ")";
                                 fig = figure( 'Name', fig_name, 'NumberTitle', 'off');
@@ -931,6 +1180,11 @@ for iSNR = 1:nSNR
     end
 end
 
+%%
+fprintf('\n=== LOOP PRINCIPAL CONCLUIDO em %s ===\n', ...
+        datestr(seconds(toc(sweep_t0)), 'HH:MM:SS'));
+fprintf('Gerando plots...\n\n');
+
 % =========================================================================
 % PLOT FINAL: Comparacao dos cenarios (sem acoplamento / com / compensado)
 % phi_sig = 75 deg, phi_int = 100 deg, teste_phi = 75
@@ -939,28 +1193,50 @@ phi_sig_ref = 75;
 phi_int_ref = 100;
 teste_phi_ref = teste_phi;
 
-% --- Identifica quais cenarios foram efetivamente preenchidos ---
-valid = false(nCoupling,1);
+% --- Replica resultados dos cenarios sem dependencia de init ---
+% (Coupling 0..5 sao identicos para qualquer iInit; so foram populados em iInit=1.
+%  Para o plot ficar consistente, copia para os demais iInits.)
 for ic = 1:nCoupling
-    valid(ic) = ~isempty(results_cmp(ic).phi_scan) && ~isnan(results_cmp(ic).phi_KW);
+    coup_code = range_coupling(ic);
+    if coup_code < 6 || coup_code > 9
+        for iI = 2:nInits
+            results_cmp(ic, iI) = results_cmp(ic, 1);
+            results_cmp(ic, iI).init_label = range_selfcal_init{iI};
+        end
+    end
 end
-ic_valid = find(valid);
 
-if ~isempty(ic_valid)
-    % --- Tabela de estimativas de DoA com erro absoluto ---
-    fprintf('\n=========================================================\n');
-    fprintf('Comparacao final entre cenarios (phi_sig=%g, phi_int=%g)\n', ...
-            phi_sig_ref, phi_int_ref);
-    fprintf('=========================================================\n');
+% --- Identifica quais cenarios foram efetivamente preenchidos (por init) ---
+valid = false(nCoupling, nInits);
+for ic = 1:nCoupling
+    for iI = 1:nInits
+        valid(ic, iI) = ~isempty(results_cmp(ic, iI).phi_scan) && ...
+                       ~isnan(results_cmp(ic, iI).phi_KW);
+    end
+end
+
+% Loop sobre os inits: gera um conjunto completo de plots por init
+% (somente em quick_run; no full sweep esses plots por cenario nao sao uteis)
+if quick_run
+for iInitPlot = 1:nInits
+    init_tag = range_selfcal_init{iInitPlot};
+    ic_valid = find(valid(:, iInitPlot));
+
+    if ~isempty(ic_valid)
+        % --- Tabela de estimativas de DoA com erro absoluto ---
+        fprintf('\n=========================================================\n');
+        fprintf('Comparacao final entre cenarios (init=%s, phi_sig=%g, phi_int=%g)\n', ...
+                init_tag, phi_sig_ref, phi_int_ref);
+        fprintf('=========================================================\n');
     fprintf('%-25s | %8s | %8s | %8s | %8s\n', ...
             'Cenario','KW','DAS','MVDR','MUSIC');
     fprintf('---------------------------------------------------------\n');
     for k = 1:numel(ic_valid)
         ic = ic_valid(k);
         fprintf('%-25s | %8.3f | %8.3f | %8.3f | %8.3f\n', ...
-            char(results_cmp(ic).label), ...
-            results_cmp(ic).phi_KW, results_cmp(ic).phi_DAS, ...
-            results_cmp(ic).phi_MVDR, results_cmp(ic).phi_MUSIC);
+            char(results_cmp(ic, iInitPlot).label), ...
+            results_cmp(ic, iInitPlot).phi_KW, results_cmp(ic, iInitPlot).phi_DAS, ...
+            results_cmp(ic, iInitPlot).phi_MVDR, results_cmp(ic, iInitPlot).phi_MUSIC);
     end
     fprintf('---------------------------------------------------------\n');
     fprintf('Erro absoluto (graus) vs phi_sig = %g:\n', phi_sig_ref);
@@ -970,11 +1246,11 @@ if ~isempty(ic_valid)
     for k = 1:numel(ic_valid)
         ic = ic_valid(k);
         fprintf('%-25s | %8.3f | %8.3f | %8.3f | %8.3f\n', ...
-            char(results_cmp(ic).label), ...
-            abs(results_cmp(ic).phi_KW    - phi_sig_ref), ...
-            abs(results_cmp(ic).phi_DAS   - phi_sig_ref), ...
-            abs(results_cmp(ic).phi_MVDR  - phi_sig_ref), ...
-            abs(results_cmp(ic).phi_MUSIC - phi_sig_ref));
+            char(results_cmp(ic, iInitPlot).label), ...
+            abs(results_cmp(ic, iInitPlot).phi_KW    - phi_sig_ref), ...
+            abs(results_cmp(ic, iInitPlot).phi_DAS   - phi_sig_ref), ...
+            abs(results_cmp(ic, iInitPlot).phi_MVDR  - phi_sig_ref), ...
+            abs(results_cmp(ic, iInitPlot).phi_MUSIC - phi_sig_ref));
     end
     fprintf('=========================================================\n\n');
 
@@ -1001,7 +1277,7 @@ if ~isempty(ic_valid)
     short_labels = cell(numel(ic_valid),1);
     for k = 1:numel(ic_valid)
         ic = ic_valid(k);
-        key = char(results_cmp(ic).label);
+        key = char(results_cmp(ic, iInitPlot).label);
         if isKey(short_labels_map, key)
             short_labels{k} = short_labels_map(key);
         else
@@ -1013,25 +1289,25 @@ if ~isempty(ic_valid)
     subplot(2,2,1); hold on; grid on;
     for k = 1:numel(ic_valid)
         ic = ic_valid(k);
-        plot(results_cmp(ic).phi_scan, results_cmp(ic).P_MUSIC_dB, ...
+        plot(results_cmp(ic, iInitPlot).phi_scan, results_cmp(ic, iInitPlot).P_MUSIC_dB, ...
              'LineWidth', 1.6, 'Color', cmap(k,:), ...
-             'DisplayName', char(results_cmp(ic).label));
+             'DisplayName', char(results_cmp(ic, iInitPlot).label));
     end
     xline(phi_sig_ref, 'k--', 'phi_{sig}', 'LabelVerticalAlignment','bottom');
     xline(phi_int_ref, 'r--', 'phi_{int}', 'LabelVerticalAlignment','bottom');
     xlabel('\phi (graus)'); ylabel('Pseudoespectro MUSIC (dB)');
     title('MUSIC: comparacao entre cenarios');
-    legend('Location','best'); xlim([min(results_cmp(ic_valid(1)).phi_scan) ...
-                                     max(results_cmp(ic_valid(1)).phi_scan)]);
+    legend('Location','best'); xlim([min(results_cmp(ic_valid(1), iInitPlot).phi_scan) ...
+                                     max(results_cmp(ic_valid(1), iInitPlot).phi_scan)]);
 
     % (2) Beampatterns Capon sobrepostos
     subplot(2,2,2); hold on; grid on;
     for k = 1:numel(ic_valid)
         ic = ic_valid(k);
-        if ~isempty(results_cmp(ic).BP_Capon_dB)
-            plot(results_cmp(ic).phi_bp, results_cmp(ic).BP_Capon_dB, ...
+        if ~isempty(results_cmp(ic, iInitPlot).BP_Capon_dB)
+            plot(results_cmp(ic, iInitPlot).phi_bp, results_cmp(ic, iInitPlot).BP_Capon_dB, ...
                  'LineWidth', 1.6, 'Color', cmap(k,:), ...
-                 'DisplayName', char(results_cmp(ic).label));
+                 'DisplayName', char(results_cmp(ic, iInitPlot).label));
         end
     end
     xline(phi_sig_ref, 'k--', 'phi_{sig}', 'LabelVerticalAlignment','bottom');
@@ -1045,9 +1321,9 @@ if ~isempty(ic_valid)
     BER_mat = zeros(numel(ic_valid), 3);
     for k = 1:numel(ic_valid)
         ic = ic_valid(k);
-        BER_mat(k,:) = [results_cmp(ic).BER_in, ...
-                        results_cmp(ic).BER_DAS, ...
-                        results_cmp(ic).BER_MVDR];
+        BER_mat(k,:) = [results_cmp(ic, iInitPlot).BER_in, ...
+                        results_cmp(ic, iInitPlot).BER_DAS, ...
+                        results_cmp(ic, iInitPlot).BER_MVDR];
     end
     bh = bar(BER_mat, 'grouped');
     set(gca, 'XTickLabel', short_labels, ...
@@ -1062,9 +1338,9 @@ if ~isempty(ic_valid)
     EVM_mat = zeros(numel(ic_valid), 3);
     for k = 1:numel(ic_valid)
         ic = ic_valid(k);
-        EVM_mat(k,:) = [results_cmp(ic).EVM_in, ...
-                        results_cmp(ic).EVM_DAS, ...
-                        results_cmp(ic).EVM_MVDR];
+        EVM_mat(k,:) = [results_cmp(ic, iInitPlot).EVM_in, ...
+                        results_cmp(ic, iInitPlot).EVM_DAS, ...
+                        results_cmp(ic, iInitPlot).EVM_MVDR];
     end
     bh2 = bar(EVM_mat, 'grouped');
     set(gca, 'XTickLabel', short_labels, ...
@@ -1074,13 +1350,14 @@ if ~isempty(ic_valid)
     title('EVM por cenario × beamformer');
     legend({'Rx (1 antena)','DAS','MVDR/Capon'}, 'Location','best');
 
-    sgtitle(sprintf(['Comparacao: 10 cenarios de acoplamento\n' ...
+    sgtitle(sprintf(['Comparacao: 10 cenarios de acoplamento (init self-cal: %s)\n' ...
                      '\\phi_{sig}=%g°, \\phi_{int}=%g°, SNR=%g dB, ISR=%g dB, ' ...
                      'raio=%.2f \\lambda, pert. modelo=%.0f%%, KW Multi P=%d'], ...
-            phi_sig_ref, phi_int_ref, range_SNR_dB(end), range_ISR_dB(end), ...
+            init_tag, phi_sig_ref, phi_int_ref, range_SNR_dB(end), range_ISR_dB(end), ...
             range_radius(end), 100*pert_level_rel, P_multi));
 
-    exportgraphics(fig_cmp, fullfile(outDir, 'comparacao_cenarios_acoplamento.png'), ...
+    exportgraphics(fig_cmp, fullfile(outDir, ...
+        sprintf('comparacao_cenarios_acoplamento_init_%s.png', init_tag)), ...
                    'Resolution', 200);
 
     % =====================================================================
@@ -1092,29 +1369,33 @@ if ~isempty(ic_valid)
     sc_method_names = {};
     for ic = 1:nCoupling
         coup_code = range_coupling(ic);
-        if coup_code >= 6 && coup_code <= 9 && ~isempty(results_cmp(ic).sc_history)
+        if coup_code >= 6 && coup_code <= 9 && ~isempty(results_cmp(ic, iInitPlot).sc_history)
             sc_indices_in_results(end+1) = ic; %#ok<AGROW>
             sc_method_names{end+1}       = selfcal_methods{coup_code - 5}; %#ok<AGROW>
         end
     end
 
     if ~isempty(sc_indices_in_results)
-        fig_lc = figure('Name','Learning curve - Self-cal por metodo de DoA', ...
-                        'NumberTitle','off', 'Position',[100 100 1400 850]);
         cmap_sc = lines(numel(sc_indices_in_results));
 
+        % =====================================================================
+        % FIGURA 1: Curva de erro Frobenius da self-cal
+        % =====================================================================
+        fig_frob = figure('Name','Self-cal: erro Frobenius vs iteracao', ...
+                          'NumberTitle','off', 'Position',[100 100 1200 700]);
+
         % --- (1) Erro Frobenius vs iteracao -------------------------------
-        subplot(2,2,1); hold on; grid on;
+        subplot(1,2,1); hold on; grid on;
         for kk = 1:numel(sc_indices_in_results)
             ic = sc_indices_in_results(kk);
-            h = results_cmp(ic).sc_history;
+            h = results_cmp(ic, iInitPlot).sc_history;
             it_axis = 1:numel(h.err_F_per_iter);
             plot(it_axis, h.err_F_per_iter, 'o-', ...
                  'LineWidth', 1.8, 'Color', cmap_sc(kk,:), ...
                  'MarkerFaceColor', cmap_sc(kk,:), ...
                  'DisplayName', sprintf('SC-%s', sc_method_names{kk}));
         end
-        % Linha de referencia: erro do KW LS 1-dir
+        % Linhas de referencia: erros offline
         kw1_idx = find(range_coupling == 4, 1);
         if ~isempty(kw1_idx)
             yline(err_C_kw1(1), 'k--', 'LineWidth', 1.2, ...
@@ -1127,30 +1408,14 @@ if ~isempty(ic_valid)
         end
         set(gca, 'YScale', 'log');
         xlabel('iteracao'); ylabel('||C_t - C_{true}||_F / ||C_{true}||_F');
-        title('Curva de aprendizado: erro Frobenius vs iteracao');
+        title('Erro Frobenius vs iteracao');
         legend('Location','northeast');
 
-        % --- (2) DoA estimada por iteracao --------------------------------
-        subplot(2,2,2); hold on; grid on;
+        % --- (2) |C_t - C_{t-1}| (criterio interno de convergencia) -------
+        subplot(1,2,2); hold on; grid on;
         for kk = 1:numel(sc_indices_in_results)
             ic = sc_indices_in_results(kk);
-            h = results_cmp(ic).sc_history;
-            it_axis = 1:numel(h.phi_per_iter);
-            plot(it_axis, h.phi_per_iter, 'o-', ...
-                 'LineWidth', 1.6, 'Color', cmap_sc(kk,:), ...
-                 'MarkerFaceColor', cmap_sc(kk,:), ...
-                 'DisplayName', sprintf('SC-%s', sc_method_names{kk}));
-        end
-        yline(phi_sig_ref, 'k--', 'LineWidth', 1.4, 'DisplayName','\phi_{sig}');
-        xlabel('iteracao'); ylabel('\phi estimada (°)');
-        title('DoA estimada por iteracao');
-        legend('Location','best');
-
-        % --- (3) |C_t - C_{t-1}| (criterio interno de convergencia) -------
-        subplot(2,2,3); hold on; grid on;
-        for kk = 1:numel(sc_indices_in_results)
-            ic = sc_indices_in_results(kk);
-            h = results_cmp(ic).sc_history;
+            h = results_cmp(ic, iInitPlot).sc_history;
             it_axis = 1:numel(h.delta_C);
             plot(it_axis, h.delta_C, 'o-', ...
                  'LineWidth', 1.6, 'Color', cmap_sc(kk,:), ...
@@ -1162,38 +1427,518 @@ if ~isempty(ic_valid)
         title('Salto entre iteracoes (criterio de parada)');
         legend('Location','best');
 
-        % --- (4) Tabela de iteracoes ate convergencia ---------------------
-        subplot(2,2,4); axis off;
-        txt = {'\bf{Resumo Self-Cal:}', ''};
-        txt{end+1} = sprintf('  %-10s | %5s | %s', 'metodo', 'n_it', 'err.Frob.final');
-        txt{end+1} = repmat('-', 1, 45);
+        sgtitle(sprintf("Self-cal (init=%s): convergencia da matriz de acoplamento  |  \\phi_{sig}=%g°, \\phi_{int}=%g°", init_tag, phi_sig_ref, phi_int_ref), "FontWeight","bold");
+
+        exportgraphics(fig_frob, fullfile(outDir, ...
+            sprintf('selfcal_frobenius_init_%s.png', init_tag)), ...
+                       'Resolution', 200);
+
+        % =====================================================================
+        % FIGURA 2: Curva de DoA estimada da self-cal
+        % =====================================================================
+        fig_doa = figure('Name','Self-cal: DoA estimada vs iteracao', ...
+                         'NumberTitle','off', 'Position',[100 100 900 600]);
+
+        hold on; grid on;
         for kk = 1:numel(sc_indices_in_results)
             ic = sc_indices_in_results(kk);
-            h  = results_cmp(ic).sc_history;
-            txt{end+1} = sprintf('  %-10s | %5d | %.3e', ...
+            h = results_cmp(ic, iInitPlot).sc_history;
+            it_axis = 1:numel(h.phi_per_iter);
+            plot(it_axis, h.phi_per_iter, 'o-', ...
+                 'LineWidth', 1.6, 'Color', cmap_sc(kk,:), ...
+                 'MarkerFaceColor', cmap_sc(kk,:), ...
+                 'DisplayName', sprintf('SC-%s', sc_method_names{kk}));
+        end
+        yline(phi_sig_ref, 'k--', 'LineWidth', 1.4, 'DisplayName','\phi_{sig}');
+        xlabel('iteracao'); ylabel('\phi estimada (°)');
+        title(sprintf('Self-cal (init=%s): DoA estimada por iteracao  |  \\phi_{sig}=%g°, \\phi_{int}=%g°', ...
+              init_tag, phi_sig_ref, phi_int_ref));
+        legend('Location','best');
+
+        % --- Imprime tabela resumo no terminal (em vez de no plot) --------
+        fprintf('\n--- Resumo Self-Cal (init=%s) ---\n', init_tag);
+        fprintf('  %-10s | %5s | %s\n', 'metodo', 'n_it', 'err.Frob.final');
+        fprintf('  %s\n', repmat('-', 1, 45));
+        for kk = 1:numel(sc_indices_in_results)
+            ic = sc_indices_in_results(kk);
+            h  = results_cmp(ic, iInitPlot).sc_history;
+            fprintf('  %-10s | %5d | %.3e\n', ...
                 sprintf('SC-%s', sc_method_names{kk}), h.n_iter, ...
                 h.err_F_per_iter(end));
         end
-        txt{end+1} = '';
-        txt{end+1} = '\bf{Referencias offline:}';
-        txt{end+1} = sprintf('  KW LS 1-dir : %.3e', err_C_kw1(1));
-        txt{end+1} = sprintf('  KW LS Multi : %.3e', err_C_kwmd(1));
-        txt{end+1} = sprintf('  Modelo pert.: %.3e', err_Cb_F(1));
-        text(0.05, 0.95, txt, 'Units','normalized', ...
-             'VerticalAlignment','top', 'FontName','Courier', ...
-             'Interpreter','tex', 'FontSize', 11);
+        fprintf('  Referencias offline:\n');
+        fprintf('    KW LS 1-dir : %.3e\n', err_C_kw1(1));
+        fprintf('    KW LS Multi : %.3e\n', err_C_kwmd(1));
+        fprintf('    Modelo pert.: %.3e\n\n', err_Cb_F(1));
 
-        sgtitle(sprintf(['Self-cal: convergencia por metodo de DoA\n' ...
-                         '\\phi_{sig}=%g°, \\phi_{int}=%g°, SNR=%g dB, ISR=%g dB'], ...
-                phi_sig_ref, phi_int_ref, range_SNR_dB(end), range_ISR_dB(end)), ...
-                'FontWeight','bold');
-
-        exportgraphics(fig_lc, fullfile(outDir, 'selfcal_learning_curve.png'), ...
+        exportgraphics(fig_doa, fullfile(outDir, ...
+            sprintf('selfcal_doa_init_%s.png', init_tag)), ...
                        'Resolution', 200);
+
+        % =====================================================================
+        % FIGURA 3: Scatter "DoA error vs Frobenius" para todos os cenarios
+        % Cruza explicitamente os dois eixos: |phi_hat - phi_sig| vs erro
+        % Frobenius. Posicao no plano caracteriza qualidade do cenario:
+        %   - Canto inferior esquerdo: ambos bons (ideal)
+        %   - Canto inferior direito : DoA boa, C ruim (PERIGOSO p/ beamforming)
+        %   - Canto superior direito : ambos ruins
+        % =====================================================================
+        fig_scatter = figure('Name', 'DoA error vs Frobenius (todos os cenarios)', ...
+                             'NumberTitle','off', 'Position',[100 100 900 700]);
+        hold on; grid on;
+
+        % Coleta pontos: percorre todos os cenarios validos (Coupling 2..9)
+        scatter_points = [];   % [doa_err, frob_err, ic, label_idx]
+        for ic_s = 1:nCoupling
+            coup_code = range_coupling(ic_s);
+            if coup_code < 2, continue; end   % pula No-MC e No-Comp (sem ^C)
+            r = results_cmp(ic_s, iInitPlot);
+            if isnan(r.phi_KW), continue; end
+
+            % Erro de DoA: usa o estimador KW como referencia (mais robusto)
+            doa_err_kw = abs(r.phi_KW - phi_sig_ref);
+            doa_err_das = abs(r.phi_DAS - phi_sig_ref);
+            doa_err_mvdr = abs(r.phi_MVDR - phi_sig_ref);
+
+            % Erro Frobenius: para cenarios offline (2..5), usa o err calculado
+            % na fase de calibracao; para self-cal (6..9), usa o ultimo do history.
+            if coup_code == 2
+                frob_err = 0;   % oracle por definicao
+            elseif coup_code == 3
+                frob_err = err_Cb_F(1);
+            elseif coup_code == 4
+                frob_err = err_C_kw1(1);
+            elseif coup_code == 5
+                frob_err = err_C_kwmd(1);
+            elseif coup_code >= 6 && coup_code <= 9
+                if isempty(r.sc_history), continue; end
+                frob_err = r.sc_history.err_F_per_iter(end);
+            end
+
+            % Usa o KW como DoA representativa por ser mais estavel
+            scatter_points(end+1, :) = [doa_err_kw, frob_err, coup_code]; %#ok<AGROW>
+        end
+
+        % Plot por categoria com cores e marcadores distintos
+        markers = {'o', 's', 'd', '^', 'v', '<', '>', 'p'};
+        legend_handles = [];
+        legend_labels  = {};
+        for kk = 1:size(scatter_points, 1)
+            cc = scatter_points(kk, 3);
+            switch cc
+                case 2, mk = 'p'; col = [0.0 0.6 0.0]; lbl = 'Modelo ideal';
+                case 3, mk = 'h'; col = [0.5 0.5 0.0]; lbl = 'Modelo perturb.';
+                case 4, mk = 'd'; col = [0.0 0.4 0.7]; lbl = 'KW LS 1-dir';
+                case 5, mk = 's'; col = [0.0 0.7 0.7]; lbl = 'KW LS Multi';
+                case 6, mk = 'o'; col = [0.0 0.4 0.7]; lbl = 'SC-DAS';
+                case 7, mk = 'o'; col = [0.85 0.3 0.1]; lbl = 'SC-CAPON';
+                case 8, mk = 'o'; col = [0.93 0.69 0.13]; lbl = 'SC-MUSIC';
+                case 9, mk = 'o'; col = [0.49 0.18 0.56]; lbl = 'SC-KW';
+            end
+            h = scatter(scatter_points(kk,1), max(scatter_points(kk,2), 1e-6), ...
+                       150, mk, 'filled', 'MarkerFaceColor', col, ...
+                       'MarkerEdgeColor', 'k', 'LineWidth', 1.0, ...
+                       'DisplayName', lbl);
+            legend_handles(end+1) = h; %#ok<AGROW>
+            legend_labels{end+1}  = lbl; %#ok<AGROW>
+        end
+
+        % Linhas de referencia
+        xline(1, 'k:', '1° de erro DoA');
+        yline(0.1, 'k:', '\epsilon_F = 0.1');
+        yline(1, 'r--', '\epsilon_F = 1 (sem comp.)');
+
+        set(gca, 'YScale', 'log');
+        xlabel('|\phi_{KW} - \phi_{sig}|  (graus)');
+        ylabel('||C_{hat} - C_{true}||_F / ||C_{true}||_F');
+        title(sprintf('Diagnostico cruzado: erro de DoA vs erro de C (init=%s)', init_tag));
+        legend(legend_handles, legend_labels, 'Location', 'best');
+        xlim([-0.5 max(20, max(scatter_points(:,1))+1)]);
+        exportgraphics(fig_scatter, fullfile(outDir, ...
+            sprintf('scatter_doa_vs_frobenius_init_%s.png', init_tag)), ...
+                       'Resolution', 200);
+
+        % =====================================================================
+        % FIGURA 4: BER/EVM apenas dos self-cals -- mostra que C ruim
+        % degrada beamforming mesmo com DoA boa.
+        % =====================================================================
+        % Coleta apenas Coupling 6..9 para foco
+        sc_for_ber = [];   % [ic, das_ber, mvdr_ber, doa_err]
+        for kk = 1:numel(sc_indices_in_results)
+            ic = sc_indices_in_results(kk);
+            r = results_cmp(ic, iInitPlot);
+            if isnan(r.BER_DAS), continue; end
+            sc_for_ber(end+1, :) = [ic, r.BER_DAS, r.BER_MVDR, ...
+                                    r.EVM_DAS, r.EVM_MVDR, ...
+                                    abs(r.phi_KW - phi_sig_ref), ...
+                                    r.sc_history.err_F_per_iter(end)]; %#ok<AGROW>
+        end
+
+        if ~isempty(sc_for_ber)
+            fig_ber_sc = figure('Name', 'Self-cal: BER/EVM vs erro de C', ...
+                                'NumberTitle','off', 'Position',[100 100 1300 600]);
+
+            % --- (1) BER vs erro Frobenius ---
+            subplot(1,2,1); hold on; grid on;
+            for kk = 1:size(sc_for_ber, 1)
+                ic = sc_for_ber(kk, 1);
+                method = sc_method_names{find(sc_indices_in_results==ic,1)};
+                col_idx = find(sc_indices_in_results==ic, 1);
+                col = cmap_sc(col_idx, :);
+                % BER do MVDR/Capon (mais sensivel a C errado)
+                semilogx(max(sc_for_ber(kk,7), 1e-6), sc_for_ber(kk, 3), ...
+                    'o', 'MarkerSize', 12, 'MarkerFaceColor', col, ...
+                    'MarkerEdgeColor', 'k', 'LineWidth', 1.0, ...
+                    'DisplayName', sprintf('SC-%s (MVDR)', method));
+                semilogx(max(sc_for_ber(kk,7), 1e-6), sc_for_ber(kk, 2), ...
+                    's', 'MarkerSize', 12, 'MarkerFaceColor', col, ...
+                    'MarkerEdgeColor', 'k', 'LineWidth', 1.0, ...
+                    'DisplayName', sprintf('SC-%s (DAS)', method));
+            end
+            set(gca, 'XScale', 'log');
+            xlabel('||C_{hat} - C_{true}||_F / ||C_{true}||_F');
+            ylabel('BER (%)');
+            title('BER apos beamforming vs erro de C');
+            xline(0.1, 'k:', '\epsilon_F = 0.1');
+            xline(1, 'r--', '\epsilon_F = 1');
+            legend('Location','best');
+
+            % --- (2) EVM vs erro Frobenius ---
+            subplot(1,2,2); hold on; grid on;
+            for kk = 1:size(sc_for_ber, 1)
+                ic = sc_for_ber(kk, 1);
+                method = sc_method_names{find(sc_indices_in_results==ic,1)};
+                col_idx = find(sc_indices_in_results==ic, 1);
+                col = cmap_sc(col_idx, :);
+                semilogx(max(sc_for_ber(kk,7), 1e-6), sc_for_ber(kk, 5), ...
+                    'o', 'MarkerSize', 12, 'MarkerFaceColor', col, ...
+                    'MarkerEdgeColor', 'k', 'LineWidth', 1.0, ...
+                    'DisplayName', sprintf('SC-%s (MVDR)', method));
+                semilogx(max(sc_for_ber(kk,7), 1e-6), sc_for_ber(kk, 4), ...
+                    's', 'MarkerSize', 12, 'MarkerFaceColor', col, ...
+                    'MarkerEdgeColor', 'k', 'LineWidth', 1.0, ...
+                    'DisplayName', sprintf('SC-%s (DAS)', method));
+            end
+            set(gca, 'XScale', 'log');
+            xlabel('||C_{hat} - C_{true}||_F / ||C_{true}||_F');
+            ylabel('EVM (dB)');
+            title('EVM apos beamforming vs erro de C');
+            xline(0.1, 'k:', '\epsilon_F = 0.1');
+            xline(1, 'r--', '\epsilon_F = 1');
+            legend('Location','best');
+
+            sgtitle(sprintf("Self-cal (init=%s): impacto do erro de C no beamforming (circulo=MVDR, quadrado=DAS)", init_tag), "FontWeight","bold");
+
+            exportgraphics(fig_ber_sc, fullfile(outDir, ...
+                sprintf('selfcal_beamforming_vs_C_init_%s.png', init_tag)), ...
+                           'Resolution', 200);
+        end
+    end   % --- fim do if ~isempty(sc_indices_in_results) ---
+
+    else
+        warning('Nenhum cenario foi preenchido em results_cmp para init=%s. Verifique se phi_sig=75 e teste_phi=75 estao no range simulado.', ...
+                init_tag);
+    end   % --- fim do if ~isempty(ic_valid) ---
+end   % --- fim do for iInitPlot ---
+end   % --- fim do if quick_run ---
+
+% =========================================================================
+% PLOTS AGREGADOS (so faz sentido em modo full sweep, mas funciona em ambos)
+% Para cada metrica, gera duas figuras (vs SNR e vs ISR), por iInit.
+% =========================================================================
+
+% Cores e estilos por cenario (10 cenarios)
+cmap_cen = [
+    0.20 0.20 0.20;   % 0 No-MC      preto
+    0.85 0.20 0.20;   % 1 No-Comp    vermelho
+    0.10 0.65 0.10;   % 2 Ideal      verde
+    0.60 0.45 0.10;   % 3 Pert       marrom-mostarda
+    0.10 0.30 0.85;   % 4 KW-1D      azul
+    0.20 0.75 0.80;   % 5 KW-MD      ciano
+    0.95 0.50 0.10;   % 6 SC-DAS     laranja
+    0.55 0.10 0.65;   % 7 SC-CAPON   roxo
+    1.00 0.85 0.15;   % 8 SC-MUSIC   amarelo claro
+    0.30 0.00 0.50;   % 9 SC-KW      indigo escuro (bem distinto do roxo)
+];
+styles_cen = {':','--','-.','-.','-','-','-','-','-','-'};
+markers_cen = {'none','none','s','d','d','s','o','o','o','o'};
+short_labels_cen = {'No-MC', 'No-Comp', 'Ideal', 'Pert', ...
+                    'KW-1D', 'KW-MD', 'SC-DAS', 'SC-CAPON', 'SC-MUSIC', 'SC-KW'};
+
+% Lista de metodos de DoA a serem agregados
+doa_methods = {'KW', 'DAS', 'MVDR', 'MUSIC'};
+agg_doa = {agg_phi_err_KW, agg_phi_err_DAS, agg_phi_err_MVDR, agg_phi_err_MUSIC};
+
+% --- Replica arrays agregados de cenarios offline (Coupling 2..5) para
+%     iInit > 1, pois eles independem do init (sao calibrados antes). ---
+for ic_rep = 1:nCoupling
+    coup_code_rep = range_coupling(ic_rep);
+    if coup_code_rep >= 2 && coup_code_rep <= 5
+        for iI = 2:nInits
+            agg_eps_F(ic_rep, iI, :, :, :, :)         = agg_eps_F(ic_rep, 1, :, :, :, :);
+            agg_phi_err_KW(ic_rep, iI, :, :, :, :)    = agg_phi_err_KW(ic_rep, 1, :, :, :, :);
+            agg_phi_err_DAS(ic_rep, iI, :, :, :, :)   = agg_phi_err_DAS(ic_rep, 1, :, :, :, :);
+            agg_phi_err_MVDR(ic_rep, iI, :, :, :, :)  = agg_phi_err_MVDR(ic_rep, 1, :, :, :, :);
+            agg_phi_err_MUSIC(ic_rep, iI, :, :, :, :) = agg_phi_err_MUSIC(ic_rep, 1, :, :, :, :);
+            agg_BER_DAS(ic_rep, iI, :, :, :, :)       = agg_BER_DAS(ic_rep, 1, :, :, :, :);
+            agg_BER_MVDR(ic_rep, iI, :, :, :, :)      = agg_BER_MVDR(ic_rep, 1, :, :, :, :);
+            agg_EVM_DAS(ic_rep, iI, :, :, :, :)       = agg_EVM_DAS(ic_rep, 1, :, :, :, :);
+            agg_EVM_MVDR(ic_rep, iI, :, :, :, :)      = agg_EVM_MVDR(ic_rep, 1, :, :, :, :);
+        end
     end
-else
-    warning(['Nenhum cenario foi preenchido em results_cmp. ' ...
-             'Verifique se phi_sig=75 e teste_phi=75 estao no range simulado.']);
+end
+
+% Piso visual: substitui zero/NaN por este valor no plot Frobenius em escala log
+% (cenario Oracle tem eps_F = 0 que sumiria do grafico).
+EPS_FLOOR = 1e-3;
+
+% Funcoes de agregacao: RMSE sobre dimensoes especificadas
+% (descarta NaN automaticamente; ex.: combinacoes phi_sig == phi_int)
+rmse_along = @(A, dims) sqrt(squeeze(mean(A.^2, dims, 'omitnan')));
+
+% --- Loop sobre inits para gerar conjunto completo ---
+for iInitPlot_agg = 1:nInits
+    init_tag = range_selfcal_init{iInitPlot_agg};
+
+    % --- Mapeamento "cenario -> metodo de DoA representativo" ---
+    % Self-cal (6..9): usa o proprio metodo (KW, DAS, MVDR, MUSIC)
+    % Demais cenarios (0..5): nao tem metodo de DoA inerente, usam MUSIC
+    %   como referencia comum.
+    method_idx = zeros(nCoupling, 1);   % 1=KW, 2=DAS, 3=MVDR, 4=MUSIC
+    for ic_m = 1:nCoupling
+        cc = range_coupling(ic_m);
+        switch cc
+            case 6, method_idx(ic_m) = 2;   % SC-DAS    usa DAS
+            case 7, method_idx(ic_m) = 3;   % SC-CAPON  usa MVDR
+            case 8, method_idx(ic_m) = 4;   % SC-MUSIC  usa MUSIC
+            case 9, method_idx(ic_m) = 1;   % SC-KW     usa KW
+            otherwise, method_idx(ic_m) = 4;   % cenarios offline/ref: MUSIC
+        end
+    end
+
+    % --- Pre-calcula matrizes (SNR x ISR) por cenario, agregando sobre angulos ---
+    rmse_doa_per_cen = cell(nCoupling, 1);
+    rmse_eps_per_cen = cell(nCoupling, 1);
+    for ic_m = 1:nCoupling
+        switch method_idx(ic_m)
+            case 1, A_doa = agg_phi_err_KW;
+            case 2, A_doa = agg_phi_err_DAS;
+            case 3, A_doa = agg_phi_err_MVDR;
+            case 4, A_doa = agg_phi_err_MUSIC;
+        end
+        % A_doa: (Coup, Init, SNR, ISR, PhiSig, PhiInt). Agrega sobre dims 5,6.
+        % Evita squeeze: extrai o slab 4D (1,1,SNR,ISR,PhiSig,PhiInt) e usa
+        % mean(., [5 6]) ANTES de reshape, garantindo dimensoes consistentes
+        % mesmo quando nSNR=1 ou nISR=1.
+        slab_doa = A_doa(ic_m, iInitPlot_agg, :, :, :, :);
+        m_doa = mean(slab_doa.^2, [5 6], 'omitnan');   % (1,1,SNR,ISR,1,1)
+        rmse_doa_per_cen{ic_m} = sqrt(reshape(m_doa, [nSNR, nISR]));
+
+        slab_eps = agg_eps_F(ic_m, iInitPlot_agg, :, :, :, :);
+        m_eps = mean(slab_eps.^2, [5 6], 'omitnan');
+        rmse_eps_per_cen{ic_m} = sqrt(reshape(m_eps, [nSNR, nISR]));
+    end
+
+    % =====================================================================
+    % RMSE de DoA: vs SNR (uma figura por ISR), vs ISR (uma por SNR)
+    % =====================================================================
+
+    for iISR_fix = 1:nISR
+        fig_h = figure('Name', sprintf('RMSE DoA vs SNR (ISR=%+d dB, init=%s)', ...
+                       range_ISR_dB(iISR_fix), init_tag), ...
+                       'NumberTitle','off', 'Position',[100 100 900 600]);
+        hold on; grid on;
+        for ic = 1:nCoupling
+            coup_code = range_coupling(ic);
+            curve = rmse_doa_per_cen{ic}(:, iISR_fix);
+            method_label = doa_methods{method_idx(ic)};
+            plot(range_SNR_dB, curve, ...
+                'LineStyle', styles_cen{coup_code+1}, ...
+                'Marker', markers_cen{coup_code+1}, ...
+                'Color', cmap_cen(coup_code+1, :), ...
+                'LineWidth', 1.8, 'MarkerSize', 8, 'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
+                'DisplayName', sprintf('%s (%s)', short_labels_cen{coup_code+1}, method_label));
+        end
+        set(gca, 'YScale', 'log');
+        xlabel('SNR (dB)'); ylabel('RMSE de \phi (graus)');
+        title(sprintf('RMSE de DoA vs SNR  |  ISR = %+d dB  |  init self-cal: %s', ...
+              range_ISR_dB(iISR_fix), init_tag));
+        legend('Location','best','NumColumns',2);
+
+        exportgraphics(fig_h, fullfile(outDir, ...
+            sprintf('rmse_doa_vs_SNR_ISR_%+d_init_%s.png', range_ISR_dB(iISR_fix), init_tag)), ...
+            'Resolution', 200);
+    end
+
+    for iSNR_fix = 1:nSNR
+        fig_h = figure('Name', sprintf('RMSE DoA vs ISR (SNR=%+d dB, init=%s)', ...
+                       range_SNR_dB(iSNR_fix), init_tag), ...
+                       'NumberTitle','off', 'Position',[100 100 900 600]);
+        hold on; grid on;
+        for ic = 1:nCoupling
+            coup_code = range_coupling(ic);
+            curve = rmse_doa_per_cen{ic}(iSNR_fix, :);
+            method_label = doa_methods{method_idx(ic)};
+            plot(range_ISR_dB, curve, ...
+                'LineStyle', styles_cen{coup_code+1}, ...
+                'Marker', markers_cen{coup_code+1}, ...
+                'Color', cmap_cen(coup_code+1, :), ...
+                'LineWidth', 1.8, 'MarkerSize', 8, 'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
+                'DisplayName', sprintf('%s (%s)', short_labels_cen{coup_code+1}, method_label));
+        end
+        set(gca, 'YScale', 'log');
+        xlabel('ISR (dB)'); ylabel('RMSE de \phi (graus)');
+        title(sprintf('RMSE de DoA vs ISR  |  SNR = %+d dB  |  init self-cal: %s', ...
+              range_SNR_dB(iSNR_fix), init_tag));
+        legend('Location','best','NumColumns',2);
+
+        exportgraphics(fig_h, fullfile(outDir, ...
+            sprintf('rmse_doa_vs_ISR_SNR_%+d_init_%s.png', range_SNR_dB(iSNR_fix), init_tag)), ...
+            'Resolution', 200);
+    end
+
+    % =====================================================================
+    % RMSE Frobenius: vs SNR (por ISR), vs ISR (por SNR)
+    % =====================================================================
+    for iISR_fix = 1:nISR
+        fig_h = figure('Name', sprintf('RMSE Frob. vs SNR (ISR=%+d dB, init=%s)', ...
+                       range_ISR_dB(iISR_fix), init_tag), ...
+                       'NumberTitle','off', 'Position',[100 100 900 600]);
+        hold on; grid on;
+        for ic = 1:nCoupling
+            coup_code = range_coupling(ic);
+            if coup_code < 2, continue; end
+            curve = rmse_eps_per_cen{ic}(:, iISR_fix);
+            if all(isnan(curve)), continue; end
+            curve_plot = max(curve, EPS_FLOOR);
+            plot(range_SNR_dB, curve_plot, ...
+                'LineStyle', styles_cen{coup_code+1}, ...
+                'Marker', markers_cen{coup_code+1}, ...
+                'Color', cmap_cen(coup_code+1, :), ...
+                'LineWidth', 1.8, 'MarkerSize', 8, ...
+                'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
+                'DisplayName', short_labels_cen{coup_code+1});
+        end
+        set(gca, 'YScale', 'log');
+        yline(EPS_FLOOR, ':', sprintf('piso visual = %.0e', EPS_FLOOR), ...
+              'Color',[0.5 0.5 0.5], 'LabelHorizontalAlignment','left');
+        xlabel('SNR (dB)'); ylabel('RMSE de ||C_{hat} - C_{true}||_F / ||C_{true}||_F');
+        title(sprintf('RMSE Frobenius vs SNR  |  ISR = %+d dB  |  init: %s', ...
+              range_ISR_dB(iISR_fix), init_tag));
+        legend('Location','best','NumColumns',2);
+
+        exportgraphics(fig_h, fullfile(outDir, ...
+            sprintf('rmse_frobenius_vs_SNR_ISR_%+d_init_%s.png', range_ISR_dB(iISR_fix), init_tag)), ...
+            'Resolution', 200);
+    end
+
+    for iSNR_fix = 1:nSNR
+        fig_h = figure('Name', sprintf('RMSE Frob. vs ISR (SNR=%+d dB, init=%s)', ...
+                       range_SNR_dB(iSNR_fix), init_tag), ...
+                       'NumberTitle','off', 'Position',[100 100 900 600]);
+        hold on; grid on;
+        for ic = 1:nCoupling
+            coup_code = range_coupling(ic);
+            if coup_code < 2, continue; end
+            curve = rmse_eps_per_cen{ic}(iSNR_fix, :);
+            if all(isnan(curve)), continue; end
+            curve_plot = max(curve, EPS_FLOOR);
+            plot(range_ISR_dB, curve_plot, ...
+                'LineStyle', styles_cen{coup_code+1}, ...
+                'Marker', markers_cen{coup_code+1}, ...
+                'Color', cmap_cen(coup_code+1, :), ...
+                'LineWidth', 1.8, 'MarkerSize', 8, ...
+                'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
+                'DisplayName', short_labels_cen{coup_code+1});
+        end
+        set(gca, 'YScale', 'log');
+        yline(EPS_FLOOR, ':', sprintf('piso visual = %.0e', EPS_FLOOR), ...
+              'Color',[0.5 0.5 0.5], 'LabelHorizontalAlignment','left');
+        xlabel('ISR (dB)'); ylabel('RMSE de ||C_{hat} - C_{true}||_F / ||C_{true}||_F');
+        title(sprintf('RMSE Frobenius vs ISR  |  SNR = %+d dB  |  init: %s', ...
+              range_SNR_dB(iSNR_fix), init_tag));
+        legend('Location','best','NumColumns',2);
+
+        exportgraphics(fig_h, fullfile(outDir, ...
+            sprintf('rmse_frobenius_vs_ISR_SNR_%+d_init_%s.png', range_SNR_dB(iSNR_fix), init_tag)), ...
+            'Resolution', 200);
+    end
+
+    % =====================================================================
+    % BER e EVM medios (apos beamforming): vs SNR (por ISR) e vs ISR (por SNR)
+    % Duas curvas por cenario: uma para DAS, outra para MVDR/Capon.
+    % =====================================================================
+    % Pre-calcula matrizes (SNR x ISR) por cenario, agregando sobre angulos
+    mean_BER_DAS_per_cen   = cell(nCoupling, 1);
+    mean_BER_MVDR_per_cen  = cell(nCoupling, 1);
+    mean_EVM_DAS_per_cen   = cell(nCoupling, 1);
+    mean_EVM_MVDR_per_cen  = cell(nCoupling, 1);
+    for ic_m = 1:nCoupling
+        slab = agg_BER_DAS(ic_m, iInitPlot_agg, :, :, :, :);
+        mean_BER_DAS_per_cen{ic_m}  = reshape(mean(slab, [5 6], 'omitnan'), [nSNR, nISR]);
+
+        slab = agg_BER_MVDR(ic_m, iInitPlot_agg, :, :, :, :);
+        mean_BER_MVDR_per_cen{ic_m} = reshape(mean(slab, [5 6], 'omitnan'), [nSNR, nISR]);
+
+        slab = agg_EVM_DAS(ic_m, iInitPlot_agg, :, :, :, :);
+        mean_EVM_DAS_per_cen{ic_m}  = reshape(mean(slab, [5 6], 'omitnan'), [nSNR, nISR]);
+
+        slab = agg_EVM_MVDR(ic_m, iInitPlot_agg, :, :, :, :);
+        mean_EVM_MVDR_per_cen{ic_m} = reshape(mean(slab, [5 6], 'omitnan'), [nSNR, nISR]);
+    end
+
+    % --- Funcao auxiliar inline para plotar uma metrica ---
+    plot_metric = @(metric_per_cen, metric_name, file_prefix, ylabel_text, use_log) ...
+        plot_metric_helper(metric_per_cen, metric_name, file_prefix, ylabel_text, ...
+                           use_log, nCoupling, range_coupling, nISR, nSNR, ...
+                           range_ISR_dB, range_SNR_dB, init_tag, ...
+                           styles_cen, markers_cen, cmap_cen, short_labels_cen, ...
+                           outDir);
+
+    % BER do DAS
+    plot_metric(mean_BER_DAS_per_cen,  'BER DAS',  'ber_das',  'BER medio (%)', false);
+    % BER do MVDR/Capon
+    plot_metric(mean_BER_MVDR_per_cen, 'BER MVDR', 'ber_mvdr', 'BER medio (%)', false);
+    % EVM do DAS
+    plot_metric(mean_EVM_DAS_per_cen,  'EVM DAS',  'evm_das',  'EVM medio (dB)', false);
+    % EVM do MVDR/Capon
+    plot_metric(mean_EVM_MVDR_per_cen, 'EVM MVDR', 'evm_mvdr', 'EVM medio (dB)', false);
+
+    % =====================================================================
+    % ACURACIA AGREGADA: um ponto por cenario (agregado sobre tudo)
+    % =====================================================================
+    rmse_phi_global = zeros(nCoupling, 1);
+    rmse_eps_global = zeros(nCoupling, 1);
+    for ic = 1:nCoupling
+        rmse_phi_global(ic) = sqrt(mean(rmse_doa_per_cen{ic}(:).^2, 'omitnan'));
+        rmse_eps_global(ic) = sqrt(mean(rmse_eps_per_cen{ic}(:).^2, 'omitnan'));
+    end
+
+    fig_h = figure('Name', sprintf('Acuracia agregada (init=%s)', init_tag), ...
+                   'NumberTitle','off', 'Position',[100 100 900 700]);
+    hold on; grid on;
+    for ic = 1:nCoupling
+        coup_code = range_coupling(ic);
+        if coup_code < 2 || isnan(rmse_eps_global(ic)), continue; end
+        method_label = doa_methods{method_idx(ic)};
+        scatter(rmse_phi_global(ic), max(rmse_eps_global(ic), 1e-6), ...
+                180, markers_cen{coup_code+1}, 'filled', ...
+                'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
+                'MarkerEdgeColor', 'k', 'LineWidth', 1.0, ...
+                'DisplayName', sprintf('%s (%s)', short_labels_cen{coup_code+1}, method_label));
+    end
+    xline(1, 'k:', '1° de erro de DoA');
+    yline(0.1, 'k:', '\epsilon_F = 0.1');
+    yline(1, 'r--', '\epsilon_F = 1 (sem comp.)');
+    set(gca, 'YScale', 'log');
+    xlabel('RMSE de \phi (graus)  [agregado]');
+    ylabel('RMSE de ||C_{hat} - C_{true}||_F / ||C_{true}||_F  [agregado]');
+    title(sprintf('Acuracia agregada: erro de DoA vs erro de C (init=%s)', init_tag));
+    legend('Location','best');
+
+    exportgraphics(fig_h, fullfile(outDir, ...
+        sprintf('accuracy_agregada_init_%s.png', init_tag)), ...
+        'Resolution', 200);
 end
 
 return;
@@ -1381,4 +2126,74 @@ function J = cost_mcm_circulant4(p, a, b_hat)
 
     err = b_hat - alpha * b_model;
     J = norm(err)^2;
+end
+
+function plot_metric_helper(metric_per_cen, metric_name, file_prefix, ...
+                            ylabel_text, use_log, ...
+                            nCoupling, range_coupling, nISR, nSNR, ...
+                            range_ISR_dB, range_SNR_dB, init_tag, ...
+                            styles_cen, markers_cen, cmap_cen, ...
+                            short_labels_cen, outDir)
+%PLOT_METRIC_HELPER  Gera plots agregados de uma metrica (BER ou EVM)
+%   vs SNR (uma figura por valor de ISR) e vs ISR (uma figura por SNR).
+
+    % --- vs SNR (uma figura por ISR) ---
+    for iISR_fix = 1:nISR
+        fig_h = figure('Name', sprintf('%s vs SNR (ISR=%+d dB, init=%s)', ...
+                       metric_name, range_ISR_dB(iISR_fix), init_tag), ...
+                       'NumberTitle','off', 'Position',[100 100 900 600]);
+        hold on; grid on;
+        for ic = 1:nCoupling
+            coup_code = range_coupling(ic);
+            curve = metric_per_cen{ic}(:, iISR_fix);
+            if all(isnan(curve)), continue; end
+            plot(range_SNR_dB, curve, ...
+                'LineStyle', styles_cen{coup_code+1}, ...
+                'Marker', markers_cen{coup_code+1}, ...
+                'Color', cmap_cen(coup_code+1, :), ...
+                'LineWidth', 1.8, 'MarkerSize', 8, ...
+                'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
+                'DisplayName', short_labels_cen{coup_code+1});
+        end
+        if use_log, set(gca, 'YScale', 'log'); end
+        xlabel('SNR (dB)'); ylabel(ylabel_text);
+        title(sprintf('%s vs SNR  |  ISR = %+d dB  |  init: %s', ...
+              metric_name, range_ISR_dB(iISR_fix), init_tag));
+        legend('Location','best','NumColumns',2);
+
+        exportgraphics(fig_h, fullfile(outDir, ...
+            sprintf('%s_vs_SNR_ISR_%+d_init_%s.png', file_prefix, ...
+                    range_ISR_dB(iISR_fix), init_tag)), ...
+            'Resolution', 200);
+    end
+
+    % --- vs ISR (uma figura por SNR) ---
+    for iSNR_fix = 1:nSNR
+        fig_h = figure('Name', sprintf('%s vs ISR (SNR=%+d dB, init=%s)', ...
+                       metric_name, range_SNR_dB(iSNR_fix), init_tag), ...
+                       'NumberTitle','off', 'Position',[100 100 900 600]);
+        hold on; grid on;
+        for ic = 1:nCoupling
+            coup_code = range_coupling(ic);
+            curve = metric_per_cen{ic}(iSNR_fix, :);
+            if all(isnan(curve)), continue; end
+            plot(range_ISR_dB, curve, ...
+                'LineStyle', styles_cen{coup_code+1}, ...
+                'Marker', markers_cen{coup_code+1}, ...
+                'Color', cmap_cen(coup_code+1, :), ...
+                'LineWidth', 1.8, 'MarkerSize', 8, ...
+                'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
+                'DisplayName', short_labels_cen{coup_code+1});
+        end
+        if use_log, set(gca, 'YScale', 'log'); end
+        xlabel('ISR (dB)'); ylabel(ylabel_text);
+        title(sprintf('%s vs ISR  |  SNR = %+d dB  |  init: %s', ...
+              metric_name, range_SNR_dB(iSNR_fix), init_tag));
+        legend('Location','best','NumColumns',2);
+
+        exportgraphics(fig_h, fullfile(outDir, ...
+            sprintf('%s_vs_ISR_SNR_%+d_init_%s.png', file_prefix, ...
+                    range_SNR_dB(iSNR_fix), init_tag)), ...
+            'Resolution', 200);
+    end
 end

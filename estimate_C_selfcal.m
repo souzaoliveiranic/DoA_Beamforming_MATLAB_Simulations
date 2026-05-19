@@ -23,11 +23,13 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
 %                  C_hat <- (1-damping)*C_prev + damping*C_new
 %                  damping=1 => sem damping (default classico).
 %                  damping=0.5 => mistura 50-50, suaviza oscilacoes.
-%   init_mode    : (opcional, default 'identity') 'identity' ou 'kw'.
-%                  - 'identity': C_0 = I_M  (init classico)
-%                  - 'kw': estima phi via doa_kw_uca SEM acoplamento (b_hat),
-%                          e gera C_0 via estimate_C_circulant_uca. Recomendado
-%                          quando ha interferentes fortes.
+%   init_mode    : (opcional, default 'identity'). Pode ser:
+%                  - 'identity' : C_0 = I_M (init classico)
+%                  - 'kw'       : estima phi via doa_kw_uca SEM acoplamento
+%                                 e gera C_0 via estimate_C_circulant_uca
+%                                 (recomendado quando ha interferentes fortes)
+%                  - matriz MxM : usa diretamente como C_0 (ex.: matriz da
+%                                 calibracao offline)
 %
 % Saidas:
 %   C_hat       : MxM, matriz de acoplamento estimada
@@ -83,26 +85,31 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
     norm_a_sq = real(sum(conj(A_dict).*A_dict, 1)).';   % nPhi x 1
 
     % --- Inicializacao --------------------------------------------------
-    init_mode = lower(init_mode);
-    switch init_mode
-        case 'identity'
-            C_hat = eye(M);
-        case 'kw'
-            % Estima phi inicial via doa_kw_uca direto sobre X (sem D),
-            % depois gera C_0 via LS circulante. Como doa_kw_uca usa
-            % apenas fases (relativamente robustas a acoplamento moderado),
-            % isto da' um ponto de partida muito melhor que C=I quando
-            % ha interferentes fortes.
-            beta_uca_init = 2*pi*(0:M-1).'/M;
-            opts_kw_init  = struct('regRyy', 1e-6);
-            [~, phi0_deg, ~] = doa_kw_uca(X, q.', radius, lambda, ...
-                                          beta_uca_init);
-            a0 = utils.steering_vec_uca(M, radius, lambda, 90, phi0_deg(1));
-            [C_hat, ~, ~, ~] = estimate_C_circulant_uca(b_hat_orig, a0, M);
-        otherwise
-            error('estimate_C_selfcal:init', ...
-                  'init_mode invalido: %s. Use ''identity'' ou ''kw''.', ...
-                  init_mode);
+    if isnumeric(init_mode) && all(size(init_mode) == [M M])
+        % init_mode e' uma matriz MxM pre-computada (ex.: cal. offline)
+        C_hat = init_mode;
+    else
+        init_mode = lower(init_mode);
+        switch init_mode
+            case 'identity'
+                C_hat = eye(M);
+            case 'kw'
+                % Estima phi inicial via doa_kw_uca direto sobre X (sem D),
+                % depois gera C_0 via LS circulante. Como doa_kw_uca usa
+                % apenas fases (relativamente robustas a acoplamento moderado),
+                % isto da' um ponto de partida muito melhor que C=I quando
+                % ha interferentes fortes.
+                beta_uca_init = 2*pi*(0:M-1).'/M;
+                opts_kw_init  = struct('regRyy', 1e-6);
+                [~, phi0_deg, ~] = doa_kw_uca(X, q.', radius, lambda, ...
+                                              beta_uca_init);
+                a0 = utils.steering_vec_uca(M, radius, lambda, 90, phi0_deg(1));
+                [C_hat, ~, ~, ~] = estimate_C_circulant_uca(b_hat_orig, a0, M);
+            otherwise
+                error('estimate_C_selfcal:init', ...
+                      ['init_mode invalido: %s. Use ''identity'', ''kw'' ' ...
+                       'ou uma matriz MxM.'], init_mode);
+        end
     end
     phi_prev = NaN;
     C_prev   = C_hat;
