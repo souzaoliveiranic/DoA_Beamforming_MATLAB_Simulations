@@ -60,6 +60,22 @@ clean_simulation = true;   % <-- alterar conforme necessidade
 n_ensemble = 10;   % <-- numero de rodadas Monte Carlo por ponto
 
 % =========================================================================
+% Beamforming: qual angulo usar para apontar o beamformer (DAS/Capon).
+%   false -> usa o angulo VERDADEIRO do sinal (phi_sig). Mede o limite
+%            teorico da compensacao, isolando o efeito da matriz C.
+%   true  -> usa o angulo ESTIMADO pelo metodo de DoA do cenario. Mede
+%            o desempenho fim-a-fim realista (erro de DoA propaga p/ o BF).
+% =========================================================================
+use_doa_estimate_in_bf = true;   % <-- alterar conforme necessidade
+
+% =========================================================================
+% Metodo de DoA usado como REFERENCIA nos cenarios sem self-cal
+% (No-MC, No-Comp, Ideal, Pert, KW-1D, KW-MD). Os cenarios de self-cal
+% (SC-*) sempre usam o proprio metodo. Alterna entre 'MUSIC' e 'CAPON'.
+% =========================================================================
+ref_doa_method = 'CAPON';   % 'MUSIC' | 'CAPON'
+
+% =========================================================================
 % Modo de varredura angular:
 %   'cross'      -> phi_sig e phi_int varrem o mesmo conjunto via produto
 %                   cartesiano (modo classico). nPhi x nPhi simulacoes.
@@ -84,7 +100,7 @@ if quick_run
     range_phi_int = [];               % nao usado no modo 'cross'
     pair_mode = 'cross';
 else
-    range_SNR_dB = -12:6:12;
+    range_SNR_dB = -12:3:12;
     range_ISR_dB = -40;%-6:1:-3;
 
     switch experiment_mode
@@ -145,7 +161,7 @@ range_radius = [0.20]; %[0.25 0.2 0.15 0.1];
 %   7 = com coupling, comp. via SELF-CAL com CAPON
 %   8 = com coupling, comp. via SELF-CAL com MUSIC
 %   9 = com coupling, comp. via SELF-CAL com KW
-range_coupling = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+range_coupling = [0, 1, 2, 4, 5, 6, 7, 8, 9];
 
 % --- parametros da calibracao (Khan 2020): UMA medicao de uma direcao conhecida ---
 phi_cal_deg   = 0;     % azimute da fonte de calibracao (Coupling=4)
@@ -762,6 +778,27 @@ for iSNR = 1:nSNR
                             phi_MVDR = phi_scan(i_mvdr);
                             phi_MUSIC = phi_scan(idx_music);
 
+                            % --- Angulo para apontar o beamformer ---
+                            % Se use_doa_estimate_in_bf=false: usa phi_sig (verdadeiro).
+                            % Se true: usa o phi estimado pelo metodo do cenario.
+                            if ~use_doa_estimate_in_bf
+                                phi_bf_target = phi_sig_deg;
+                            else
+                                switch Coupling
+                                    case 6, phi_bf_target = phi_DAS;    % SC-DAS
+                                    case 7, phi_bf_target = phi_MVDR;   % SC-CAPON
+                                    case 8, phi_bf_target = phi_MUSIC;  % SC-MUSIC
+                                    case 9, phi_bf_target = phi_hat_deg;% SC-KW
+                                    otherwise
+                                        % Referencias: usa o metodo configurado
+                                        if strcmpi(ref_doa_method, 'CAPON')
+                                            phi_bf_target = phi_MVDR;
+                                        else
+                                            phi_bf_target = phi_MUSIC;
+                                        end
+                                end
+                            end
+
                             % --- Agregacao estatistica (varredura completa) ---
                             % Calcula erro angular de cada metodo vs phi_sig real.
                             % Usa wrap [-180, 180) para evitar pulos.
@@ -871,6 +908,13 @@ for iSNR = 1:nSNR
 
                             % Varredura angular (azimute, plano horizontal)
                             phi_scan = -180:0.5:180;    % graus
+                            % Garante que o angulo-alvo do BF existe EXATAMENTE
+                            % na grade (pode ser phi_sig ou um phi estimado
+                            % fracionario). Sem isso, a condicao de igualdade
+                            % na gravacao do BER/EVM nunca dispararia.
+                            if ~ismember(phi_bf_target, phi_scan)
+                                phi_scan = sort([phi_scan, phi_bf_target]);
+                            end
                             % phi_scan = phi_hat_deg-30:0.5:phi_hat_deg+30;
                             for ang = 1:numel(phi_scan)
                                 % ----- Restrições angulares
@@ -1041,9 +1085,10 @@ for iSNR = 1:nSNR
                                 end
 
                                 % --- Agregacao de BER/EVM para todas as combinacoes ---
-                                % Salva apenas quando o beamformer aponta para a direcao
-                                % verdadeira do sinal (apontamento correto).
-                                if abs(phi_scan(ang) - phi_sig_deg) < 1e-9
+                                % Salva quando o beamformer aponta para o angulo-alvo
+                                % (phi_sig verdadeiro OU phi estimado, conforme a flag
+                                %  use_doa_estimate_in_bf).
+                                if abs(phi_scan(ang) - phi_bf_target) < 1e-9
                                     idxB = {iCoupling, iInit, iSNR, iISR, iPhi, iiPhi};
                                     agg_BER_DAS(idxB{:})  = agg_BER_DAS(idxB{:})  + BER_das  * 100;
                                     agg_BER_MVDR(idxB{:}) = agg_BER_MVDR(idxB{:}) + BER_mvdr * 100;
@@ -1729,9 +1774,9 @@ cmap_cen = [
     0.95 0.50 0.10;   % 6 SC-DAS     laranja
     0.55 0.10 0.65;   % 7 SC-CAPON   roxo
     1.00 0.85 0.15;   % 8 SC-MUSIC   amarelo claro
-    0.30 0.00 0.50;   % 9 SC-KW      indigo escuro (bem distinto do roxo)
+    0    0    0;   % 9 SC-KW      rosa //indigo escuro (bem distinto do roxo) 0.30 0.00 0.50;
 ];
-styles_cen = {':','--','-.','-.','-','-','-','-','-','-'};
+styles_cen = {':',':','--','--','-.','-.','-','-','-','-'};
 markers_cen = {'none','none','s','d','d','s','o','o','o','o'};
 short_labels_cen = {'No-MC', 'No-Comp', 'Ideal', 'Pert', ...
                     'KW-1D', 'KW-MD', 'SC-DAS', 'SC-CAPON', 'SC-MUSIC', 'SC-KW'};
@@ -1775,6 +1820,12 @@ for iInitPlot_agg = 1:nInits
     % Self-cal (6..9): usa o proprio metodo (KW, DAS, MVDR, MUSIC)
     % Demais cenarios (0..5): nao tem metodo de DoA inerente, usam MUSIC
     %   como referencia comum.
+    % Indice do metodo de referencia conforme flag ref_doa_method
+    if strcmpi(ref_doa_method, 'CAPON')
+        ref_midx = 3;   % MVDR/Capon
+    else
+        ref_midx = 4;   % MUSIC
+    end
     method_idx = zeros(nCoupling, 1);   % 1=KW, 2=DAS, 3=MVDR, 4=MUSIC
     for ic_m = 1:nCoupling
         cc = range_coupling(ic_m);
@@ -1783,7 +1834,7 @@ for iInitPlot_agg = 1:nInits
             case 7, method_idx(ic_m) = 3;   % SC-CAPON  usa MVDR
             case 8, method_idx(ic_m) = 4;   % SC-MUSIC  usa MUSIC
             case 9, method_idx(ic_m) = 1;   % SC-KW     usa KW
-            otherwise, method_idx(ic_m) = 4;   % cenarios offline/ref: MUSIC
+            otherwise, method_idx(ic_m) = ref_midx;   % refs: MUSIC ou CAPON
         end
     end
 
