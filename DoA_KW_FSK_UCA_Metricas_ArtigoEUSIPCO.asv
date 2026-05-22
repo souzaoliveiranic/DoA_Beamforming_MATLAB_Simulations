@@ -42,8 +42,8 @@ alpha  = 0.3;           % roll-off do RRC
 span   = 8;             % comprimento do RRC em símbolos (TX/RX)
 fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
 
-range_SNR_dB = -6:3:6; %-6:3:6; %-9:3:9;
-range_ISR_dB = -6:3:6; %-12:3:-3; %-9:3:3;
+range_SNR_dB = -6:6:6; %-6:3:6; %-9:3:9;
+range_ISR_dB = [-6 6]; %-12:3:-3; %-9:3:3;
 range_snapshots = 2000:3000:N_DOA;
 range_radius = [0.25]; %[0.5 0.3 0.25 0.2 0.15 0.1]; %
 range_coupling = [0 1]; % com e sem acoplamento
@@ -153,7 +153,7 @@ Coupling_matrices = zeros(M, M, nRadius);
 for iRadius = 1:nRadius
     radius = range_radius(iRadius)*lambda;
     Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
-    Coupling_matrices(:,:,iRadius) = Ctx;%inv(Ctx);
+    Coupling_matrices(:,:,iRadius) = inv(Ctx);
 end
 
 %% ======= DoA KW vs Delay and Sum vs Capon =======
@@ -304,15 +304,16 @@ colors =  ["red", "green", "blue", "black", "magenta", "cyan", "yellow"];
 line_style =   ["-", "--", ":","-."]; % linha continua sem acoplamento % linha tracejada com acoplamento
 
 % Criar pasta 'graficos'
-outDir = fullfile(pwd, 'Novos Graficos EUSIPCO - SBRT');
+outDir = fullfile(pwd, 'graficos');
 if ~exist(outDir, 'dir')
     mkdir(outDir);
 end
 
 %  GRÁFICOS: Varredura de SNR
 
-for iRadius = 1:nRadius
+for iRadius = 3:nRadius
     for iISR = 1:nISR
+        if (range_ISR_dB(iISR) == -6)
 
             fig = figure('Name', "RMSE vs SNR | ISR=" + string(range_ISR_dB(iISR)) + " (r = " + string(range_radius(iRadius)) + ")", ...
                 'NumberTitle', 'off');
@@ -321,10 +322,12 @@ for iRadius = 1:nRadius
             legend_strings = strings(0);   % inicializa como array de strings vazio
 
             for iCoupling = 1:nCoupling
+                if(range_coupling(iCoupling) == 1)
                     for m = 1:nMethods
                         plot(range_SNR_dB, squeeze(RMSE_mean(m, :, iISR, iRadius, iCoupling, K_fixed)), ...
                             markers(m), 'Color', colors(m),'LineWidth', 2, 'LineStyle', line_style(iCoupling));
                     end
+                end
             end
             for m = 1:nMethods
                 legend_strings(end+1) = methods(m);
@@ -352,6 +355,7 @@ for iRadius = 1:nRadius
             %cleanfigure;
             % Define LaTeX macros for width and height (you will define these in your .tex file)
             matlab2tikz(fullfile(outDir, fileName), 'width', '\figurewidth', 'height', '\figureheight');
+        end
     end
 end
 
@@ -400,7 +404,6 @@ for iRadius = 1:nRadius
     end
 end
 
-return;
 
 %%  GRÁFICOS: Varredura de SNR por Raio
 

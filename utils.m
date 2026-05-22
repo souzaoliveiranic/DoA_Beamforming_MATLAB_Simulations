@@ -530,6 +530,267 @@ classdef utils
             end
         end
 
+        % =====================================================================
+        % ==========  MÉTODOS ADICIONADOS PARA O ARTIGO SBrT 2026  ============
+        % ==========  (Limitações do estimador DoA com forma de   ============
+        % ==========   onda conhecida: modulação do interferidor,  ============
+        % ==========   erro de sincronização e tamanho da seq.     ============
+        % ==========   de treinamento)                             ============
+        % =====================================================================
+
+        function [X, q, v, Xsig, Xint, Xn, bits, sym_tx, qn, q_local_ref] = ...
+                simulate_data_uca_v2(M, r, lambda, ...
+                                     phi_sig_deg, phi_int_deg, ...
+                                     theta_sig_deg, theta_int_deg, ...
+                                     SNRdB, ISR_dB, N, fs, ...
+                                     Rs, sps, alpha, span, fd, ...
+                                     interferer_type, sync_offset_samples)
+            %SIMULATE_DATA_UCA_V2  Versão estendida do simulate_fsk_data_uca.
+            %
+            %  Mantém o SOI como 2-FSK (mesma do EUSIPCO) e permite escolher o
+            %  tipo de modulação do interferidor e o erro de sincronização
+            %  entre o sinal recebido e a forma de onda local de referência.
+            %
+            %  Entradas adicionais:
+            %    interferer_type      : "FM" | "FSK2" | "AM" | "BPSK" | "QPSK"
+            %                            | "QAM16" | "QAM64" | "NOISE"
+            %    sync_offset_samples  : escalar (pode ser fracionário). Define
+            %                           o deslocamento da forma de onda LOCAL
+            %                           usada como referência pelo estimador KW
+            %                           em relação ao sinal que efetivamente
+            %                           chega no array. Δτ > 0 atrasa o local
+            %                           reference; Δτ < 0 o adianta. Em
+            %                           amostras (na taxa fs).
+            %
+            %  Saída adicional:
+            %    q_local_ref          : forma de onda local utilizada pelo
+            %                           estimador KW (deslocada de
+            %                           sync_offset_samples em relação a q).
+            %                           Vetor 1xN.
+
+            if nargin < 18 || isempty(interferer_type)
+                interferer_type = "FM";
+            end
+            if nargin < 19 || isempty(sync_offset_samples)
+                sync_offset_samples = 0;
+            end
+
+            % --------------------------------------------------------
+            % Potências dos sinais
+            sigma_s2 = 1;
+            sigma_i2 = sigma_s2 * 10^(ISR_dB/10);
+            sigma_n2 = sigma_s2 / 10^(SNRdB/10);
+
+            % Constantes
+            c  = 3e8;
+            fc = c / lambda;
+
+            % --------------------------------------------------------
+            % SOI: 2-FSK (mesmo do EUSIPCO)
+            [q, bits, ~, ~, sym_tx] = utils.fsk2_mod(N/sps, Rs, sps, alpha, span, fd);
+            q = q(:);
+            if numel(q) < N
+                q(end+1:N) = 0;
+            else
+                q = q(1:N);
+            end
+
+            % --------------------------------------------------------
+            % Interferidor: escolhido por tipo
+            v = utils.gen_interferer(interferer_type, N, fs, Rs, sps, alpha, span, fd);
+            v = v(:);
+
+            % Normalização de potência
+            q = q ./ sqrt(mean(abs(q).^2) + eps);
+            v = v ./ sqrt(mean(abs(v).^2) + eps);
+            q = sqrt(sigma_s2) * q;
+            v = sqrt(sigma_i2) * v;
+
+            % --------------------------------------------------------
+            % Atrasos de chegada (UCA) - idêntico ao código original
+            taus_sig = utils.element_delays_uca(M, r, theta_sig_deg, phi_sig_deg, c);
+            taus_int = utils.element_delays_uca(M, r, theta_int_deg, phi_int_deg, c);
+
+            % --------------------------------------------------------
+            % Aplicação de atrasos e fases
+            Xsig = zeros(M, N);
+            Xint = zeros(M, N);
+
+            for m = 1:M
+                q_del = delayseq(q, taus_sig(m), fs);
+                v_del = delayseq(v, taus_int(m), fs);
+                phase_sig = exp(-1j * 2*pi*fc * taus_sig(m));
+                phase_int = exp(-1j * 2*pi*fc * taus_int(m));
+                Xsig(m,:) = q_del(:).' * phase_sig;
+                Xint(m,:) = v_del(:).' * phase_int;
+            end
+
+            % --------------------------------------------------------
+            % Ruído AWGN
+            Xn = sqrt(sigma_n2/2) * (randn(M,N) + 1j*randn(M,N));
+
+            % Sinal total
+            X  = Xsig + Xint + Xn;
+            qn = Xsig(1,:) + Xn(1,:);
+
+            % --------------------------------------------------------
+            % Referência LOCAL deslocada (modelo de erro de sincronização)
+            % q_local_ref(t) = q(t - sync_offset_samples / fs)
+            % A função delayseq aceita atraso em segundos e suporta valores
+            % fracionários via interpolação banda-limitada.
+            if sync_offset_samples == 0
+                q_local_ref = q.';
+            else
+                q_shift = delayseq(q, sync_offset_samples / fs, fs);
+                q_local_ref = q_shift(:).';
+            end
+        end
+
+
+        function v = gen_interferer(interferer_type, N, fs, Rs, sps, alpha, span, fd)
+            %GEN_INTERFERER  Gera um sinal interferidor em banda base complexa.
+            %
+            %  Suporta as modulações:
+            %    "FM"     : FM com modulante ruído faixa estreita (CE)
+            %    "FSK2"   : 2-FSK (mesmo molde do SOI, com bits aleatórios)
+            %    "AM"     : DSB-AM em banda base (envelope real-positivo)
+            %    "BPSK"   : BPSK com filtragem RRC
+            %    "QPSK"   : QPSK com filtragem RRC
+            %    "QAM16"  : 16-QAM com filtragem RRC
+            %    "QAM64"  : 64-QAM com filtragem RRC
+            %    "NOISE"  : ruído branco gaussiano complexo
+            %
+            %  Retorna um vetor coluna N×1 com potência aproximadamente unitária
+            %  (a normalização final fica a cargo do chamador).
+
+            if nargin < 7 || isempty(span), span = 8; end
+            if nargin < 8 || isempty(fd),   fd   = 4.8e3; end
+
+            interferer_type = upper(string(interferer_type));
+
+            switch interferer_type
+                case "FM"
+                    % FM com modulante ruidoso de envelope constante (Carson ~ 2*fd)
+                    v = utils.gen_ce_nb_noise(N, fs, 2*fd, 0);
+
+                case "FSK2"
+                    % 2-FSK com bits aleatórios independentes (forma de onda
+                    % diferente do SOI, mas estrutura modulada similar)
+                    Nsym = floor(N/sps);
+                    [v, ~, ~, ~, ~] = utils.fsk2_mod(Nsym, Rs, sps, alpha, span, fd);
+                    v = v(:);
+
+                case "AM"
+                    % AM-DSB em banda base: v(t) = (1 + ka*m(t)) * exp(j*phi0)
+                    % m(t) é um sinal modulante real, baixa frequência,
+                    % limitado a ~Rs/2 Hz (mesma "ocupação simbólica" do SOI).
+                    ka = 0.7;
+                    fm_lp = Rs/2;
+                    fcH = min(fm_lp, 0.45*fs/2);
+                    ord = max(64, round(8*fs/max(2*fm_lp,1)));
+                    ord = min(ord, 4096);
+                    b   = fir1(ord, (2*fcH)/fs, 'low', hamming(ord+1));
+                    mraw = randn(N + ord, 1);
+                    mflt = fftfilt(b, mraw);
+                    mflt = mflt(ord+1:ord+N);
+                    mflt = mflt / (max(abs(mflt)) + eps);   % |m|<=1
+                    phi0 = 2*pi*rand;
+                    v = (1 + ka*mflt) .* exp(1j*phi0);
+
+                case {"BPSK","QPSK","QAM16","QAM64"}
+                    v = utils.gen_linmod_interferer(interferer_type, N, ...
+                                                    Rs, sps, alpha, span);
+
+                case "NOISE"
+                    % Ruído branco gaussiano complexo (potência ~1)
+                    v = (randn(N,1) + 1j*randn(N,1))/sqrt(2);
+
+                otherwise
+                    error("utils:gen_interferer:UnknownType", ...
+                          "Tipo de interferidor desconhecido: %s", interferer_type);
+            end
+
+            v = v(:);
+            if numel(v) < N
+                v(end+1:N) = 0;
+            else
+                v = v(1:N);
+            end
+        end
+
+
+        function v = gen_linmod_interferer(modtype, N, Rs, sps, alpha, span)
+            %GEN_LINMOD_INTERFERER  Gera interferidor PSK/QAM com pulse-shaping RRC.
+
+            modtype = upper(string(modtype));
+
+            switch modtype
+                case "BPSK"
+                    Mord = 2;  bps = 1;
+                case "QPSK"
+                    Mord = 4;  bps = 2;
+                case "QAM16"
+                    Mord = 16; bps = 4;
+                case "QAM64"
+                    Mord = 64; bps = 6;
+                otherwise
+                    error("Modulação linear não suportada: %s", modtype);
+            end
+
+            Nsym = ceil(N/sps) + 2*span + 4;
+            data_bits = randi([0 1], Nsym*bps, 1);
+            data_sym  = bi2de(reshape(data_bits, bps, Nsym).', 'left-msb');
+
+            if Mord == 2
+                % BPSK
+                syms = 2*data_sym - 1;            % {-1, +1}
+                syms = syms + 0j;
+            elseif Mord == 4
+                % QPSK Gray
+                map = (1/sqrt(2)) * [ 1+1j, -1+1j, 1-1j, -1-1j ].';
+                syms = map(data_sym + 1);
+            else
+                % QAM quadrado (16 ou 64)
+                syms = qammod(data_sym, Mord, 'gray', 'UnitAveragePower', true);
+            end
+            syms = syms(:);
+
+            % Upsample + RRC
+            imp = upsample(syms, sps);
+            rrc = rcosdesign(alpha, span, sps, 'sqrt');
+            v_full = filter(rrc, 1, imp);
+
+            % Descartar o transiente inicial do filtro RRC
+            gd = span*sps/2;
+            v_full = v_full(gd+1:end);
+
+            % Corta para N
+            if numel(v_full) < N
+                v_full(end+1:N) = 0;
+            else
+                v_full = v_full(1:N);
+            end
+            v = v_full(:);
+        end
+
+
+        function q_local = apply_sync_offset(q, sync_offset_samples, fs)
+            %APPLY_SYNC_OFFSET  Aplica deslocamento (inteiro ou fracionário) à
+            %                   forma de onda local de referência.
+            %
+            %  q_local(t) = q(t - sync_offset_samples / fs)
+            %
+            %  Utiliza delayseq para suportar atrasos fracionários via
+            %  interpolação banda-limitada.
+
+            q = q(:);
+            if sync_offset_samples == 0
+                q_local = q.';
+                return;
+            end
+            qd = delayseq(q, sync_offset_samples / fs, fs);
+            q_local = qd(:).';
+        end
 
     end
 end
