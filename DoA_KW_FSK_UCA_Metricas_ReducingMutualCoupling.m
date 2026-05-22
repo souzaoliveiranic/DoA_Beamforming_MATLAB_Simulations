@@ -76,6 +76,32 @@ use_doa_estimate_in_bf = true;   % <-- alterar conforme necessidade
 ref_doa_method = 'CAPON';   % 'MUSIC' | 'CAPON'
 
 % =========================================================================
+% Modulacao do interferente:
+%   'fm'   -> interferente FM/narrowband CE (comportamento original)
+%   'fsk2' -> interferente FSK-2 co-canal (mesma modulacao do SOI; pior
+%             caso, separavel apenas espacialmente)
+% =========================================================================
+interf_type = 'fsk2';   % 'fm' | 'fsk2'
+
+% =========================================================================
+% Controle de quais conjuntos de plots agregados gerar:
+%   plot_vs_snr -> figuras com eixo X = SNR (uma por valor de ISR)
+%   plot_vs_isr -> figuras com eixo X = ISR (uma por valor de SNR)
+% Util para suprimir um eixo quando ha so 1 valor varrido nele.
+% =========================================================================
+plot_vs_snr = true;
+plot_vs_isr = false;
+
+% =========================================================================
+% Passo da varredura angular do scan de DoA (graus).
+% 0.1 (default antigo) -> 3601 pontos, alta precisao mas lento.
+% 0.5                  -> 721 pontos, ~5x mais rapido. Erro de
+%                         quantizacao do pico fica em +/-0.25 deg, muito
+%                         abaixo do RMSE tipico.
+% =========================================================================
+doa_scan_step = 0.5;
+
+% =========================================================================
 % Modo de varredura angular:
 %   'cross'      -> phi_sig e phi_int varrem o mesmo conjunto via produto
 %                   cartesiano (modo classico). nPhi x nPhi simulacoes.
@@ -100,8 +126,8 @@ if quick_run
     range_phi_int = [];               % nao usado no modo 'cross'
     pair_mode = 'cross';
 else
-    range_SNR_dB = -12:3:12;
-    range_ISR_dB = -40;%-6:1:-3;
+    range_SNR_dB = -8:4:12;
+    range_ISR_dB = [-40 -20 -3 3];%-6:1:-3;
 
     switch experiment_mode
         case 'cross'
@@ -110,7 +136,7 @@ else
             pair_mode = 'cross';
         case 'accuracy'
             range_phi_sig = 0:5:45;                        % cone fundamental
-            range_phi_int = range_phi_sig + 90;            % separacao fixa
+            range_phi_int = range_phi_sig + 15;            % separacao fixa
             pair_mode = 'paired';
         case 'resolution'
             phi_sig_fixed = 30;                            % direcao "boa" fixa
@@ -166,12 +192,12 @@ range_coupling = [0, 1, 2, 4, 5, 6, 7, 8, 9];
 % --- parametros da calibracao (Khan 2020): UMA medicao de uma direcao conhecida ---
 phi_cal_deg   = 0;     % azimute da fonte de calibracao (Coupling=4)
 theta_cal_deg = 90;    % elevacao (plano XY)
-SNR_cal_dB    = 10;    % SNR alto (camara anecoica)
+SNR_cal_dB    = 12;    % SNR alto (camara anecoica)
 ISR_cal_dB    = -40;   % praticamente sem interferente
 
 % --- Modelo perturbado (Coupling=3): incerteza relativa em Z_t ---
 %       Simula erro de simulacao EM / variabilidade de fabricacao do PCB.
-pert_level_rel = 0.15;     % 5% de incerteza relativa nos coeficientes
+pert_level_rel = 0.05;     % 5% de incerteza relativa nos coeficientes
 rng(2025, 'twister');      % reprodutibilidade
 
 % --- KW varias direcoes (Coupling=5): P direcoes de calibracao ---
@@ -564,6 +590,25 @@ for ic = 1:nCoupling
 end
 
 % =========================================================================
+% Pre-computacao: matriz de steering vectors do scan de DoA, por raio.
+% Como theta_sig_deg, M, lambda e o vetor phi_scan_doa sao fixos (radius
+% varia por iRadius), pre-computamos A_scan_doa_cell{iRadius} fora dos
+% loops, evitando milhoes de chamadas a steering_vec_uca dentro do sweep.
+% =========================================================================
+phi_scan_doa_global = -180:doa_scan_step:180;     % grade do DoA
+n_scan_doa = numel(phi_scan_doa_global);
+A_scan_doa_cell = cell(nRadius, 1);
+for iRadius_pre = 1:nRadius
+    radius_pre = range_radius(iRadius_pre) * lambda;
+    A = zeros(M, n_scan_doa);
+    for kk = 1:n_scan_doa
+        A(:, kk) = utils.steering_vec_uca(M, radius_pre, lambda, ...
+                                          theta_sig_deg, phi_scan_doa_global(kk));
+    end
+    A_scan_doa_cell{iRadius_pre} = A;
+end
+
+% =========================================================================
 % Inicializa cronometro e contador de progresso
 % =========================================================================
 sweep_t0 = tic;
@@ -643,7 +688,7 @@ for iSNR = 1:nSNR
 
                             [X, q, r_int, Xsig, Xint, Xn, bits, pam_rrc_tx, pam_rect, sym_tx, qn, taus_sig, taus_int] = ...
                                 utils.simulate_fsk_data_uca(M, radius, lambda, phi_sig_deg, phi_int_deg, ...
-                                theta_sig_deg, theta_int_deg, SNR_dB, ISR_dB, N, fs, Rs, sps, alpha, span, fd);
+                                theta_sig_deg, theta_int_deg, SNR_dB, ISR_dB, N, fs, Rs, sps, alpha, span, fd, interf_type);
 
                             % Aplicando o Mutual Coupling no canal
                             if Coupling == 0
@@ -744,26 +789,27 @@ for iSNR = 1:nSNR
                             En = E(:, Ksrc+1:end);  % subespaço do ruído
 
                             % Varredura angular (azimute, plano horizontal)
-                            phi_scan = -180:0.1:180;    % graus
+                            % Usa a matriz pre-computada A_scan_doa (M x n_scan_doa)
+                            % e a grade global phi_scan_doa_global, evitando
+                            % recalcular steering vectors a cada iteracao.
+                            phi_scan = phi_scan_doa_global;
+                            A_scan  = A_scan_doa_cell{iRadius};
                             theta_scan = 90;            % fixa em 90° (plano XY)
 
-                            P_DAS   = zeros(size(phi_scan));
-                            P_MVDR  = zeros(size(phi_scan));
-                            P_MUSIC = zeros(size(phi_scan));
+                            Rinv  = inv(Rxx_dl);
+                            EnEnH = En * En';   % cache: usado em todos os angulos
 
-                            Rinv = inv(Rxx_dl);
-
-                            for ang = 1:numel(phi_scan)
-                                % Estimando apenas o angulo phi
-                                a = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_scan(ang));  % Mx1
-                                % ----- Delay-and-Sum -----
-                                P_DAS(ang)  = abs(a' * Rxx * a);
-                                % ----- Capon (MPDR) -----
-                                denom     = real(a' * Rinv * a);
-                                P_MVDR(ang) = 1 ./ max(denom, eps);
-                                % ----- MUSIC -----
-                                P_MUSIC(ang) = 1 ./ real(a' * (En * En') * a);
-                            end
+                            % Vetorizacao: para A_scan (MxL) e B (MxM) hermitiana,
+                            % o vetor [a_k' * B * a_k] (k=1..L) e' sum(conj(A) .* (B*A), 1).
+                            % Isso elimina o loop angular e usa BLAS.
+                            BA_DAS   = Rxx   * A_scan;
+                            BA_MVDR  = Rinv  * A_scan;
+                            BA_MUSIC = EnEnH * A_scan;
+                            P_DAS   = abs( sum(conj(A_scan) .* BA_DAS,   1) );
+                            denom_mvdr   = real( sum(conj(A_scan) .* BA_MVDR,  1) );
+                            P_MVDR  = 1 ./ max(denom_mvdr, eps);
+                            denom_music  = real( sum(conj(A_scan) .* BA_MUSIC, 1) );
+                            P_MUSIC = 1 ./ denom_music;
 
                             % Normalização (dB) e estimativa dos picos
                             P_DAS_dB   = 10*log10(P_DAS / max(P_DAS));
@@ -834,15 +880,23 @@ for iSNR = 1:nSNR
 
                             % --- NOVO: armazenar para comparacao final
                             % (caso de referencia: phi_sig=75) ---
+                            % OPTIMIZACAO: vetores pesados (P_*_dB, phi_scan)
+                            % so sao usados pelos plots quick_run. No full
+                            % sweep eles seriam alocados/copiados a cada
+                            % ensemble sem nunca serem lidos, gerando overhead
+                            % significativo. Guardamos so escalares sempre,
+                            % e vetores apenas em quick_run.
                             if abs(phi_sig_deg - 75) < 1e-9
                                 results_cmp(iCoupling, iInit).phi_KW    = phi_hat_deg;
                                 results_cmp(iCoupling, iInit).phi_DAS   = phi_DAS;
                                 results_cmp(iCoupling, iInit).phi_MVDR  = phi_MVDR;
                                 results_cmp(iCoupling, iInit).phi_MUSIC = phi_MUSIC;
-                                results_cmp(iCoupling, iInit).P_DAS_dB   = P_DAS_dB;
-                                results_cmp(iCoupling, iInit).P_MVDR_dB  = P_MVDR_dB;
-                                results_cmp(iCoupling, iInit).P_MUSIC_dB = P_MUSIC_dB;
-                                results_cmp(iCoupling, iInit).phi_scan   = phi_scan;
+                                if quick_run
+                                    results_cmp(iCoupling, iInit).P_DAS_dB   = P_DAS_dB;
+                                    results_cmp(iCoupling, iInit).P_MVDR_dB  = P_MVDR_dB;
+                                    results_cmp(iCoupling, iInit).P_MUSIC_dB = P_MUSIC_dB;
+                                    results_cmp(iCoupling, iInit).phi_scan   = phi_scan;
+                                end
                                 % Para self-cal (Coupling 6..9), salva history
                                 if ~isempty(sc_hist_iter)
                                     results_cmp(iCoupling, iInit).sc_history = sc_hist_iter;
@@ -1892,6 +1946,7 @@ for iInitPlot_agg = 1:nInits
             'Resolution', 200);
     end
 
+    if plot_vs_isr
     for iSNR_fix = 1:nSNR
         fig_h = figure('Name', sprintf('RMSE DoA vs ISR (SNR=%+d dB, init=%s)', ...
                        range_SNR_dB(iSNR_fix), init_tag), ...
@@ -1918,6 +1973,7 @@ for iInitPlot_agg = 1:nInits
             sprintf('rmse_doa_vs_ISR_SNR_%+d_init_%s.png', range_SNR_dB(iSNR_fix), init_tag)), ...
             'Resolution', 200);
     end
+    end   % --- if plot_vs_isr ---
 
     % =====================================================================
     % RMSE Frobenius: vs SNR (por ISR), vs ISR (por SNR)
@@ -1954,6 +2010,7 @@ for iInitPlot_agg = 1:nInits
             'Resolution', 200);
     end
 
+    if plot_vs_isr
     for iSNR_fix = 1:nSNR
         fig_h = figure('Name', sprintf('RMSE Frob. vs ISR (SNR=%+d dB, init=%s)', ...
                        range_SNR_dB(iSNR_fix), init_tag), ...
@@ -1985,6 +2042,7 @@ for iInitPlot_agg = 1:nInits
             sprintf('rmse_frobenius_vs_ISR_SNR_%+d_init_%s.png', range_SNR_dB(iSNR_fix), init_tag)), ...
             'Resolution', 200);
     end
+    end   % --- if plot_vs_isr ---
 
     % =====================================================================
     % BER e EVM medios (apos beamforming): vs SNR (por ISR) e vs ISR (por SNR)
@@ -2015,7 +2073,7 @@ for iInitPlot_agg = 1:nInits
                            use_log, nCoupling, range_coupling, nISR, nSNR, ...
                            range_ISR_dB, range_SNR_dB, init_tag, ...
                            styles_cen, markers_cen, cmap_cen, short_labels_cen, ...
-                           outDir);
+                           outDir, plot_vs_snr, plot_vs_isr);
 
     % BER do DAS
     plot_metric(mean_BER_DAS_per_cen,  'BER DAS',  'ber_das',  'BER medio (%)', false);
@@ -2255,11 +2313,13 @@ function plot_metric_helper(metric_per_cen, metric_name, file_prefix, ...
                             nCoupling, range_coupling, nISR, nSNR, ...
                             range_ISR_dB, range_SNR_dB, init_tag, ...
                             styles_cen, markers_cen, cmap_cen, ...
-                            short_labels_cen, outDir)
+                            short_labels_cen, outDir, pv_snr, pv_isr)
 %PLOT_METRIC_HELPER  Gera plots agregados de uma metrica (BER ou EVM)
 %   vs SNR (uma figura por valor de ISR) e vs ISR (uma figura por SNR).
+%   pv_snr/pv_isr controlam quais conjuntos sao gerados.
 
     % --- vs SNR (uma figura por ISR) ---
+    if pv_snr
     for iISR_fix = 1:nISR
         fig_h = figure('Name', sprintf('%s vs SNR (ISR=%+d dB, init=%s)', ...
                        metric_name, range_ISR_dB(iISR_fix), init_tag), ...
@@ -2288,8 +2348,10 @@ function plot_metric_helper(metric_per_cen, metric_name, file_prefix, ...
                     range_ISR_dB(iISR_fix), init_tag)), ...
             'Resolution', 200);
     end
+    end   % --- if pv_snr ---
 
     % --- vs ISR (uma figura por SNR) ---
+    if pv_isr
     for iSNR_fix = 1:nSNR
         fig_h = figure('Name', sprintf('%s vs ISR (SNR=%+d dB, init=%s)', ...
                        metric_name, range_SNR_dB(iSNR_fix), init_tag), ...
@@ -2318,4 +2380,5 @@ function plot_metric_helper(metric_per_cen, metric_name, file_prefix, ...
                     range_SNR_dB(iSNR_fix), init_tag)), ...
             'Resolution', 200);
     end
+    end   % --- if pv_isr ---
 end
