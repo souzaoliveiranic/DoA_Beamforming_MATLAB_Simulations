@@ -4,9 +4,6 @@
 %  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
 %where you can also make suggestions and rate matlab2tikz.
 %
-\definecolor{mycolor1}{rgb}{1.00000,0.00000,1.00000}%
-\definecolor{mycolor2}{rgb}{0.00000,1.00000,1.00000}%
-%
 \begin{tikzpicture}
 
 \begin{axis}[%
@@ -32,109 +29,93 @@ ymajorgrids,
 yminorgrids,
 legend style={legend cell align=left, align=left, draw=white!15!black}
 ]
-\addplot [color=blue, line width=2.0pt, mark=o, mark options={solid, blue}]
+\addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
--6	35.832823026165\\
-0	33.5456049322053\\
-6	33.8276667921781\\
+-6	1.47528000065008\\
+-3	1.33404952531045\\
+0	1.08048758956527\\
+3	1.16889284192772\\
+6	1.07370779619842\\
 };
-\addlegendentry{r = 0.25}
+\addlegendentry{KW}
 
-\addplot [color=black, line width=2.0pt, mark=o, mark options={solid, black}]
+\addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--6	63.8674997036237\\
-0	65.1618038422774\\
-6	68.8300774450249\\
+-6	2.32390022675737\\
+-3	2.16430839002267\\
+0	2.17229024943311\\
+3	2.11113378684807\\
+6	2.12793650793651\\
 };
-\addlegendentry{r = 0.2}
+\addlegendentry{DAS}
 
-\addplot [color=mycolor1, line width=2.0pt, mark=o, mark options={solid, mycolor1}]
+\addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--6	98.5719798097408\\
-0	101.796319340847\\
-6	100.195556055141\\
+-6	2.11222222222222\\
+-3	1.82716553287982\\
+0	1.62716553287982\\
+3	1.35984126984127\\
+6	1.11385487528345\\
 };
-\addlegendentry{r = 0.15}
+\addlegendentry{Capon}
 
-\addplot [color=mycolor2, line width=2.0pt, mark=o, mark options={solid, mycolor2}]
+\addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--6	99.6388328078118\\
-0	106.773387489113\\
-6	108.462513144272\\
+-6	1.60972789115646\\
+-3	0.770589569160998\\
+0	0.732290249433106\\
+3	0.660022675736961\\
+6	0.649387755102041\\
 };
-\addlegendentry{r = 0.1}
+\addlegendentry{MUSIC}
 
-\addplot [color=blue, dashed, line width=2.0pt, mark=x, mark options={solid, blue}, forget plot]
+\addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
   table[row sep=crcr]{%
--6	2.0431746031746\\
-0	1.65106575963719\\
-6	1.5756462585034\\
+-6	1.35783643644756\\
+-3	1.1561207374597\\
+0	1.20110613058553\\
+3	1.18668931339592\\
+6	1.21933812022328\\
 };
-\addplot [color=black, dashed, line width=2.0pt, mark=x, mark options={solid, black}, forget plot]
+\addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
   table[row sep=crcr]{%
--6	2.79383219954649\\
-0	1.97879818594104\\
-6	1.81421768707483\\
+-6	3.04043083900227\\
+-3	2.99843537414966\\
+0	3.04893424036281\\
+3	2.94233560090703\\
+6	3.03616780045352\\
 };
-\addplot [color=mycolor1, dashed, line width=2.0pt, mark=x, mark options={solid, mycolor1}, forget plot]
+\addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
   table[row sep=crcr]{%
--6	4.60943310657597\\
-0	2.64124716553288\\
-6	2.41285714285714\\
+-6	2.31965986394558\\
+-3	2.55575963718821\\
+0	3.31528344671202\\
+3	4.49233560090703\\
+6	5.42337868480725\\
 };
-\addplot [color=mycolor2, dashed, line width=2.0pt, mark=x, mark options={solid, mycolor2}, forget plot]
+\addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
   table[row sep=crcr]{%
--6	22.315328798186\\
-0	6.4959410430839\\
-6	5.62816326530612\\
+-6	50.29\\
+-3	53.3519274376417\\
+0	53.7396145124717\\
+3	55.7904308390023\\
+6	55.0534240362812\\
 };
-\addplot [color=blue, dotted, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
-  table[row sep=crcr]{%
--6	2.27369614512472\\
-0	2.06795918367347\\
-6	2.58755102040816\\
-};
-\addplot [color=black, dotted, line width=2.0pt, mark=square, mark options={solid, black}, forget plot]
-  table[row sep=crcr]{%
--6	3.11403628117914\\
-0	2.3650566893424\\
-6	2.81038548752835\\
-};
-\addplot [color=mycolor1, dotted, line width=2.0pt, mark=square, mark options={solid, mycolor1}, forget plot]
-  table[row sep=crcr]{%
--6	5.09138321995465\\
-0	2.98673469387755\\
-6	2.98251700680272\\
-};
-\addplot [color=mycolor2, dotted, line width=2.0pt, mark=square, mark options={solid, mycolor2}, forget plot]
-  table[row sep=crcr]{%
--6	24.0061904761905\\
-0	7.18986394557824\\
-6	5.99775510204081\\
-};
-\addplot [color=blue, dashdotted, line width=2.0pt, mark=diamond, mark options={solid, blue}, forget plot]
-  table[row sep=crcr]{%
--6	25.8128344671202\\
-0	38.7512244897959\\
-6	46.3359410430839\\
-};
-\addplot [color=black, dashdotted, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
-  table[row sep=crcr]{%
--6	27.392925170068\\
-0	40.7954648526077\\
-6	45.260022675737\\
-};
-\addplot [color=mycolor1, dashdotted, line width=2.0pt, mark=diamond, mark options={solid, mycolor1}, forget plot]
-  table[row sep=crcr]{%
--6	31.9560317460317\\
-0	45.7813378684807\\
-6	41.3967573696146\\
-};
-\addplot [color=mycolor2, dashdotted, line width=2.0pt, mark=diamond, mark options={solid, mycolor2}, forget plot]
-  table[row sep=crcr]{%
--6	40.4780272108843\\
-0	48.0963038548753\\
-6	52.9619954648526\\
-};
+\end{axis}
+
+\begin{axis}[%
+width=1.227\figurewidth,
+height=1.227\figureheight,
+at={(-0.16\figurewidth,-0.135\figureheight)},
+scale only axis,
+xmin=0,
+xmax=1,
+ymin=0,
+ymax=1,
+axis line style={draw=none},
+ticks=none,
+axis x line*=bottom,
+axis y line*=left
+]
 \end{axis}
 \end{tikzpicture}%

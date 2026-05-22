@@ -14,7 +14,7 @@ scale only axis,
 xmin=-6,
 xmax=6,
 xlabel style={font=\color{white!15!black}},
-xlabel={ISR (dB)},
+xlabel={SNR (dB)},
 ymode=log,
 ymin=-10,
 ymax=100,
@@ -31,91 +31,75 @@ legend style={legend cell align=left, align=left, draw=white!15!black}
 ]
 \addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
--6	1.47528000065008\\
--3	1.9729355930839\\
-0	2.77516478976651\\
-3	3.33071026308298\\
-6	5.02436053309157\\
+-6	2.77516478976651\\
+-3	2.11141858038813\\
+0	2.10521129164352\\
+3	2.20490302088247\\
+6	2.1415242970125\\
 };
 \addlegendentry{KW}
 
 \addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--6	2.32390022675737\\
--3	4.37727891156463\\
-0	43.9304988662132\\
-3	86.5054421768707\\
-6	88.0724943310658\\
+-6	43.9304988662132\\
+-3	46.2942857142857\\
+0	48.224716553288\\
+3	46.1468027210884\\
+6	45.7298185941043\\
 };
 \addlegendentry{DAS}
 
 \addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--6	2.11222222222222\\
--3	3.69049886621315\\
-0	44.1460090702948\\
-3	87.0544217687075\\
-6	88.3873696145125\\
+-6	44.1460090702948\\
+-3	44.4167800453515\\
+0	47.7569841269842\\
+3	44.4363492063492\\
+6	45.3820181405896\\
 };
 \addlegendentry{Capon}
 
 \addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--6	1.60972789115646\\
--3	5.30163265306123\\
-0	50.0373015873016\\
-3	82.9507256235828\\
-6	88.9615873015873\\
+-6	50.0373015873016\\
+-3	45.9336507936508\\
+0	45.1779591836735\\
+3	43.9732199546485\\
+6	49.0207936507937\\
 };
 \addlegendentry{MUSIC}
 
 \addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
   table[row sep=crcr]{%
--6	1.35783643644756\\
--3	2.03005184505652\\
-0	2.57059690841793\\
-3	7.12077291075512\\
-6	14.12272960578\\
+-6	2.57059690841793\\
+-3	3.29804090349114\\
+0	2.8552443574671\\
+3	2.86533218874265\\
+6	2.76306942930423\\
 };
 \addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
   table[row sep=crcr]{%
--6	3.04043083900227\\
--3	5.8646485260771\\
-0	45.7648526077098\\
-3	86.8560544217687\\
-6	88.3879818594104\\
+-6	45.7648526077098\\
+-3	44.1114739229025\\
+0	51.1266439909297\\
+3	48.4625850340136\\
+6	46.7236734693877\\
 };
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
   table[row sep=crcr]{%
--6	2.31965986394558\\
--3	3.52646258503401\\
-0	46.6878458049887\\
-3	91.2171882086168\\
-6	92.4533106575964\\
+-6	46.6878458049887\\
+-3	50.5115646258503\\
+0	48.3996145124717\\
+3	45.9948979591837\\
+6	51.5775963718821\\
 };
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
   table[row sep=crcr]{%
--6	50.29\\
--3	50.5268934240362\\
-0	54.7753287981859\\
-3	55.0961451247165\\
-6	56.822335600907\\
+-6	54.7753287981859\\
+-3	56.9189115646259\\
+0	54.7198639455782\\
+3	55.4221541950114\\
+6	56.6351700680272\\
 };
-\end{axis}
-
-\begin{axis}[%
-width=1.227\figurewidth,
-height=1.227\figureheight,
-at={(-0.16\figurewidth,-0.135\figureheight)},
-scale only axis,
-xmin=0,
-xmax=1,
-ymin=0,
-ymax=1,
-axis line style={draw=none},
-ticks=none,
-axis x line*=bottom,
-axis y line*=left
-]
 \end{axis}
 \end{tikzpicture}%
