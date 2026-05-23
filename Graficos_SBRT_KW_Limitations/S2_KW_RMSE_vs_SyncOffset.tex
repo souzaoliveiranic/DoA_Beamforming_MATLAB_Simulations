@@ -1,0 +1,58 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.951\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-30,
+xmax=30,
+xlabel style={font=\color{mycolor2}},
+xlabel={Erro de sincronização ($\Delta / T_{\mathrm{sym}}$)},
+ymode=log,
+ymin=0.303574330096139,
+ymax=0.443012957586724,
+yminorticks=true,
+ylabel style={font=\color{mycolor2}},
+ylabel={RMSE (degrees)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor2}},
+title={KW: RMSE vs sync error (Interf=FM, K=2000)},
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.6pt, mark=o, mark options={solid, mycolor1}]
+  table[row sep=crcr]{%
+-30	0.349395450222882\\
+-20	0.334003561684332\\
+-10	0.376807117581365\\
+-4	0.381811319345964\\
+-3	0.346792636888604\\
+-2	0.36402740384685\\
+-1	0.34694734935807\\
+-0.5	0.383478969619578\\
+0	0.403725708239615\\
+0.5	0.443012957586724\\
+1	0.399592982171703\\
+2	0.412286759919619\\
+3	0.431273257151588\\
+4	0.35949362028835\\
+10	0.363841122883648\\
+20	0.404395374503096\\
+30	0.303574330096139\\
+};
+\addlegendentry{SNR=+12, ISR=-20}
+
+\end{axis}
+\end{tikzpicture}%

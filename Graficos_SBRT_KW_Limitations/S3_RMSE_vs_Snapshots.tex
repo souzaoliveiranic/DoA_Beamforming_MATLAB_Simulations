@@ -1,0 +1,102 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
+\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.951\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmode=log,
+xmin=50,
+xmax=10000,
+xminorticks=true,
+xlabel style={font=\color{mycolor5}},
+xlabel={Número de snapshots K},
+ymode=log,
+ymin=0.485725485389355,
+ymax=139.859671047913,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={RMSE (degrees)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={$\text{RMSE vs K (Mod}_{\text{int}}\text{=FM, sync=0)}$},
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.6pt, mark=o, mark options={solid, mycolor1}]
+  table[row sep=crcr]{%
+50	46.8428371694829\\
+100	93.27894055528\\
+200	59.1104159052062\\
+400	39.6828213681524\\
+800	22.5589140510454\\
+1500	4.02341827681158\\
+2500	0.65250689864165\\
+4000	2.39274463694897\\
+6000	3.00622196732713\\
+8000	1.45313830119858\\
+};
+\addlegendentry{SNR=-3, ISR=+0}
+
+\addplot [color=mycolor2, line width=1.6pt, mark=square, mark options={solid, mycolor2}]
+  table[row sep=crcr]{%
+50	65.7636092887364\\
+100	40.2046823823935\\
+200	79.180961739872\\
+400	25.3799742880267\\
+800	6.66863301358267\\
+1500	1.14319555857566\\
+2500	3.86088956189771\\
+4000	1.6550549805886\\
+6000	1.04762266600738\\
+8000	1.44768051394141\\
+};
+\addlegendentry{SNR=+0, ISR=+0}
+
+\addplot [color=mycolor3, line width=1.6pt, mark=diamond, mark options={solid, mycolor3}]
+  table[row sep=crcr]{%
+50	139.859671047913\\
+100	34.5818265228454\\
+200	7.85175891094093\\
+400	4.26550073429619\\
+800	1.50422646312339\\
+1500	1.52915207511372\\
+2500	1.42245925581394\\
+4000	0.933237524794168\\
+6000	0.727706006021126\\
+8000	0.485725485389355\\
+};
+\addlegendentry{SNR=+6, ISR=-6}
+
+\addplot [color=mycolor4, line width=1.6pt, mark=triangle, mark options={solid, mycolor4}]
+  table[row sep=crcr]{%
+50	53.0890364117815\\
+100	52.0422171892204\\
+200	110.801600581968\\
+400	50.3123209051227\\
+800	5.19743079814297\\
+1500	1.56420069630349\\
+2500	2.13440759219791\\
+4000	2.87194768592585\\
+6000	2.36552462992523\\
+8000	0.546982472211776\\
+};
+\addlegendentry{SNR=+6, ISR=+0}
+
+\end{axis}
+\end{tikzpicture}%

@@ -1,0 +1,98 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.951\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmode=log,
+xmin=50,
+xmax=10000,
+xminorticks=true,
+xlabel style={font=\color{mycolor1}},
+xlabel={Número de snapshots K},
+ymode=log,
+ymin=1,
+ymax=100,
+yminorticks=true,
+ylabel style={font=\color{mycolor1}},
+ylabel={RMSE (degrees)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor1}},
+title={RMSE vs K $|$ SNR=+6, ISR=+0 (Interf=FM, sync=0)},
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=red, line width=1.6pt, mark=o, mark options={solid, red}]
+  table[row sep=crcr]{%
+50	90.2202354340338\\
+100	89.6678804550489\\
+200	72.2211376669973\\
+400	56.1097867284377\\
+800	10.4565510529058\\
+1500	11.8991307523928\\
+2500	3.30106695470425\\
+4000	2.53026467702058\\
+6000	1.7278551297563\\
+8000	1.40053752137235\\
+};
+\addlegendentry{KW}
+
+\addplot [color=green, line width=1.6pt, mark=x, mark options={solid, green}]
+  table[row sep=crcr]{%
+50	79.8015353799882\\
+100	79.3147265202025\\
+200	75.0197487397291\\
+400	66.9148191066631\\
+800	74.8427990113477\\
+1500	73.8097695477969\\
+2500	75.0116339841942\\
+4000	77.7311249265559\\
+6000	67.8546342480247\\
+8000	86.4069688827743\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=blue, line width=1.6pt, mark=square, mark options={solid, blue}]
+  table[row sep=crcr]{%
+50	79.9245722957776\\
+100	80.5361403608225\\
+200	76.5173088465747\\
+400	79.3553691274021\\
+800	76.7241215854768\\
+1500	84.1374805583523\\
+2500	67.8605632447411\\
+4000	82.2755765860247\\
+6000	71.6331711361029\\
+8000	84.5611274267549\\
+};
+\addlegendentry{Capon}
+
+\addplot [color=black, line width=1.6pt, mark=diamond, mark options={solid, black}]
+  table[row sep=crcr]{%
+50	79.8292308640682\\
+100	79.3158602739501\\
+200	75.5444486565757\\
+400	67.3645709690528\\
+800	75.8486188040074\\
+1500	74.899657333544\\
+2500	77.0575241554153\\
+4000	79.300323836477\\
+6000	69.8681425922193\\
+8000	88.0185363094858\\
+};
+\addlegendentry{MUSIC}
+
+\end{axis}
+\end{tikzpicture}%

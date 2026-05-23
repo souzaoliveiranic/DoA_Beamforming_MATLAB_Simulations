@@ -1,0 +1,139 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.951\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-4,
+xmax=4,
+xlabel style={font=\color{mycolor1}},
+xlabel={Erro de sincronização ($\Delta / T_{\mathrm{sym}}$)},
+ymode=log,
+ymin=1,
+ymax=100,
+yminorticks=true,
+ylabel style={font=\color{mycolor1}},
+ylabel={RMSE (degrees)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor1}},
+title={RMSE vs sync error $|$ SNR=+12, ISR=-3 (Interf=FM, K=2000)},
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=red, line width=1.6pt, mark=o, mark options={solid, red}]
+  table[row sep=crcr]{%
+-4	6.68371106352798\\
+-3	2.90455409422939\\
+-2	2.23827867750259\\
+-1.5	3.05822883554261\\
+-1	1.99879473698353\\
+-0.75	2.36515341226662\\
+-0.5	1.9767249510748\\
+-0.25	2.24155015602862\\
+-0.1	2.34177422997838\\
+-0.05	6.51849444751196\\
+0	2.99578833213753\\
+0.05	5.31378774993365\\
+0.1	1.93480364646021\\
+0.25	2.0706352926197\\
+0.5	1.85542447534364\\
+0.75	2.51449284627841\\
+1	2.52282456196831\\
+1.5	2.46435364428755\\
+2	2.20799203206456\\
+3	1.83540487420067\\
+4	2.28545054368496\\
+};
+\addlegendentry{KW}
+
+\addplot [color=green, line width=1.6pt, mark=x, mark options={solid, green}]
+  table[row sep=crcr]{%
+-4	6.88455929243656\\
+-3	6.47104974046222\\
+-2	7.37225242051742\\
+-1.5	8.70217203925247\\
+-1	7.00204528283832\\
+-0.75	8.20904222669593\\
+-0.5	7.47101986584521\\
+-0.25	8.4706680219476\\
+-0.1	8.19064033258693\\
+-0.05	6.81083385878571\\
+0	8.04962443730936\\
+0.05	7.6135012323802\\
+0.1	7.53423064805307\\
+0.25	7.70042444813341\\
+0.5	7.03265658954877\\
+0.75	6.55081428148524\\
+1	7.71457794459791\\
+1.5	7.99226165869109\\
+2	7.57347412971755\\
+3	6.70430838699334\\
+4	7.63693327050608\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=blue, line width=1.6pt, mark=square, mark options={solid, blue}]
+  table[row sep=crcr]{%
+-4	60.2059156911823\\
+-3	74.0892459454586\\
+-2	66.5154732980252\\
+-1.5	49.3527279623477\\
+-1	61.4272839803374\\
+-0.75	66.1712979790044\\
+-0.5	54.4977439570707\\
+-0.25	58.2227278264886\\
+-0.1	52.9189923824139\\
+-0.05	55.6844268014125\\
+0	55.2564593973758\\
+0.05	62.2933607029878\\
+0.1	54.2998300016938\\
+0.25	64.2363796447222\\
+0.5	54.9726651261909\\
+0.75	71.1880078848045\\
+1	69.6942492228321\\
+1.5	56.8910461550696\\
+2	62.7371404518073\\
+3	68.2220935716789\\
+4	59.3035047279449\\
+};
+\addlegendentry{Capon}
+
+\addplot [color=black, line width=1.6pt, mark=diamond, mark options={solid, black}]
+  table[row sep=crcr]{%
+-4	8.06217079149533\\
+-3	7.62915576393179\\
+-2	8.69320888699343\\
+-1.5	9.71779881496893\\
+-1	7.92268364358532\\
+-0.75	9.64143946714158\\
+-0.5	8.840287193562\\
+-0.25	9.43684850852701\\
+-0.1	9.17475585754736\\
+-0.05	7.99106471863946\\
+0	9.22567309103019\\
+0.05	8.51987638196708\\
+0.1	8.75342661782618\\
+0.25	8.77954102980438\\
+0.5	8.34084752823035\\
+0.75	7.80724987527817\\
+1	9.00547493632856\\
+1.5	9.43553168007228\\
+2	8.7751972096216\\
+3	8.01257145004711\\
+4	8.82608972811968\\
+};
+\addlegendentry{MUSIC}
+
+\end{axis}
+\end{tikzpicture}%

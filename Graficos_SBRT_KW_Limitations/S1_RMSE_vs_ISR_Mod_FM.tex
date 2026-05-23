@@ -1,0 +1,91 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.951\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-20,
+xmax=10,
+xlabel style={font=\color{mycolor1}},
+xlabel={ISR (dB)},
+ymode=log,
+ymin=0,
+ymax=110,
+yminorticks=true,
+ylabel style={font=\color{mycolor1}},
+ylabel={RMSE (degrees)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor1}},
+title={RMSE vs ISR $|$ Interf = FM (SNR=10 dB, K=2000)},
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=red, line width=1.6pt, mark size=3.5pt, mark=o, mark options={solid, red}]
+  table[row sep=crcr]{%
+-18	0.469063329784561\\
+-15	0.593662541882791\\
+-12	0.787997137801917\\
+-9	1.26958398164697\\
+-6	1.55446905699264\\
+-3	2.03543430789829\\
+0	13.0549995236102\\
+3	22.2959081025737\\
+6	32.7685961647629\\
+};
+\addlegendentry{KW}
+
+\addplot [color=green, line width=1.6pt, mark size=3.5pt, mark=x, mark options={solid, green}]
+  table[row sep=crcr]{%
+-18	0.463347752099651\\
+-15	0.737893364539229\\
+-12	1.18657932705184\\
+-9	2.11085720844964\\
+-6	3.40508391919809\\
+-3	7.31144292052773\\
+0	79.7633408496768\\
+3	95.9791043728411\\
+6	104.879162663043\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=blue, line width=1.6pt, mark size=2.5pt, mark=square, mark options={solid, blue}]
+  table[row sep=crcr]{%
+-18	4.06383571997209\\
+-15	5.72326057596577\\
+-12	7.46817038098325\\
+-9	7.86087805682769\\
+-6	25.9095529539841\\
+-3	55.5055417487583\\
+0	76.2435491729883\\
+3	74.8876470594723\\
+6	87.0427934781952\\
+};
+\addlegendentry{Capon}
+
+\addplot [color=black, line width=1.6pt, mark size=6.0pt, mark=diamond, mark options={solid, black}]
+  table[row sep=crcr]{%
+-18	0.475386177080364\\
+-15	0.761518786877193\\
+-12	1.26486761000282\\
+-9	2.25039120362726\\
+-6	3.71901926991399\\
+-3	8.69053409884079\\
+0	81.7599447694195\\
+3	95.7405437469345\\
+6	104.654707815353\\
+};
+\addlegendentry{MUSIC}
+
+\end{axis}
+\end{tikzpicture}%
