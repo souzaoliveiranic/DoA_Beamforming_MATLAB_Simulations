@@ -50,7 +50,7 @@ phi_int_deg_fixed = -45;
 randomize_angles  = true;   % sorteia ângulos a cada ensemble
 
 % Acoplamento mútuo
-Z0 = 10;
+Z0 = 50;
 apply_coupling = true;
 fprintf('Calculando matriz de acoplamento para r=%.3f lambda...\n', radius/lambda);
 Ctx_full = utils.compute_Ctx_for_R(fc, M, radius, Z0);
@@ -65,7 +65,7 @@ end
 interferer_types = ["FM","FSK2","QAM64","NOISE"];
 
 % Monte Carlo
-nEnsembles = 100;     % nº de realizações por ponto (sobe para ~50 no run final)
+nEnsembles = 500;     % nº de realizações por ponto (sobe para ~50 no run final)
 
 % rng(42);  % descomente para reprodutibilidade
 
@@ -111,222 +111,240 @@ run_all_once = @(SNR_dB, ISR_dB, interferer_type, sync_offset, K, ...
 % fprintf('\n========================================================\n');
 % fprintf('Estudo 1: RMSE vs ISR (KW, DAS, Capon, MUSIC)\n');
 % fprintf('========================================================\n');
-% 
-% SNR_dB_S1   = 10;
-% K_S1        = 2000;
-% sync_S1     = 0;
-% range_ISR_S1 = -18:3:6;
-% 
-% nMod = numel(interferer_types);
-% nISR = numel(range_ISR_S1);
-% RMSE_S1 = zeros(nMethods, nMod, nISR);
-% 
-% t0 = tic;
-% for iMod = 1:nMod
-%     for iISR = 1:nISR
-%         errs = zeros(nMethods, nEnsembles);
-%         for e = 1:nEnsembles
-%             if randomize_angles
-%                 phi_s = -180 + 360*rand;
-%                 phi_i = -180 + 360*rand;
-%             else
-%                 phi_s = phi_sig_deg_fixed;
-%                 phi_i = phi_int_deg_fixed;
-%             end
-%             phi_hats = run_all_once(SNR_dB_S1, range_ISR_S1(iISR), ...
-%                                     interferer_types(iMod), sync_S1, K_S1, ...
-%                                     phi_s, phi_i);
-%             errs(:,e) = abs(mod(phi_hats - phi_s + 180, 360) - 180);
-%         end
-%         RMSE_S1(:,iMod,iISR) = sqrt(mean(errs.^2, 2));
-%         fprintf('  [Mod=%-6s | ISR=%+3d dB] RMSE: KW=%6.2f  DAS=%6.2f  Capon=%6.2f  MUSIC=%6.2f  (%.1fs)\n', ...
-%                 interferer_types(iMod), range_ISR_S1(iISR), ...
-%                 RMSE_S1(1,iMod,iISR), RMSE_S1(2,iMod,iISR), ...
-%                 RMSE_S1(3,iMod,iISR), RMSE_S1(4,iMod,iISR), toc(t0));
-%     end
-% end
-% 
-% % Gráficos S1: uma figura por modulação, 4 curvas (uma por método)
-% for iMod = 1:nMod
-%     figname = sprintf('S1 RMSE vs ISR | Interf = %s', interferer_types(iMod));
-%     fig = figure('Name', figname, 'NumberTitle','off', ...
-%                  'Position',[100 100 800 500]);
-%     hold on; grid on; box on;
-%     for m = 1:nMethods
-%         plot(range_ISR_S1, squeeze(RMSE_S1(m,iMod,:)), ...
-%              method_markers(m), 'Color', method_colors(m), ...
-%              'LineWidth', 1.6, 'MarkerSize', 7);
-%     end
-%     set(gca,'YScale','log');
-%     xlabel('ISR (dB)','Interpreter','latex');
-%     ylabel('RMSE (degrees)','Interpreter','latex');
-%     ylim([0 110]);
-%     title(sprintf('RMSE vs ISR | Interf = %s (SNR=%d dB, K=%d)', ...
-%                   interferer_types(iMod), SNR_dB_S1, K_S1));
-%     legend(method_names,'Location','best','Interpreter','latex');
-% 
-%     base = sprintf('S1_RMSE_vs_ISR_Mod_%s', interferer_types(iMod));
-%     exportgraphics(fig, fullfile(outDir,[char(base) '.png']),'Resolution',300);
-%     try
-%         matlab2tikz(fullfile(outDir,[char(base) '.tex']), ...
-%                     'width','\figurewidth','height','\figureheight');
-%     catch ME
-%         warning('matlab2tikz indisponível: %s', ME.message);
-%     end
-% end
-% 
-% % --- Gráfico resumo (KW apenas, todas as modulações) ---
-% fig = figure('Name','S1 KW: RMSE vs ISR (todas as modulações)', ...
-%              'NumberTitle','off','Position',[100 100 800 500]);
-% hold on; grid on; box on;
-% summary_markers = ["o-","s-","d-","^-","v-","*-","x-","+-"];
-% summary_colors  = lines(nMod);
-% for iMod = 1:nMod
-%     plot(range_ISR_S1, squeeze(RMSE_S1(1,iMod,:)), ...
-%          summary_markers(min(iMod,numel(summary_markers))), ...
-%          'Color', summary_colors(iMod,:), ...
-%          'LineWidth', 1.6, 'MarkerSize', 7);
-% end
-% set(gca,'YScale','log');
-% xlabel('ISR (dB)','Interpreter','latex');
-% ylabel('RMSE (degrees)','Interpreter','latex');
-% ylim([0 110]);
-% title(sprintf('KW: RMSE vs ISR (SNR=%d dB, K=%d, sync=0)', SNR_dB_S1, K_S1));
-% legend(interferer_types,'Location','best','Interpreter','latex');
-% exportgraphics(fig, fullfile(outDir,'S1_KW_RMSE_vs_ISR_by_Modulation.png'),'Resolution',300);
-% try
-%     matlab2tikz(fullfile(outDir,'S1_KW_RMSE_vs_ISR_by_Modulation.tex'), ...
-%                 'width','\figurewidth','height','\figureheight');
-% catch ME
-%     warning('matlab2tikz indisponível: %s', ME.message);
-% end
-% 
-% save(fullfile(outDir,'results_S1.mat'), 'RMSE_S1','range_ISR_S1', ...
-%      'interferer_types','SNR_dB_S1','K_S1','method_names');
-% 
-% return;
+
+SNR_dB_S1   = 10;
+K_S1        = 2000;
+sync_S1     = 0;
+range_ISR_S1 = -18:3:6;
+
+nMod = numel(interferer_types);
+nISR = numel(range_ISR_S1);
+RMSE_S1 = zeros(nMethods, nMod, nISR);
+
+t0 = tic;
+for iMod = 1:nMod
+    for iISR = 1:nISR
+        errs = zeros(nMethods, nEnsembles);
+        for e = 1:nEnsembles
+            if randomize_angles
+                phi_s = -180 + 360*rand;
+                phi_i = -180 + 360*rand;
+            else
+                phi_s = phi_sig_deg_fixed;
+                phi_i = phi_int_deg_fixed;
+            end
+            phi_hats = run_all_once(SNR_dB_S1, range_ISR_S1(iISR), ...
+                                    interferer_types(iMod), sync_S1, K_S1, ...
+                                    phi_s, phi_i);
+            errs(:,e) = abs(mod(phi_hats - phi_s + 180, 360) - 180);
+        end
+        RMSE_S1(:,iMod,iISR) = sqrt(mean(errs.^2, 2));
+        fprintf('  [Mod=%-6s | ISR=%+3d dB] RMSE: KW=%6.2f  DAS=%6.2f  Capon=%6.2f  MUSIC=%6.2f  (%.1fs)\n', ...
+                interferer_types(iMod), range_ISR_S1(iISR), ...
+                RMSE_S1(1,iMod,iISR), RMSE_S1(2,iMod,iISR), ...
+                RMSE_S1(3,iMod,iISR), RMSE_S1(4,iMod,iISR), toc(t0));
+    end
+end
+
+% Gráficos S1: uma figura por modulação, 4 curvas (uma por método)
+for iMod = 1:nMod
+    figname = sprintf('S1 RMSE vs ISR | Interf = %s', interferer_types(iMod));
+    fig = figure('Name', figname, 'NumberTitle','off', ...
+                 'Position',[100 100 800 500]);
+    hold on; grid on; box on;
+    for m = 1:nMethods
+        plot(range_ISR_S1, squeeze(RMSE_S1(m,iMod,:)), ...
+             method_markers(m), 'Color', method_colors(m), ...
+             'LineWidth', 1.6, 'MarkerSize', 7);
+    end
+    set(gca,'YScale','log');
+    xlabel('ISR (dB)','Interpreter','latex');
+    ylabel('RMSE (degrees)','Interpreter','latex');
+    ylim([0 110]);
+    title(sprintf('RMSE vs ISR | Interf = %s (SNR=%d dB, K=%d)', ...
+                  interferer_types(iMod), SNR_dB_S1, K_S1));
+    legend(method_names,'Location','best','Interpreter','latex');
+
+    base = sprintf('S1_RMSE_vs_ISR_Mod_%s', interferer_types(iMod));
+    exportgraphics(fig, fullfile(outDir,[char(base) '.png']),'Resolution',300);
+    try
+        matlab2tikz(fullfile(outDir,[char(base) '.tex']), ...
+                    'width','\figurewidth','height','\figureheight');
+    catch ME
+        warning('matlab2tikz indisponível: %s', ME.message);
+    end
+end
+
+% --- Gráfico resumo (KW apenas, todas as modulações) ---
+fig = figure('Name','S1 KW: RMSE vs ISR (todas as modulações)', ...
+             'NumberTitle','off','Position',[100 100 800 500]);
+hold on; grid on; box on;
+summary_markers = ["o-","s-","d-","^-","v-","*-","x-","+-"];
+summary_colors  = lines(nMod);
+for iMod = 1:nMod
+    plot(range_ISR_S1, squeeze(RMSE_S1(1,iMod,:)), ...
+         summary_markers(min(iMod,numel(summary_markers))), ...
+         'Color', summary_colors(iMod,:), ...
+         'LineWidth', 1.6, 'MarkerSize', 7);
+end
+set(gca,'YScale','log');
+xlabel('ISR (dB)','Interpreter','latex');
+ylabel('RMSE (degrees)','Interpreter','latex');
+ylim([0 110]);
+title(sprintf('KW: RMSE vs ISR (SNR=%d dB, K=%d, sync=0)', SNR_dB_S1, K_S1));
+legend(interferer_types,'Location','best','Interpreter','latex');
+exportgraphics(fig, fullfile(outDir,'S1_KW_RMSE_vs_ISR_by_Modulation.png'),'Resolution',300);
+try
+    matlab2tikz(fullfile(outDir,'S1_KW_RMSE_vs_ISR_by_Modulation.tex'), ...
+                'width','\figurewidth','height','\figureheight');
+catch ME
+    warning('matlab2tikz indisponível: %s', ME.message);
+end
+
+save(fullfile(outDir,'results_S1.mat'), 'RMSE_S1','range_ISR_S1', ...
+     'interferer_types','SNR_dB_S1','K_S1','method_names');
+
 
 %% =======================================================================
-%  ESTUDO 2: RMSE vs erro de sincronização
+%  ESTUDO 2: RMSE vs erro de sincronização (MODELO DE PREÂMBULO)
 % =======================================================================
-% fprintf('\n========================================================\n');
-% fprintf('Estudo 2: RMSE vs erro de sincronização (KW, DAS, Capon, MUSIC)\n');
-% fprintf('========================================================\n');
-% 
-% % Erro de sincronização expresso como FRAÇÃO do período de símbolo T_sym.
-% % T_sym = sps amostras (=30 amostras a fs=288 kHz). A autocorrelação de uma
-% % 2-FSK colapsa em ~1 T_sym, então faz sentido amostrar densamente
-% % sub-T_sym e estender até alguns T_sym para capturar o "joelho" da curva.
-% % Internamente, delayseq recebe o valor em amostras (suporta fracionário).
-% range_sync_Tsym = [-30 -20 -10 -4 -3 -2 -1 -0.5 ...
-%                     0 ...
-%                     0.5 1 2 3 4 10 20 30];
-% range_sync = range_sync_Tsym * sps;   % converte para amostras
-% 
-% % sync_scenarios = struct( ...
-% %     'SNR_dB', { 0,  6, 12, 12}, ...
-% %     'ISR_dB', {-20, -20, -20, -3});
-% sync_scenarios = struct( ...
-%     'SNR_dB', { 12}, ...
-%     'ISR_dB', {-20});
-% 
-% nScen = numel(sync_scenarios);
-% K_S2  = 2000;
-% mod_S2 = "FM";
-% 
-% nSync = numel(range_sync);
-% RMSE_S2 = zeros(nMethods, nScen, nSync);
-% 
-% t0 = tic;
-% for iScen = 1:nScen
-%     SNR_dB = sync_scenarios(iScen).SNR_dB;
-%     ISR_dB = sync_scenarios(iScen).ISR_dB;
-%     for iSync = 1:nSync
-%         errs = zeros(nMethods, nEnsembles);
-%         for e = 1:nEnsembles
-%             if randomize_angles
-%                 phi_s = -180 + 360*rand;
-%                 phi_i = -180 + 360*rand;
-%             else
-%                 phi_s = phi_sig_deg_fixed;
-%                 phi_i = phi_int_deg_fixed;
-%             end
-%             phi_hats = run_all_once(SNR_dB, ISR_dB, mod_S2, ...
-%                                     range_sync(iSync), K_S2, ...
-%                                     phi_s, phi_i);
-%             errs(:,e) = abs(mod(phi_hats - phi_s + 180, 360) - 180);
-%         end
-%         RMSE_S2(:,iScen,iSync) = sqrt(mean(errs.^2, 2));
-%         fprintf('  [SNR=%+3d ISR=%+3d sync=%+5.2f T_sym (%+6.2f samp)] RMSE: KW=%6.2f  DAS=%6.2f  Capon=%6.2f  MUSIC=%6.2f  (%.1fs)\n', ...
-%                 SNR_dB, ISR_dB, range_sync_Tsym(iSync), range_sync(iSync), ...
-%                 RMSE_S2(1,iScen,iSync), RMSE_S2(2,iScen,iSync), ...
-%                 RMSE_S2(3,iScen,iSync), RMSE_S2(4,iScen,iSync), toc(t0));
-%     end
-% end
-% 
-% % Gráficos S2: uma figura por cenário SNR/ISR, 4 curvas (uma por método)
-% for iScen = 1:nScen
-%     SNR_dB = sync_scenarios(iScen).SNR_dB;
-%     ISR_dB = sync_scenarios(iScen).ISR_dB;
-%     figname = sprintf('S2 RMSE vs Sync | SNR=%+d ISR=%+d', SNR_dB, ISR_dB);
-%     fig = figure('Name', figname, 'NumberTitle','off', ...
-%                  'Position',[100 100 800 500]);
-%     hold on; grid on; box on;
-%     for m = 1:nMethods
-%         plot(range_sync_Tsym, squeeze(RMSE_S2(m,iScen,:)), ...
-%              method_markers(m), 'Color', method_colors(m), ...
-%              'LineWidth', 1.6, 'MarkerSize', 6);
-%     end
-%     set(gca,'YScale','log');
-%     xlabel('Erro de sincronização ($\Delta / T_{\mathrm{sym}}$)','Interpreter','latex');
-%     ylabel('RMSE (degrees)','Interpreter','latex');
-%     title(sprintf('RMSE vs sync error | SNR=%+d, ISR=%+d (Interf=%s, K=%d)', ...
-%                   SNR_dB, ISR_dB, mod_S2, K_S2));
-%     legend(method_names,'Location','best','Interpreter','latex');
-% 
-%     base = sprintf('S2_RMSE_vs_Sync_SNR_%+ddB_ISR_%+ddB', SNR_dB, ISR_dB);
-%     base = strrep(base,'+','p');  base = strrep(base,'-','m');
-%     exportgraphics(fig, fullfile(outDir,[base '.png']),'Resolution',300);
-%     try
-%         matlab2tikz(fullfile(outDir,[base '.tex']), ...
-%                     'width','\figurewidth','height','\figureheight');
-%     catch ME
-%         warning('matlab2tikz indisponível: %s', ME.message);
-%     end
-% end
-% 
-% % --- Gráfico resumo (KW apenas, todos os cenários SNR/ISR) ---
-% fig = figure('Name','S2 KW: RMSE vs sync (todos os cenários)', ...
-%              'NumberTitle','off','Position',[100 100 800 500]);
-% hold on; grid on; box on;
-% summary_markers = ["o-","s-","d-","^-","v-","*-","x-","+-"];
-% summary_colors  = lines(nScen);
-% legend_strings = strings(nScen,1);
-% for iScen = 1:nScen
-%     plot(range_sync_Tsym, squeeze(RMSE_S2(1,iScen,:)), ...
-%          summary_markers(min(iScen,numel(summary_markers))), ...
-%          'Color', summary_colors(iScen,:), ...
-%          'LineWidth', 1.6, 'MarkerSize', 6);
-%     legend_strings(iScen) = sprintf('SNR=%+d, ISR=%+d', ...
-%         sync_scenarios(iScen).SNR_dB, sync_scenarios(iScen).ISR_dB);
-% end
-% set(gca,'YScale','log');
-% xlabel('Erro de sincronização ($\Delta / T_{\mathrm{sym}}$)','Interpreter','latex');
-% ylabel('RMSE (degrees)','Interpreter','latex');
-% title(sprintf('KW: RMSE vs sync error (Interf=%s, K=%d)', mod_S2, K_S2));
-% legend(legend_strings,'Location','best','Interpreter','latex');
-% exportgraphics(fig, fullfile(outDir,'S2_KW_RMSE_vs_SyncOffset.png'),'Resolution',300);
-% try
-%     matlab2tikz(fullfile(outDir,'S2_KW_RMSE_vs_SyncOffset.tex'), ...
-%                 'width','\figurewidth','height','\figureheight');
-% catch ME
-%     warning('matlab2tikz indisponível: %s', ME.message);
-% end
-% 
-% save(fullfile(outDir,'results_S2.mat'), 'RMSE_S2','range_sync','range_sync_Tsym', ...
-%      'sync_scenarios','K_S2','mod_S2','method_names');
-% 
-% return;
+%  O sinal recebido tem K amostras com a estrutura
+%      [ zeros (k0_true-1) | preâmbulo conhecido (K_kw) | dados (resto) ]
+%  Os estimadores acreditam que o preâmbulo começa em k0_true + Δ.
+%  - Δ < 0 : janela invade os zeros pré-pacote (perde sinal útil)
+%  - Δ > 0 : janela invade dados aleatórios desconhecidos (contamina R_xy)
+%  Todos os 4 métodos (KW + clássicos) operam na MESMA janela K_kw para
+%  comparação justa.
+% =======================================================================
+fprintf('\n========================================================\n');
+fprintf('Estudo 2: RMSE vs sync error - modelo de preâmbulo\n');
+fprintf('========================================================\n');
+
+K_S2     = 1000*sps;      % tamanho do sinal recebido (amostras)
+K_kw_S2  = 100*sps;      % tamanho do preâmbulo conhecido (amostras)
+mod_S2   = "FM";
+
+% k0_true (interno) será centralizado: k0_true = floor((K_S2-K_kw_S2)/2)+1
+% = floor(1500)+1 = 1501. Espaço antes ≈ 1500 amostras, espaço depois ≈ 1500.
+% Limita range_sync (amostras) para |Δ| <= 1400 com folga.
+
+range_sync_Tsym = [-200 -100 -60 -40 -30 -20 -10 -4 -3 -2 -1 -0.5 ...
+                    0 ...
+                    0.5 1 2 3 4 10 20 30 40 60 100 200];
+range_sync = range_sync_Tsym * sps;   % converte T_sym -> amostras
+
+sync_scenarios = struct( ...
+    'SNR_dB', { 12, 12,   0,  0}, ...
+    'ISR_dB', {-20, -3, -20, -3});
+
+nScen = numel(sync_scenarios);
+nSync = numel(range_sync);
+RMSE_S2 = zeros(nMethods, nScen, nSync);
+
+% Wrapper local para o Estudo 2
+run_all_once_v2 = @(SNR_dB, ISR_dB, interferer_type, sync_offset, K, K_kw, ...
+                    phi_sig_deg, phi_int_deg) ...
+    do_one_estimation_all_v2(M, radius, lambda, CM, ...
+                             phi_sig_deg, phi_int_deg, ...
+                             theta_sig_deg, theta_int_deg, ...
+                             SNR_dB, ISR_dB, K, K_kw, fs, ...
+                             Rs, sps, alpha, span, fd, ...
+                             interferer_type, sync_offset, ...
+                             A_scan, phi_scan);
+
+t0 = tic;
+for iScen = 1:nScen
+    SNR_dB = sync_scenarios(iScen).SNR_dB;
+    ISR_dB = sync_scenarios(iScen).ISR_dB;
+    for iSync = 1:nSync
+        errs = zeros(nMethods, nEnsembles);
+        for e = 1:nEnsembles
+            if randomize_angles
+                phi_s = -180 + 360*rand;
+                phi_i = -180 + 360*rand;
+            else
+                phi_s = phi_sig_deg_fixed;
+                phi_i = phi_int_deg_fixed;
+            end
+            phi_hats = run_all_once_v2(SNR_dB, ISR_dB, mod_S2, ...
+                                       range_sync(iSync), K_S2, K_kw_S2, ...
+                                       phi_s, phi_i);
+            errs(:,e) = abs(mod(phi_hats - phi_s + 180, 360) - 180);
+        end
+        RMSE_S2(:,iScen,iSync) = sqrt(mean(errs.^2, 2));
+        fprintf('  [SNR=%+3d ISR=%+3d Δ=%+5.2f T_sym (%+6.1f samp)] RMSE: KW=%6.2f  DAS=%6.2f  Capon=%6.2f  MUSIC=%6.2f  (%.1fs)\n', ...
+                SNR_dB, ISR_dB, range_sync_Tsym(iSync), range_sync(iSync), ...
+                RMSE_S2(1,iScen,iSync), RMSE_S2(2,iScen,iSync), ...
+                RMSE_S2(3,iScen,iSync), RMSE_S2(4,iScen,iSync), toc(t0));
+    end
+end
+
+% Gráficos S2: uma figura por cenário SNR/ISR, 4 curvas (uma por método)
+for iScen = 1:nScen
+    SNR_dB = sync_scenarios(iScen).SNR_dB;
+    ISR_dB = sync_scenarios(iScen).ISR_dB;
+    figname = sprintf('S2 RMSE vs Sync | SNR=%+d ISR=%+d', SNR_dB, ISR_dB);
+    fig = figure('Name', figname, 'NumberTitle','off', ...
+                 'Position',[100 100 800 500]);
+    hold on; grid on; box on;
+    h = gobjects(nMethods,1);
+    % Plota clássicos primeiro (m=2,3,4), KW por último (m=1) para ficar por cima
+    plot_order = [2, 3, 4, 1];
+    for m = plot_order
+        h(m) = plot(range_sync_Tsym, squeeze(RMSE_S2(m,iScen,:)), ...
+                    method_markers(m), 'Color', method_colors(m), ...
+                    'LineWidth', 1.6, 'MarkerSize', 6);
+    end
+    set(gca,'YScale','log');
+    xlabel('Erro de sincronização ($\Delta / T_{\mathrm{sym}}$)','Interpreter','latex');
+    ylabel('RMSE (degrees)','Interpreter','latex');
+    title(sprintf('RMSE vs sync error | SNR=%+d, ISR=%+d (Interf=%s, K=%d, K_{kw}=%d)', ...
+                  SNR_dB, ISR_dB, mod_S2, K_S2, K_kw_S2));
+    legend(h, method_names,'Location','best','Interpreter','latex');
+
+    base = sprintf('S2_RMSE_vs_Sync_SNR_%+ddB_ISR_%+ddB', SNR_dB, ISR_dB);
+    base = strrep(base,'+','p');  base = strrep(base,'-','m');
+    exportgraphics(fig, fullfile(outDir,[base '.png']),'Resolution',300);
+    try
+        matlab2tikz(fullfile(outDir,[base '.tex']), ...
+                    'width','\figurewidth','height','\figureheight');
+    catch ME
+        warning('matlab2tikz indisponível: %s', ME.message);
+    end
+end
+
+% --- Gráfico resumo (KW apenas, todos os cenários SNR/ISR) ---
+fig = figure('Name','S2 KW: RMSE vs sync (todos os cenários)', ...
+             'NumberTitle','off','Position',[100 100 800 500]);
+hold on; grid on; box on;
+summary_markers = ["o-","s-","d-","^-","v-","*-","x-","+-"];
+summary_colors  = lines(nScen);
+legend_strings = strings(nScen,1);
+for iScen = 1:nScen
+    plot(range_sync_Tsym, squeeze(RMSE_S2(1,iScen,:)), ...
+         summary_markers(min(iScen,numel(summary_markers))), ...
+         'Color', summary_colors(iScen,:), ...
+         'LineWidth', 1.6, 'MarkerSize', 6);
+    legend_strings(iScen) = sprintf('SNR=%+d, ISR=%+d', ...
+        sync_scenarios(iScen).SNR_dB, sync_scenarios(iScen).ISR_dB);
+end
+set(gca,'YScale','log');
+xlabel('Erro de sincronização ($\Delta / T_{\mathrm{sym}}$)','Interpreter','latex');
+ylabel('RMSE (degrees)','Interpreter','latex');
+title(sprintf('KW: RMSE vs sync error (Interf=%s, K=%d, K_{kw}=%d)', ...
+              mod_S2, K_S2, K_kw_S2));
+legend(legend_strings,'Location','best','Interpreter','latex');
+exportgraphics(fig, fullfile(outDir,'S2_KW_RMSE_vs_SyncOffset.png'),'Resolution',300);
+try
+    matlab2tikz(fullfile(outDir,'S2_KW_RMSE_vs_SyncOffset.tex'), ...
+                'width','\figurewidth','height','\figureheight');
+catch ME
+    warning('matlab2tikz indisponível: %s', ME.message);
+end
+
+save(fullfile(outDir,'results_S2.mat'), 'RMSE_S2','range_sync','range_sync_Tsym', ...
+     'sync_scenarios','K_S2','K_kw_S2','mod_S2','method_names');
+
 
 %% =======================================================================
 %  ESTUDO 3: RMSE vs tamanho da sequência de treinamento (snapshots)
@@ -498,6 +516,98 @@ function phi_hats = do_one_estimation_all(M, radius, lambda, CM, ...
     % Calcula todos os a' * M * a de uma vez via
     %   sum(conj(A_scan) .* (M*A_scan), 1).
     P_DAS   = real(sum(conj(A_scan) .* (Rxx    * A_scan), 1));    % 1 x Ngrid
+    P_Capon = 1 ./ max(real(sum(conj(A_scan) .* (Rinv  * A_scan), 1)), eps);
+    P_MUSIC = 1 ./ max(real(sum(conj(A_scan) .* (EnEnH * A_scan), 1)), eps);
+
+    [~, i_das]   = max(P_DAS);
+    [~, i_capon] = max(P_Capon);
+    [~, i_music] = max(P_MUSIC);
+
+    phi_DAS    = phi_scan(i_das);
+    phi_Capon  = phi_scan(i_capon);
+    phi_MUSIC  = phi_scan(i_music);
+
+    phi_hats = [phi_KW; phi_DAS; phi_Capon; phi_MUSIC];
+end
+
+
+% =========================================================================
+%  FUNÇÃO LOCAL v2: Estimação com modelo de PREÂMBULO (Estudo 2 SBrT)
+% =========================================================================
+function phi_hats = do_one_estimation_all_v2(M, radius, lambda, CM, ...
+                                             phi_sig_deg, phi_int_deg, ...
+                                             theta_sig_deg, theta_int_deg, ...
+                                             SNR_dB, ISR_dB, K, K_kw, fs, ...
+                                             Rs, sps, alpha, span, fd, ...
+                                             interferer_type, sync_offset_samples, ...
+                                             A_scan, phi_scan)
+%DO_ONE_ESTIMATION_ALL_V2  Estimação com modelo de preâmbulo dentro de pacote.
+%
+%   Diferenças em relação a do_one_estimation_all:
+%     - O sinal recebido tem K amostras com a estrutura
+%         [ zeros | preâmbulo (K_kw) | dados aleatórios do mesmo SOI ]
+%     - A referência conhecida é APENAS o preâmbulo (K_kw amostras).
+%     - sync_offset_samples = Δ desloca a JANELA usada pelos estimadores em
+%       relação à posição verdadeira do preâmbulo (k0_est = k0_true + Δ).
+%     - Δ inteiro positivo: a janela invade dados desconhecidos (após).
+%     - Δ inteiro negativo: a janela invade zeros (antes do pacote).
+%     - Δ fracionário: arredondado para o inteiro mais próximo (não há
+%       interpolação porque a janela é uma fatia em índices inteiros).
+%
+%   Todos os 4 estimadores (KW, DAS, Capon, MUSIC) operam SOBRE A MESMA
+%   janela X(:, k0_est : k0_est+K_kw-1) para que a comparação seja justa.
+
+    % ----- Geração do sinal completo (M x K) com preâmbulo dentro -----
+    k0_true_in = [];   % deixa a função decidir (centralizado)
+    [Xraw, y_ref, k0_true, Xsig, Xint, Xn] = ...
+        utils.simulate_data_uca_v3(M, radius, lambda, ...
+                                   phi_sig_deg, phi_int_deg, ...
+                                   theta_sig_deg, theta_int_deg, ...
+                                   SNR_dB, ISR_dB, K, K_kw, fs, ...
+                                   Rs, sps, alpha, span, fd, ...
+                                   interferer_type, k0_true_in);
+
+    % Modelo do EUSIPCO: aplica acoplamento (CM atua nos componentes "físicos")
+    X = CM*Xsig + CM*Xint + Xn;
+    [~, Kx] = size(X);
+
+    % ----- Posição da janela usada pelos estimadores -----
+    delta_int = round(sync_offset_samples);    % janela é em índices inteiros
+    k0_est = k0_true + delta_int;
+    win_first = k0_est;
+    win_last  = k0_est + K_kw - 1;
+
+    % Janela com clipping (caso saia dos limites, preenche com zeros)
+    Xk = zeros(M, K_kw);
+    src_first = max(win_first, 1);
+    src_last  = min(win_last,  Kx);
+    if src_last >= src_first
+        dst_first = src_first - win_first + 1;
+        dst_last  = src_last  - win_first + 1;
+        Xk(:, dst_first:dst_last) = X(:, src_first:src_last);
+    end
+    % Se a janela ficou totalmente fora, Xk é zeros e todos os métodos
+    % retornarão direções arbitrárias (degradação total esperada).
+
+    % ----- (1) KW: correlaciona janela Xk com a referência y_ref -----
+    beta = 2*pi*(0:M-1)'/M;
+    [~, phi_KW] = doa_kw_uca(Xk, y_ref, radius, lambda, beta);
+
+    % ----- Matriz de covariância sobre a MESMA janela K_kw -----
+    Rxx   = (Xk*Xk')/K_kw;
+    delta = 1e-3 * trace(Rxx)/M;
+    Rxx_dl = Rxx + delta*eye(M);
+
+    [eigvec, eigval] = eig(Rxx_dl);
+    [~, idx] = sort(diag(eigval), 'descend');
+    E   = eigvec(:, idx);
+    Ksrc = 1;
+    En  = E(:, Ksrc+1:end);
+    EnEnH = En*En';
+
+    Rinv = inv(Rxx_dl);
+
+    P_DAS   = real(sum(conj(A_scan) .* (Rxx    * A_scan), 1));
     P_Capon = 1 ./ max(real(sum(conj(A_scan) .* (Rinv  * A_scan), 1)), eps);
     P_MUSIC = 1 ./ max(real(sum(conj(A_scan) .* (EnEnH * A_scan), 1)), eps);
 

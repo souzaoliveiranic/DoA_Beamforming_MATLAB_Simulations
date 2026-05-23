@@ -69,13 +69,7 @@ classdef utils
 
         function [X, q, v, Xsig, Xint, Xn, bits, pam_rrc_tx, pam_rect, sym_tx, qn, taus_sig, taus_int] = simulate_fsk_data_uca( ...
                 M, r, lambda, phi_sig_deg, phi_int_deg, theta_sig_deg, theta_int_deg, ...
-                SNRdB, ISR_dB, N, fs, Rs, sps, alpha, span, fd, interf_type)
-            % Parametro opcional interf_type (default 'fm'):
-            %   'fm'   -> interferente narrowband CE (comportamento original)
-            %   'fsk2' -> interferente FSK-2 co-canal (mesma modulacao do SOI)
-            if nargin < 17 || isempty(interf_type)
-                interf_type = 'fm';
-            end
+                SNRdB, ISR_dB, N, fs, Rs, sps, alpha, span, fd)
             % SIMULATE_FSK_DATA_UCA
             %
             % Simula o sinal recebido por um UCA (Uniform Circular Array) com M elementos,
@@ -117,17 +111,7 @@ classdef utils
             % --------------------------------------------------------
             % Geração dos sinais baseband
             [q, bits, pam_rrc_tx, pam_rect, sym_tx] = utils.fsk2_mod(N/sps, Rs, sps, alpha, span, fd);
-
-            % Interferente: FM narrowband (default) ou FSK-2 co-canal
-            switch lower(interf_type)
-                case 'fsk2'
-                    % Segunda instancia de FSK-2 com os MESMOS parametros do
-                    % SOI (mesma taxa, desvio, pulso) mas bits independentes.
-                    % Espectralmente identico ao SOI -> separacao so espacial.
-                    [v, ~, ~, ~, ~] = utils.fsk2_mod(N/sps, Rs, sps, alpha, span, fd);
-                otherwise   % 'fm'
-                    v = utils.gen_ce_nb_noise(N, fs, 2*fd, 0); % interferente CE narrowband
-            end
+            v = utils.gen_ce_nb_noise(N, fs, 2*fd, 0); % interferente CE narrowband
 
             % Normalização de potência
             q = q ./ sqrt(mean(abs(q).^2));
@@ -806,6 +790,134 @@ classdef utils
             end
             qd = delayseq(q, sync_offset_samples / fs, fs);
             q_local = qd(:).';
+        end
+
+
+        % =====================================================================
+        % ==========  MÉTODO ADICIONADO PARA O ESTUDO 2 (v2) ============
+        % ==========  do SBrT 2026: modelo de preâmbulo dentro de   ============
+        % ==========  um pacote (sinal de chegada com K amostras,   ============
+        % ==========  preâmbulo conhecido com K_kw < K amostras).   ============
+        % =====================================================================
+
+        function [X, y_ref, k0_true, Xsig, Xint, Xn] = ...
+                simulate_data_uca_v3(M, r, lambda, ...
+                                     phi_sig_deg, phi_int_deg, ...
+                                     theta_sig_deg, theta_int_deg, ...
+                                     SNR_dB, ISR_dB, K, K_kw, fs, ...
+                                     Rs, sps, alpha, span, fd, ...
+                                     interferer_type, k0_true)
+            %SIMULATE_DATA_UCA_V3  Modelo de pacote: zeros antes, preâmbulo
+            %                     conhecido (K_kw amostras), dados aleatórios
+            %                     do mesmo SOI depois.
+            %
+            %  O sinal recebido X (M x K) tem a estrutura, no eixo de tempo:
+            %
+            %     [ zeros (k0_true-1 amostras) | preâmbulo (K_kw) | dados (resto) ]
+            %
+            %  - Zeros antes  => "o pacote ainda não chegou".
+            %  - Preâmbulo    => 2-FSK com bits conhecidos, retornado em y_ref.
+            %  - Dados        => 2-FSK com bits aleatórios independentes
+            %                    (mesma portadora, mesmo ângulo, mesma potência).
+            %
+            %  Interferidor e ruído ocupam todas as K amostras.
+            %
+            %  Entradas:
+            %    K, K_kw   : tamanho do sinal recebido e do preâmbulo (em amostras).
+            %    k0_true   : índice (1-based) do início do preâmbulo dentro de X.
+            %                Se vazio ou <=0, usa floor((K-K_kw)/2)+1 (centralizado).
+            %
+            %  Saídas:
+            %    X        : M x K, sinal recebido SEM acoplamento (o chamador aplica).
+            %    y_ref    : 1 x K_kw, forma de onda de referência do preâmbulo.
+            %    k0_true  : devolvido para o chamador construir a janela.
+            %    Xsig, Xint, Xn : componentes separadas (M x K cada).
+
+            if nargin < 19 || isempty(k0_true) || k0_true <= 0
+                k0_true = floor((K - K_kw)/2) + 1;
+            end
+            if k0_true + K_kw - 1 > K
+                error('utils:simulate_data_uca_v3:Bounds', ...
+                      'k0_true (%d) + K_kw (%d) excede K (%d).', k0_true, K_kw, K);
+            end
+            if nargin < 18 || isempty(interferer_type)
+                interferer_type = "FM";
+            end
+
+            sigma_s2 = 1;
+            sigma_i2 = sigma_s2 * 10^(ISR_dB/10);
+            sigma_n2 = sigma_s2 / 10^(double(SNR_dB)/10);
+
+            c  = 3e8;
+            fc = c / lambda;
+
+            % --------------------------------------------------------
+            % Preâmbulo (K_kw amostras) e dados (K - k0_true - K_kw + 1 - 1 amostras)
+            Nsym_pre = ceil(K_kw / sps) + 4;
+            [q_pre, ~, ~, ~, ~] = utils.fsk2_mod(Nsym_pre, Rs, sps, alpha, span, fd);
+            q_pre = q_pre(:);
+            % Corta para exatamente K_kw amostras (descarta transiente RRC)
+            gd = span*sps/2;
+            q_pre = q_pre(gd+1 : gd+K_kw);
+
+            N_data_after = K - (k0_true - 1) - K_kw;   % amostras após o preâmbulo
+            if N_data_after > 0
+                Nsym_data = ceil(N_data_after / sps) + 4;
+                [q_data, ~, ~, ~, ~] = utils.fsk2_mod(Nsym_data, Rs, sps, alpha, span, fd);
+                q_data = q_data(:);
+                q_data = q_data(gd+1 : gd+N_data_after);
+            else
+                q_data = [];
+            end
+
+            % Sinal completo transmitido pelo SOI (1 x K)
+            q_full = zeros(K, 1);
+            q_full(k0_true : k0_true + K_kw - 1) = q_pre;
+            if N_data_after > 0
+                q_full(k0_true + K_kw : end) = q_data;
+            end
+
+            % Referência local: APENAS o preâmbulo (forma de onda conhecida)
+            y_ref = q_pre.';
+
+            % Normalização de potência: feita a partir da potência média do
+            % SINAL TRANSMITIDO (ignora os zeros pré-pacote).
+            active = q_full ~= 0;
+            pwr_q = mean(abs(q_full(active)).^2) + eps;
+            q_full = q_full / sqrt(pwr_q);
+            y_ref  = y_ref  / sqrt(pwr_q);
+            q_full = sqrt(sigma_s2) * q_full;
+            y_ref  = sqrt(sigma_s2) * y_ref;
+
+            % --------------------------------------------------------
+            % Interferidor: ocupa as K amostras (não tem estrutura de pacote)
+            v = utils.gen_interferer(interferer_type, K, fs, Rs, sps, alpha, span, fd);
+            v = v(:);
+            v = v / sqrt(mean(abs(v).^2) + eps);
+            v = sqrt(sigma_i2) * v;
+
+            % --------------------------------------------------------
+            % Atrasos geométricos do UCA
+            taus_sig = utils.element_delays_uca(M, r, theta_sig_deg, phi_sig_deg, c);
+            taus_int = utils.element_delays_uca(M, r, theta_int_deg, phi_int_deg, c);
+
+            Xsig = zeros(M, K);
+            Xint = zeros(M, K);
+            for m = 1:M
+                q_del = delayseq(q_full, taus_sig(m), fs);
+                v_del = delayseq(v,      taus_int(m), fs);
+                phase_sig = exp(-1j * 2*pi*fc * taus_sig(m));
+                phase_int = exp(-1j * 2*pi*fc * taus_int(m));
+                Xsig(m,:) = q_del(:).' * phase_sig;
+                Xint(m,:) = v_del(:).' * phase_int;
+            end
+
+            % --------------------------------------------------------
+            % Ruído AWGN (M x K)
+            Xn = sqrt(sigma_n2/2) * (randn(M, K) + 1j*randn(M, K));
+
+            % Sinal total (acoplamento aplicado pelo chamador)
+            X = Xsig + Xint + Xn;
         end
 
     end
