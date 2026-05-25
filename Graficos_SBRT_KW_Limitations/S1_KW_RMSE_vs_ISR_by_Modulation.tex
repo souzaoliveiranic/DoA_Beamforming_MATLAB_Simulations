@@ -8,7 +8,8 @@
 \definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
 \definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
 \definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
-\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+\definecolor{mycolor5}{rgb}{0.23100,0.66600,0.19600}%
+\definecolor{mycolor6}{rgb}{0.12941,0.12941,0.12941}%
 %
 \begin{tikzpicture}
 
@@ -17,79 +18,101 @@ width=0.951\figurewidth,
 height=\figureheight,
 at={(0\figurewidth,0\figureheight)},
 scale only axis,
-xmin=-20,
-xmax=10,
-xlabel style={font=\color{mycolor5}},
+xmin=-12,
+xmax=6,
+xlabel style={font=\color{mycolor6}},
 xlabel={ISR (dB)},
 ymode=log,
-ymin=0,
-ymax=110,
+ymin=0.1,
+ymax=100,
 yminorticks=true,
-ylabel style={font=\color{mycolor5}},
+ylabel style={font=\color{mycolor6}},
 ylabel={RMSE (degrees)},
 axis background/.style={fill=white},
-title style={font=\bfseries\color{mycolor5}},
-title={KW: RMSE vs ISR (SNR=10 dB, K=2000, sync=0)},
 xmajorgrids,
 ymajorgrids,
 yminorgrids,
-legend style={legend cell align=left, align=left}
+legend style={at={(0.03,0.97)}, anchor=north west, legend cell align=left, align=left}
 ]
-\addplot [color=mycolor1, line width=1.6pt, mark size=3.5pt, mark=o, mark options={solid, mycolor1}]
+\addplot [color=mycolor1, line width=2.0pt, mark size=2.0pt, mark=o, mark options={solid, mycolor1}]
   table[row sep=crcr]{%
--18	0.463830376119052\\
--15	0.576197512360487\\
--12	0.781110861946637\\
--9	1.11728581706273\\
--6	1.71830847223524\\
--3	2.65147132695187\\
-0	4.33166348554522\\
-3	16.7960344716039\\
-6	31.1476800351889\\
+-12	0.268987521528848\\
+-9	0.330133343691169\\
+-6	0.439131064171588\\
+-3	0.552592234255953\\
+-2	0.606150405672473\\
+-1	0.650899141020709\\
+0	0.817989479430868\\
+1	0.88473184391064\\
+2	0.930992661706882\\
+3	1.09176104791495\\
+6	1.46188179097709\\
+};
+\addlegendentry{NOISE}
+
+\addplot [color=mycolor2, line width=2.0pt, mark size=1.4pt, mark=square, mark options={solid, mycolor2}]
+  table[row sep=crcr]{%
+-12	1.04842460592796\\
+-9	1.52951594527753\\
+-6	2.17262225229987\\
+-3	9.89911609887046\\
+-2	8.66550502384626\\
+-1	8.99187982927987\\
+0	17.6892587816614\\
+1	24.0454997673382\\
+2	24.2095362055086\\
+3	28.5814216535583\\
+6	42.3010675106731\\
+};
+\addlegendentry{AM}
+
+\addplot [color=mycolor3, line width=2.0pt, mark size=3.5pt, mark=diamond, mark options={solid, mycolor3}]
+  table[row sep=crcr]{%
+-12	1.13910514698233\\
+-9	1.52209718655695\\
+-6	2.10812699462231\\
+-3	3.25352926107394\\
+-2	4.06924287273397\\
+-1	16.0018671166056\\
+0	20.0709244748245\\
+1	22.1774123192395\\
+2	21.1197849677994\\
+3	29.9020917808997\\
+6	44.1949682723726\\
 };
 \addlegendentry{FM}
 
-\addplot [color=mycolor2, line width=1.6pt, mark size=2.5pt, mark=square, mark options={solid, mycolor2}]
+\addplot [color=mycolor4, line width=2.0pt, mark size=1.3pt, mark=triangle, mark options={solid, mycolor4}]
   table[row sep=crcr]{%
--18	0.475180498008422\\
--15	0.656718634018335\\
--12	0.936658779399976\\
--9	1.2644781505511\\
--6	1.76516252413112\\
--3	8.29630709237651\\
-0	4.5753976126113\\
-3	10.5596173504474\\
-6	27.9218253027361\\
+-12	1.2675480056536\\
+-9	1.72564166793969\\
+-6	2.69714669945848\\
+-3	7.70997811745185\\
+-2	9.58821446893747\\
+-1	8.56479162698019\\
+0	14.7175786842056\\
+1	18.6873838163932\\
+2	18.6872396363378\\
+3	18.1940328866912\\
+6	42.5588548662771\\
 };
 \addlegendentry{FSK2}
 
-\addplot [color=mycolor3, line width=1.6pt, mark size=6.0pt, mark=diamond, mark options={solid, mycolor3}]
+\addplot [color=mycolor5, line width=2.0pt, mark size=1.3pt, mark=triangle, mark options={solid, rotate=180, mycolor5}]
   table[row sep=crcr]{%
--18	0.433861942871684\\
--15	0.547892896637436\\
--12	0.737343216798554\\
--9	0.985095535746519\\
--6	1.83011892397196\\
--3	2.22445594222478\\
-0	5.60565849528996\\
-3	11.0392242535915\\
-6	32.5188535319444\\
+-12	1.01339737345055\\
+-9	1.47355995315615\\
+-6	1.87936185355013\\
+-3	2.6878303103737\\
+-2	3.26630450423574\\
+-1	3.97276540790284\\
+0	12.0013580013258\\
+1	10.4812186796675\\
+2	10.1734599250771\\
+3	23.6471260847688\\
+6	37.6883504896905\\
 };
 \addlegendentry{QAM64}
-
-\addplot [color=mycolor4, line width=1.6pt, mark size=2.3pt, mark=triangle, mark options={solid, mycolor4}]
-  table[row sep=crcr]{%
--18	0.26123953424179\\
--15	0.260290867064266\\
--12	0.280550516542517\\
--9	0.310280424916207\\
--6	0.378817719797005\\
--3	0.460349478768294\\
-0	0.614957643052547\\
-3	0.77208205125693\\
-6	1.17740829608163\\
-};
-\addlegendentry{NOISE}
 
 \end{axis}
 \end{tikzpicture}%

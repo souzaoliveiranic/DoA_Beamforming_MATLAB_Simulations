@@ -13,8 +13,8 @@ width=0.951\figurewidth,
 height=\figureheight,
 at={(0\figurewidth,0\figureheight)},
 scale only axis,
-xmin=-20,
-xmax=10,
+xmin=-12,
+xmax=6,
 xlabel style={font=\color{mycolor1}},
 xlabel={ISR (dB)},
 ymode=log,
@@ -24,66 +24,72 @@ yminorticks=true,
 ylabel style={font=\color{mycolor1}},
 ylabel={RMSE (degrees)},
 axis background/.style={fill=white},
-title style={font=\bfseries\color{mycolor1}},
-title={RMSE vs ISR $|$ Interf = FSK2 (SNR=10 dB, K=2000)},
 xmajorgrids,
 ymajorgrids,
 yminorgrids,
-legend style={legend cell align=left, align=left}
+legend style={at={(0.03,0.97)}, anchor=north west, legend cell align=left, align=left}
 ]
-\addplot [color=red, line width=1.6pt, mark size=3.5pt, mark=o, mark options={solid, red}]
+\addplot [color=red, line width=2.0pt, mark size=2.0pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
--18	0.475180498008422\\
--15	0.656718634018335\\
--12	0.936658779399976\\
--9	1.2644781505511\\
--6	1.76516252413112\\
--3	8.29630709237651\\
-0	4.5753976126113\\
-3	10.5596173504474\\
-6	27.9218253027361\\
+-12	1.2675480056536\\
+-9	1.72564166793969\\
+-6	2.69714669945848\\
+-3	7.70997811745185\\
+-2	9.58821446893747\\
+-1	8.56479162698019\\
+0	14.7175786842056\\
+1	18.6873838163932\\
+2	18.6872396363378\\
+3	18.1940328866912\\
+6	42.5588548662771\\
 };
 \addlegendentry{KW}
 
-\addplot [color=green, line width=1.6pt, mark size=3.5pt, mark=x, mark options={solid, green}]
+\addplot [color=green, line width=2.0pt, mark size=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--18	0.511521146565106\\
--15	0.824800752485362\\
--12	1.43937497592823\\
--9	2.26149116030351\\
--6	4.30279060396273\\
--3	7.9042832164452\\
-0	75.6079710074464\\
-3	102.594137180414\\
-6	101.800423802364\\
+-12	1.7240917532734\\
+-9	2.73145453276297\\
+-6	5.41816291934182\\
+-3	14.8285724635611\\
+-2	28.681782115678\\
+-1	43.4238534292351\\
+0	73.2439848348917\\
+1	91.4822560466973\\
+2	101.298550704757\\
+3	98.1597301065205\\
+6	103.258101344417\\
 };
 \addlegendentry{DAS}
 
-\addplot [color=blue, line width=1.6pt, mark size=2.5pt, mark=square, mark options={solid, blue}]
+\addplot [color=blue, line width=2.0pt, mark size=1.4pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--18	3.97955830443927\\
--15	5.33749903186279\\
--12	7.1621944863682\\
--9	8.55135330439808\\
--6	21.6708151780567\\
--3	52.2449666231797\\
-0	79.9350364617152\\
-3	89.0780136157616\\
-6	92.07250937297\\
+-12	18.6805039949632\\
+-9	20.5163471928443\\
+-6	30.4815101612719\\
+-3	56.4456104345694\\
+-2	69.3964134869222\\
+-1	83.1542593336381\\
+0	85.9242142124339\\
+1	89.6561032699964\\
+2	95.2218154410711\\
+3	96.4781228245641\\
+6	107.531225980959\\
 };
 \addlegendentry{Capon}
 
-\addplot [color=black, line width=1.6pt, mark size=6.0pt, mark=diamond, mark options={solid, black}]
+\addplot [color=black, line width=2.0pt, mark size=3.5pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--18	0.53112078405743\\
--15	0.870407539777979\\
--12	1.53738168379214\\
--9	2.46663443149038\\
--6	4.77020138025721\\
--3	9.12127053206391\\
-0	76.0706551971853\\
-3	102.097753292874\\
-6	101.479826693826\\
+-12	2.07111314352385\\
+-9	3.48025256967746\\
+-6	7.01405126053744\\
+-3	17.7576943827558\\
+-2	31.3463336610664\\
+-1	43.4877767901695\\
+0	66.2569963085254\\
+1	81.8783586125677\\
+2	93.6398152310881\\
+3	92.8662330712138\\
+6	100.995000008946\\
 };
 \addlegendentry{MUSIC}
 

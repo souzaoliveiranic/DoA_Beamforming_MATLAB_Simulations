@@ -28,7 +28,7 @@ M       = 8;             % nº de elementos do UCA
 fc      = 500e6;         % Hz
 c       = 3e8;
 lambda  = c/fc;
-radius  = 0.25*lambda;   % raio compacto (mesmo do EUSIPCO)
+radius  = 0.2*lambda;   % raio compacto (mesmo do EUSIPCO)
 
 theta_sig_deg = 90;      % plano XY
 theta_int_deg = 90;
@@ -48,6 +48,7 @@ fd      = 4.8e3;
 phi_sig_deg_fixed = 30;
 phi_int_deg_fixed = -45;
 randomize_angles  = true;   % sorteia ângulos a cada ensemble
+phi_min_sep_deg = 5;
 
 % Acoplamento mútuo
 Z0 = 50;
@@ -62,7 +63,7 @@ else
 end
 
 % Tipos de interferidor estudados
-interferer_types = ["FM","FSK2","QAM64","NOISE"];
+interferer_types = ["NOISE","AM","FM","FSK2","QAM64"];
 
 % Monte Carlo
 nEnsembles = 500;     % nº de realizações por ponto (sobe para ~50 no run final)
@@ -115,7 +116,7 @@ run_all_once = @(SNR_dB, ISR_dB, interferer_type, sync_offset, K, ...
 SNR_dB_S1   = 10;
 K_S1        = 2000;
 sync_S1     = 0;
-range_ISR_S1 = -18:3:6;
+range_ISR_S1 = [-12 -9 -6 -3 -2 -1 0 1 2 3 6]%-12:3:6;
 
 nMod = numel(interferer_types);
 nISR = numel(range_ISR_S1);
@@ -127,8 +128,7 @@ for iMod = 1:nMod
         errs = zeros(nMethods, nEnsembles);
         for e = 1:nEnsembles
             if randomize_angles
-                phi_s = -180 + 360*rand;
-                phi_i = -180 + 360*rand;
+                [phi_s, phi_i] = sample_angles_with_min_sep(phi_min_sep_deg);
             else
                 phi_s = phi_sig_deg_fixed;
                 phi_i = phi_int_deg_fixed;
@@ -155,15 +155,15 @@ for iMod = 1:nMod
     for m = 1:nMethods
         plot(range_ISR_S1, squeeze(RMSE_S1(m,iMod,:)), ...
              method_markers(m), 'Color', method_colors(m), ...
-             'LineWidth', 1.6, 'MarkerSize', 7);
+             'LineWidth', 2, 'MarkerSize', 4);
     end
     set(gca,'YScale','log');
     xlabel('ISR (dB)','Interpreter','latex');
     ylabel('RMSE (degrees)','Interpreter','latex');
     ylim([0 110]);
-    title(sprintf('RMSE vs ISR | Interf = %s (SNR=%d dB, K=%d)', ...
-                  interferer_types(iMod), SNR_dB_S1, K_S1));
-    legend(method_names,'Location','best','Interpreter','latex');
+    % title(sprintf('RMSE vs ISR | Interf = %s (SNR=%d dB, K=%d)', ...
+    %               interferer_types(iMod), SNR_dB_S1, K_S1));
+    legend(method_names,'Location','northwest','Interpreter','latex');
 
     base = sprintf('S1_RMSE_vs_ISR_Mod_%s', interferer_types(iMod));
     exportgraphics(fig, fullfile(outDir,[char(base) '.png']),'Resolution',300);
@@ -185,14 +185,14 @@ for iMod = 1:nMod
     plot(range_ISR_S1, squeeze(RMSE_S1(1,iMod,:)), ...
          summary_markers(min(iMod,numel(summary_markers))), ...
          'Color', summary_colors(iMod,:), ...
-         'LineWidth', 1.6, 'MarkerSize', 7);
+         'LineWidth', 2, 'MarkerSize', 4);
 end
 set(gca,'YScale','log');
 xlabel('ISR (dB)','Interpreter','latex');
 ylabel('RMSE (degrees)','Interpreter','latex');
-ylim([0 110]);
-title(sprintf('KW: RMSE vs ISR (SNR=%d dB, K=%d, sync=0)', SNR_dB_S1, K_S1));
-legend(interferer_types,'Location','best','Interpreter','latex');
+% ylim([0 110]);
+% title(sprintf('KW: RMSE vs ISR (SNR=%d dB, K=%d, sync=0)', SNR_dB_S1, K_S1));
+legend(interferer_types,'Location','northwest','Interpreter','latex');
 exportgraphics(fig, fullfile(outDir,'S1_KW_RMSE_vs_ISR_by_Modulation.png'),'Resolution',300);
 try
     matlab2tikz(fullfile(outDir,'S1_KW_RMSE_vs_ISR_by_Modulation.tex'), ...
@@ -228,14 +228,18 @@ mod_S2   = "FM";
 % = floor(1500)+1 = 1501. Espaço antes ≈ 1500 amostras, espaço depois ≈ 1500.
 % Limita range_sync (amostras) para |Δ| <= 1400 com folga.
 
-range_sync_Tsym = [-200 -100 -60 -40 -30 -20 -10 -4 -3 -2 -1 -0.5 ...
+range_sync_Tsym = [-50 -25 -10 -4 -3 -2 -1 -0.5 -0.4 -0.3 -0.2 -0,1 ...
                     0 ...
-                    0.5 1 2 3 4 10 20 30 40 60 100 200];
+                    0.1 0.2 0.3 0.4 0.5 1 2 3 4 10 25 50];
 range_sync = range_sync_Tsym * sps;   % converte T_sym -> amostras
 
 sync_scenarios = struct( ...
-    'SNR_dB', { 12, 12,   0,  0}, ...
-    'ISR_dB', {-20, -3, -20, -3});
+    'SNR_dB', { 10,   0}, ...
+    'ISR_dB', {-6, -6});
+
+% sync_scenarios = struct( ...
+%     'SNR_dB', { 10, 10,   0,  0}, ...
+%     'ISR_dB', {-20, -3, -20, -3});
 
 nScen = numel(sync_scenarios);
 nSync = numel(range_sync);
@@ -260,8 +264,7 @@ for iScen = 1:nScen
         errs = zeros(nMethods, nEnsembles);
         for e = 1:nEnsembles
             if randomize_angles
-                phi_s = -180 + 360*rand;
-                phi_i = -180 + 360*rand;
+                [phi_s, phi_i] = sample_angles_with_min_sep(phi_min_sep_deg);
             else
                 phi_s = phi_sig_deg_fixed;
                 phi_i = phi_int_deg_fixed;
@@ -293,14 +296,14 @@ for iScen = 1:nScen
     for m = plot_order
         h(m) = plot(range_sync_Tsym, squeeze(RMSE_S2(m,iScen,:)), ...
                     method_markers(m), 'Color', method_colors(m), ...
-                    'LineWidth', 1.6, 'MarkerSize', 6);
+                    'LineWidth', 2, 'MarkerSize', 4);
     end
     set(gca,'YScale','log');
     xlabel('Erro de sincronização ($\Delta / T_{\mathrm{sym}}$)','Interpreter','latex');
     ylabel('RMSE (degrees)','Interpreter','latex');
-    title(sprintf('RMSE vs sync error | SNR=%+d, ISR=%+d (Interf=%s, K=%d, K_{kw}=%d)', ...
-                  SNR_dB, ISR_dB, mod_S2, K_S2, K_kw_S2));
-    legend(h, method_names,'Location','best','Interpreter','latex');
+    % title(sprintf('RMSE vs sync error | SNR=%+d, ISR=%+d (Interf=%s, K=%d, K_{kw}=%d)', ...
+    %               SNR_dB, ISR_dB, mod_S2, K_S2, K_kw_S2));
+    legend(h, method_names,'Location','southwest','Interpreter','latex');
 
     base = sprintf('S2_RMSE_vs_Sync_SNR_%+ddB_ISR_%+ddB', SNR_dB, ISR_dB);
     base = strrep(base,'+','p');  base = strrep(base,'-','m');
@@ -324,16 +327,16 @@ for iScen = 1:nScen
     plot(range_sync_Tsym, squeeze(RMSE_S2(1,iScen,:)), ...
          summary_markers(min(iScen,numel(summary_markers))), ...
          'Color', summary_colors(iScen,:), ...
-         'LineWidth', 1.6, 'MarkerSize', 6);
-    legend_strings(iScen) = sprintf('SNR=%+d, ISR=%+d', ...
-        sync_scenarios(iScen).SNR_dB, sync_scenarios(iScen).ISR_dB);
+         'LineWidth', 2, 'MarkerSize', 4);
+    legend_strings(iScen) = sprintf('SNR=%+d', ... % ISR=%+d', ...
+        sync_scenarios(iScen).SNR_dB); %, sync_scenarios(iScen).ISR_dB);
 end
 set(gca,'YScale','log');
-xlabel('Erro de sincronização ($\Delta / T_{\mathrm{sym}}$)','Interpreter','latex');
+xlabel('Synchronization offset ($\Delta / T_{\mathrm{sym}}$)','Interpreter','latex');
 ylabel('RMSE (degrees)','Interpreter','latex');
-title(sprintf('KW: RMSE vs sync error (Interf=%s, K=%d, K_{kw}=%d)', ...
-              mod_S2, K_S2, K_kw_S2));
-legend(legend_strings,'Location','best','Interpreter','latex');
+% title(sprintf('KW: RMSE vs sync error (Interf=%s, K=%d, K_{kw}=%d)', ...
+%               mod_S2, K_S2, K_kw_S2));
+legend(legend_strings,'Location','southwest','Interpreter','latex');
 exportgraphics(fig, fullfile(outDir,'S2_KW_RMSE_vs_SyncOffset.png'),'Resolution',300);
 try
     matlab2tikz(fullfile(outDir,'S2_KW_RMSE_vs_SyncOffset.tex'), ...
@@ -353,12 +356,15 @@ fprintf('\n========================================================\n');
 fprintf('Estudo 3: RMSE vs número de snapshots K (KW, DAS, Capon, MUSIC)\n');
 fprintf('========================================================\n');
 
-range_K  = [50 100 200 400 800 1500 2500 4000 6000 8000];
+range_K  = [50 100 200 400 800 1000 1500 2500 3000 4000 6000 8000];
 range_K  = range_K(range_K <= N_DOA);
 
 K_scenarios = struct( ...
-    'SNR_dB', {-3,  0,  6,  6}, ...
-    'ISR_dB', {-6,  0, -6,  0});
+    'SNR_dB', {  0,  0,  10,  10}, ...
+    'ISR_dB', { -6,  0, -6,  0});
+% K_scenarios = struct( ...
+%     'SNR_dB', { 10,   0,  0,  0,  10,  10}, ...
+%     'ISR_dB', {-20, -20, -6,  0, -6,  0});
 nKScen = numel(K_scenarios);
 sync_S3 = 0;
 mod_S3  = "FM";
@@ -375,8 +381,7 @@ for iScen = 1:nKScen
         errs = zeros(nMethods, nEnsembles);
         for e = 1:nEnsembles
             if randomize_angles
-                phi_s = -180 + 360*rand;
-                phi_i = -180 + 360*rand;
+                [phi_s, phi_i] = sample_angles_with_min_sep(phi_min_sep_deg);
             else
                 phi_s = phi_sig_deg_fixed;
                 phi_i = phi_int_deg_fixed;
@@ -404,15 +409,15 @@ for iScen = 1:nKScen
     for m = 1:nMethods
         plot(range_K, squeeze(RMSE_S3(m,iScen,:)), ...
              method_markers(m), 'Color', method_colors(m), ...
-             'LineWidth', 1.6, 'MarkerSize', 6);
+             'LineWidth', 2, 'MarkerSize', 4);
     end
     set(gca,'YScale','log');
     set(gca,'XScale','log');
-    xlabel('Número de snapshots K','Interpreter','latex');
+    xlabel('Training-sequence length K','Interpreter','latex');
     ylabel('RMSE (degrees)','Interpreter','latex');
-    title(sprintf('RMSE vs K | SNR=%+d, ISR=%+d (Interf=%s, sync=0)', ...
-                  SNR_dB, ISR_dB, mod_S3));
-    legend(method_names,'Location','best','Interpreter','latex');
+    % title(sprintf('RMSE vs K | SNR=%+d, ISR=%+d (Interf=%s, sync=0)', ...
+    %               SNR_dB, ISR_dB, mod_S3));
+    legend(method_names,'Location','southwest','Interpreter','latex');
 
     base = sprintf('S3_RMSE_vs_K_SNR_%+ddB_ISR_%+ddB', SNR_dB, ISR_dB);
     base = strrep(base,'+','p');  base = strrep(base,'-','m');
@@ -436,16 +441,16 @@ for iScen = 1:nKScen
     plot(range_K, squeeze(RMSE_S3(1,iScen,:)), ...
          summary_markers(min(iScen,numel(summary_markers))), ...
          'Color', summary_colors(iScen,:), ...
-         'LineWidth', 1.6, 'MarkerSize', 6);
+         'LineWidth', 2, 'MarkerSize', 4);
     legend_strings(iScen) = sprintf('SNR=%+d, ISR=%+d', ...
         K_scenarios(iScen).SNR_dB, K_scenarios(iScen).ISR_dB);
 end
 set(gca,'YScale','log');
 set(gca,'XScale','log');
-xlabel('Número de snapshots K','Interpreter','latex');
+xlabel('Training-sequence length K','Interpreter','latex');
 ylabel('RMSE (degrees)','Interpreter','latex');
-title(sprintf('KW: RMSE vs K (Interf=%s, sync=0)', mod_S3));
-legend(legend_strings,'Location','best','Interpreter','latex');
+% title(sprintf('KW: RMSE vs K (Interf=%s, sync=0)', mod_S3));
+legend(legend_strings,'Location','southwest','Interpreter','latex');
 exportgraphics(fig, fullfile(outDir,'S3_KW_RMSE_vs_Snapshots.png'),'Resolution',300);
 try
     matlab2tikz(fullfile(outDir,'S3_KW_RMSE_vs_Snapshots.tex'), ...
@@ -620,4 +625,16 @@ function phi_hats = do_one_estimation_all_v2(M, radius, lambda, CM, ...
     phi_MUSIC  = phi_scan(i_music);
 
     phi_hats = [phi_KW; phi_DAS; phi_Capon; phi_MUSIC];
+end
+
+
+function [phi_s, phi_i] = sample_angles_with_min_sep(min_sep_deg)
+    while true
+        phi_s = -180 + 360*rand;
+        phi_i = -180 + 360*rand;
+        sep = abs(mod(phi_s - phi_i + 180, 360) - 180);
+        if sep >= min_sep_deg
+            return;
+        end
+    end
 end

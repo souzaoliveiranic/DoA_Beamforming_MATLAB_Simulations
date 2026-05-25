@@ -22,81 +22,87 @@ xmin=50,
 xmax=10000,
 xminorticks=true,
 xlabel style={font=\color{mycolor5}},
-xlabel={Número de snapshots K},
+xlabel={Training-sequence length K},
 ymode=log,
-ymin=0.76401962686508,
+ymin=0.99522499638888,
 ymax=100,
 yminorticks=true,
 ylabel style={font=\color{mycolor5}},
 ylabel={RMSE (degrees)},
 axis background/.style={fill=white},
-title style={font=\bfseries\color{mycolor5}},
-title={KW: RMSE vs K (Interf=FM, sync=0)},
 xmajorgrids,
 xminorgrids,
 ymajorgrids,
 yminorgrids,
-legend style={legend cell align=left, align=left}
+legend style={at={(0.03,0.03)}, anchor=south west, legend cell align=left, align=left}
 ]
-\addplot [color=mycolor1, line width=1.6pt, mark=o, mark options={solid, mycolor1}]
+\addplot [color=mycolor1, line width=2.0pt, mark size=2.0pt, mark=o, mark options={solid, mycolor1}]
   table[row sep=crcr]{%
-50	68.8539798796697\\
-100	71.6119007785614\\
-200	43.6659265919392\\
-400	18.5404951834481\\
-800	5.5335598334782\\
-1500	2.23029530850239\\
-2500	1.33498361965836\\
-4000	1.084366067528\\
-6000	0.864757321214279\\
-8000	0.773335108100212\\
+50	67.8939141650179\\
+100	76.0109131707613\\
+200	53.0848862940441\\
+400	26.7835893853929\\
+800	11.6020354454845\\
+1000	3.76695404390157\\
+1500	2.56284369641211\\
+2500	1.99437677782187\\
+3000	1.86986818367566\\
+4000	1.52302332784374\\
+6000	1.21209953171669\\
+8000	1.10207249186267\\
 };
-\addlegendentry{SNR=-3, ISR=-6}
+\addlegendentry{SNR=+0, ISR=-6}
 
-\addplot [color=mycolor2, line width=1.6pt, mark=square, mark options={solid, mycolor2}]
+\addplot [color=mycolor2, line width=2.0pt, mark size=1.4pt, mark=square, mark options={solid, mycolor2}]
   table[row sep=crcr]{%
-50	83.4073521594166\\
-100	86.9237094173863\\
-200	77.2657807956346\\
-400	52.9609189342972\\
-800	25.870917058305\\
-1500	10.2282350063389\\
-2500	4.58788947565137\\
-4000	4.38578200684066\\
-6000	1.91834695426825\\
-8000	1.59219895882879\\
+50	83.1609305140753\\
+100	82.5709626446132\\
+200	73.1294580141078\\
+400	50.3769966520116\\
+800	35.8256637323332\\
+1000	29.2309435660909\\
+1500	20.3393493684015\\
+2500	11.9622235504215\\
+3000	4.26515743218688\\
+4000	2.82329040150187\\
+6000	2.29657907378065\\
+8000	2.07168720107496\\
 };
 \addlegendentry{SNR=+0, ISR=+0}
 
-\addplot [color=mycolor3, line width=1.6pt, mark=diamond, mark options={solid, mycolor3}]
+\addplot [color=mycolor3, line width=2.0pt, mark size=3.5pt, mark=diamond, mark options={solid, mycolor3}]
   table[row sep=crcr]{%
-50	72.1096513954308\\
-100	70.0478408253465\\
-200	42.7281654243486\\
-400	12.3534887089645\\
-800	4.71001327517833\\
-1500	1.88923850703315\\
-2500	1.46412650316435\\
-4000	1.11207030441622\\
-6000	0.836406498401008\\
-8000	0.76401962686508\\
+50	67.9458918944358\\
+100	68.7775474763516\\
+200	57.0671643457561\\
+400	32.7182533970216\\
+800	11.3506740768272\\
+1000	3.43513002511421\\
+1500	4.42146925053894\\
+2500	1.74644570526548\\
+3000	1.71421222162817\\
+4000	1.40253787370357\\
+6000	1.20684496834077\\
+8000	0.99522499638888\\
 };
-\addlegendentry{SNR=+6, ISR=-6}
+\addlegendentry{SNR=+10, ISR=-6}
 
-\addplot [color=mycolor4, line width=1.6pt, mark=triangle, mark options={solid, mycolor4}]
+\addplot [color=mycolor4, line width=2.0pt, mark size=1.3pt, mark=triangle, mark options={solid, mycolor4}]
   table[row sep=crcr]{%
-50	86.3743177830867\\
-100	84.5025642984083\\
-200	69.6841205043458\\
-400	50.0615186207021\\
-800	26.4066148144875\\
-1500	9.63763128609289\\
-2500	4.54516333550928\\
-4000	2.2154089336434\\
-6000	1.61190473838208\\
-8000	1.63892913600813\\
+50	83.9109067086999\\
+100	81.1673888648584\\
+200	72.2653872071088\\
+400	55.7062204342704\\
+800	34.7651748351367\\
+1000	34.3289292289502\\
+1500	14.0531066432776\\
+2500	10.5683409249184\\
+3000	3.94085752767977\\
+4000	2.90745843620882\\
+6000	2.59606287976825\\
+8000	2.0805879787533\\
 };
-\addlegendentry{SNR=+6, ISR=+0}
+\addlegendentry{SNR=+10, ISR=+0}
 
 \end{axis}
 \end{tikzpicture}%
