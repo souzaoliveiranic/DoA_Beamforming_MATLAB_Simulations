@@ -69,7 +69,13 @@ classdef utils
 
         function [X, q, v, Xsig, Xint, Xn, bits, pam_rrc_tx, pam_rect, sym_tx, qn, taus_sig, taus_int] = simulate_fsk_data_uca( ...
                 M, r, lambda, phi_sig_deg, phi_int_deg, theta_sig_deg, theta_int_deg, ...
-                SNRdB, ISR_dB, N, fs, Rs, sps, alpha, span, fd)
+                SNRdB, ISR_dB, N, fs, Rs, sps, alpha, span, fd, interf_type)
+            % Parametro opcional interf_type (default 'fm'):
+            %   'fm'   -> interferente narrowband CE (comportamento original)
+            %   'fsk2' -> interferente FSK-2 co-canal (mesma modulacao do SOI)
+            if nargin < 17 || isempty(interf_type)
+                interf_type = 'fm';
+            end
             % SIMULATE_FSK_DATA_UCA
             %
             % Simula o sinal recebido por um UCA (Uniform Circular Array) com M elementos,
@@ -111,7 +117,17 @@ classdef utils
             % --------------------------------------------------------
             % Geração dos sinais baseband
             [q, bits, pam_rrc_tx, pam_rect, sym_tx] = utils.fsk2_mod(N/sps, Rs, sps, alpha, span, fd);
-            v = utils.gen_ce_nb_noise(N, fs, 2*fd, 0); % interferente CE narrowband
+
+            % Interferente: FM narrowband (default) ou FSK-2 co-canal
+            switch lower(interf_type)
+                case 'fsk2'
+                    % Segunda instancia de FSK-2 com os MESMOS parametros do
+                    % SOI (mesma taxa, desvio, pulso) mas bits independentes.
+                    % Espectralmente identico ao SOI -> separacao so espacial.
+                    [v, ~, ~, ~, ~] = utils.fsk2_mod(N/sps, Rs, sps, alpha, span, fd);
+                otherwise   % 'fm'
+                    v = utils.gen_ce_nb_noise(N, fs, 2*fd, 0); % interferente CE narrowband
+            end
 
             % Normalização de potência
             q = q ./ sqrt(mean(abs(q).^2));

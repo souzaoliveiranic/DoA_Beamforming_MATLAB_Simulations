@@ -49,7 +49,7 @@ quick_run = false;   % <-- alterar conforme necessidade
 %   clean_simulation = false  -> usa os valores definidos abaixo
 %                                (cenario realista com imperfeicoes).
 % =========================================================================
-clean_simulation = true  % <-- alterar conforme necessidade
+clean_simulation = true;   % <-- alterar conforme necessidade
 
 % =========================================================================
 % Numero de ensembles (rodadas Monte Carlo por ponto de operacao).
@@ -67,15 +67,6 @@ n_ensemble = 1;   % <-- numero de rodadas Monte Carlo por ponto
 %            o desempenho fim-a-fim realista (erro de DoA propaga p/ o BF).
 % =========================================================================
 use_doa_estimate_in_bf = true;   % <-- alterar conforme necessidade
-
-% =========================================================================
-% Liga/desliga o calculo de beamforming (DAS, Capon, demodulacao, BER, EVM).
-% false -> simulacao para apos a estimacao de DoA. Util quando so se quer
-%          avaliar acuracia angular e erro Frobenius da matriz C estimada.
-%          Acelera drasticamente o full sweep (elimina demodulacao FSK).
-% true  -> pipeline completo (DoA + beamforming + BER + EVM).
-% =========================================================================
-compute_beamforming = false; %true
 
 % =========================================================================
 % Metodo de DoA usado como REFERENCIA nos cenarios sem self-cal
@@ -100,15 +91,6 @@ interf_type = 'fsk2';   % 'fm' | 'fsk2'
 % =========================================================================
 plot_vs_snr = true;
 plot_vs_isr = false;
-
-% Plots com eixo X = raio (uma figura por par de SNR/ISR ou uma agregada):
-%   plot_vs_radius_snr_fix -> figuras com eixo X = raio, uma por valor de
-%                              SNR (agregando sobre ISR e angulos)
-%   plot_vs_radius_isr_fix -> figuras com eixo X = raio, uma por valor de
-%                              ISR (agregando sobre SNR e angulos)
-% Soh fazem sentido se nRadius > 1.
-plot_vs_radius_snr_fix = true;
-plot_vs_radius_isr_fix = false;
 
 % =========================================================================
 % Passo da varredura angular do scan de DoA (graus).
@@ -135,17 +117,17 @@ experiment_mode = 'aleatory';   % 'cross' | 'accuracy' | 'resolution' | 'aleator
 
 % Parametros do modo 'aleatory'
 n_rand_angles  = 50;    % quantos pares (phi_sig, phi_int) sortear
-min_sep_deg    = 10;    % separacao angular minima entre sinal e interferente
+min_sep_deg    = 5;    % separacao angular minima entre sinal e interferente
 
 if quick_run
     range_SNR_dB = 6;
     range_ISR_dB = -1;
-    range_phi_sig = [75 0];
+    range_phi_sig = [75 100];
     range_phi_int = [];               % nao usado no modo 'cross'
     pair_mode = 'cross';
 else
     range_SNR_dB = -9:3:12;
-    range_ISR_dB = [-60 -6];%-6:1:-3;
+    range_ISR_dB = [-30 -6];%-6:1:-3;
 
     switch experiment_mode
         case 'cross'
@@ -192,7 +174,7 @@ end
 % (apenas para nPhi).
 range_phi = range_phi_sig;
 range_snapshots = 2000:3000:N_DOA;
-range_radius = [0.25 0.2 0.15 0.1];
+range_radius = [0.20]; %[0.25 0.2 0.15 0.1];
 
 % Codigos de Coupling (renumerados):
 %   0 = sem coupling (ideal)
@@ -232,7 +214,7 @@ C_noncirc_level = 0.02;        % 2% de quebra de circulancia (fixo)
 % (b) Erro de sincronismo temporal: receptor correlaciona X com q assumindo
 %     alinhamento perfeito; na pratica ha offset fracionario de amostras.
 %     Modelado como deslocamento (shift) aplicado ao q usado pelo receptor.
-sync_error_samples = 0;%0.5;      % offset fracionario em amostras (fixo)
+sync_error_samples = 0.5;      % offset fracionario em amostras (fixo)
 
 % --- Override: se clean_simulation=true, zera todas as imperfeicoes ---
 if clean_simulation
@@ -244,7 +226,7 @@ if clean_simulation
 end
 
 % --- Self-cal (Coupling=6..9): parametros do alternante ---
-selfcal_max_iter = 6; %12;
+selfcal_max_iter = 12;
 selfcal_grid_deg = -180:0.5:180;
 selfcal_methods  = {'DAS', 'CAPON', 'MUSIC', 'KW'};   % ordem para Coupling 6..9
 selfcal_damping  = 0.5;        % subrelaxacao: suaviza oscilacoes (1.0 = sem damping)
@@ -262,7 +244,7 @@ colors =  ["red", "green", "blue", "black", "magenta", "cyan", "yellow"];
 line_style =   ["-", "--", ":","-."]; % linha continua sem acoplamento % linha tracejada com acoplamento
 
 % Criar pasta 'graficos'
-outDir = fullfile(pwd, 'new_graficos10');
+outDir = fullfile(pwd, 'new_graficos2');
 if ~exist(outDir, 'dir')
     mkdir(outDir);
 end
@@ -568,7 +550,7 @@ legend_entries = cell(length(range_radius),1);
 % pela contagem (media) e' feita ao final do loop principal. agg_count
 % conta quantas rodadas validas escreveram em cada celula.
 % =========================================================================
-agg_dims = [nCoupling, nInits, nSNR, nISR, nRadius, nPhi, nPhi];
+agg_dims = [nCoupling, nInits, nSNR, nISR, nPhi, nPhi];
 agg_phi_err_KW    = zeros(agg_dims);   % SOMA de |phi_KW - phi_sig|
 agg_phi_err_DAS   = zeros(agg_dims);
 agg_phi_err_MVDR  = zeros(agg_dims);
@@ -867,7 +849,7 @@ for iSNR = 1:nSNR
                             % Calcula erro angular de cada metodo vs phi_sig real.
                             % Usa wrap [-180, 180) para evitar pulos.
                             wrap_err = @(e) mod(e + 180, 360) - 180;
-                            idx6 = {iCoupling, iInit, iSNR, iISR, iRadius, iPhi, iiPhi};
+                            idx6 = {iCoupling, iInit, iSNR, iISR, iPhi, iiPhi};
                             agg_phi_err_KW(idx6{:})    = agg_phi_err_KW(idx6{:})    + abs(wrap_err(phi_hat_deg - phi_sig_deg));
                             agg_phi_err_DAS(idx6{:})   = agg_phi_err_DAS(idx6{:})   + abs(wrap_err(phi_DAS - phi_sig_deg));
                             agg_phi_err_MVDR(idx6{:})  = agg_phi_err_MVDR(idx6{:})  + abs(wrap_err(phi_MVDR - phi_sig_deg));
@@ -977,7 +959,6 @@ for iSNR = 1:nSNR
                             % end
 
                             % ----- BEAMFORMING -----
-                            if compute_beamforming
 
                             % Varredura angular (azimute, plano horizontal)
                             phi_scan = -180:0.5:180;    % graus
@@ -1162,7 +1143,7 @@ for iSNR = 1:nSNR
                                 % (phi_sig verdadeiro OU phi estimado, conforme a flag
                                 %  use_doa_estimate_in_bf).
                                 if abs(phi_scan(ang) - phi_bf_target) < 1e-9
-                                    idxB = {iCoupling, iInit, iSNR, iISR, iRadius, iPhi, iiPhi};
+                                    idxB = {iCoupling, iInit, iSNR, iISR, iPhi, iiPhi};
                                     agg_BER_DAS(idxB{:})  = agg_BER_DAS(idxB{:})  + BER_das  * 100;
                                     agg_BER_MVDR(idxB{:}) = agg_BER_MVDR(idxB{:}) + BER_mvdr * 100;
                                     agg_EVM_DAS(idxB{:})  = agg_EVM_DAS(idxB{:})  + 20*log10(EVM_das);
@@ -1171,14 +1152,12 @@ for iSNR = 1:nSNR
 
                             end
 
-                            end   % --- if compute_beamforming ---
-
                             end   % --- fim do for iInit ---
 
                             end   % --- fim do for iEns (ensemble) ---
 
 
-                            if abs(phi_sig_deg - 75) < 1e-9 && quick_run && compute_beamforming
+                            if abs(phi_sig_deg - 75) < 1e-9 && quick_run
                                 fig_name = "BER, EVM (" + string(phi_sig_deg) + "°) " + name_string + ...
                                     " (r=" + string(range_radius(iRadius))  + " | ISR=" + string(range_ISR_dB(iISR)) + " | SNR=" + string(range_SNR_dB(iSNR)) + ")";
                                 fig = figure( 'Name', fig_name, 'NumberTitle', 'off');
@@ -1866,15 +1845,15 @@ for ic_rep = 1:nCoupling
     coup_code_rep = range_coupling(ic_rep);
     if coup_code_rep >= 2 && coup_code_rep <= 5
         for iI = 2:nInits
-            agg_eps_F(ic_rep, iI, :, :, :, :, :)         = agg_eps_F(ic_rep, 1, :, :, :, :, :);
-            agg_phi_err_KW(ic_rep, iI, :, :, :, :, :)    = agg_phi_err_KW(ic_rep, 1, :, :, :, :, :);
-            agg_phi_err_DAS(ic_rep, iI, :, :, :, :, :)   = agg_phi_err_DAS(ic_rep, 1, :, :, :, :, :);
-            agg_phi_err_MVDR(ic_rep, iI, :, :, :, :, :)  = agg_phi_err_MVDR(ic_rep, 1, :, :, :, :, :);
-            agg_phi_err_MUSIC(ic_rep, iI, :, :, :, :, :) = agg_phi_err_MUSIC(ic_rep, 1, :, :, :, :, :);
-            agg_BER_DAS(ic_rep, iI, :, :, :, :, :)       = agg_BER_DAS(ic_rep, 1, :, :, :, :, :);
-            agg_BER_MVDR(ic_rep, iI, :, :, :, :, :)      = agg_BER_MVDR(ic_rep, 1, :, :, :, :, :);
-            agg_EVM_DAS(ic_rep, iI, :, :, :, :, :)       = agg_EVM_DAS(ic_rep, 1, :, :, :, :, :);
-            agg_EVM_MVDR(ic_rep, iI, :, :, :, :, :)      = agg_EVM_MVDR(ic_rep, 1, :, :, :, :, :);
+            agg_eps_F(ic_rep, iI, :, :, :, :)         = agg_eps_F(ic_rep, 1, :, :, :, :);
+            agg_phi_err_KW(ic_rep, iI, :, :, :, :)    = agg_phi_err_KW(ic_rep, 1, :, :, :, :);
+            agg_phi_err_DAS(ic_rep, iI, :, :, :, :)   = agg_phi_err_DAS(ic_rep, 1, :, :, :, :);
+            agg_phi_err_MVDR(ic_rep, iI, :, :, :, :)  = agg_phi_err_MVDR(ic_rep, 1, :, :, :, :);
+            agg_phi_err_MUSIC(ic_rep, iI, :, :, :, :) = agg_phi_err_MUSIC(ic_rep, 1, :, :, :, :);
+            agg_BER_DAS(ic_rep, iI, :, :, :, :)       = agg_BER_DAS(ic_rep, 1, :, :, :, :);
+            agg_BER_MVDR(ic_rep, iI, :, :, :, :)      = agg_BER_MVDR(ic_rep, 1, :, :, :, :);
+            agg_EVM_DAS(ic_rep, iI, :, :, :, :)       = agg_EVM_DAS(ic_rep, 1, :, :, :, :);
+            agg_EVM_MVDR(ic_rep, iI, :, :, :, :)      = agg_EVM_MVDR(ic_rep, 1, :, :, :, :);
         end
     end
 end
@@ -1889,8 +1868,6 @@ rmse_along = @(A, dims) sqrt(squeeze(mean(A.^2, dims, 'omitnan')));
 
 % --- Loop sobre inits para gerar conjunto completo ---
 for iInitPlot_agg = 1:nInits
-for iRadiusPlot = 1:nRadius
-    radius_tag = sprintf('r%g', range_radius(iRadiusPlot));
     init_tag = range_selfcal_init{iInitPlot_agg};
 
     % --- Mapeamento "cenario -> metodo de DoA representativo" ---
@@ -1926,16 +1903,15 @@ for iRadiusPlot = 1:nRadius
             case 4, A_doa = agg_phi_err_MUSIC;
         end
         % A_doa: (Coup, Init, SNR, ISR, PhiSig, PhiInt). Agrega sobre dims 5,6.
-        % Evita squeeze: extrai o slab 7D (1,1,SNR,ISR,1,PhiSig,PhiInt) e usa
-        % mean(., [6 7]) ANTES de reshape, garantindo dimensoes consistentes
-        % mesmo quando nSNR=1 ou nISR=1. As dims agora sao:
-        %   1=Coup, 2=Init, 3=SNR, 4=ISR, 5=Radius, 6=PhiSig, 7=PhiInt.
-        slab_doa = A_doa(ic_m, iInitPlot_agg, :, :, iRadiusPlot, :, :);
-        m_doa = mean(slab_doa.^2, [6 7], 'omitnan');   % (1,1,SNR,ISR,1,1,1)
+        % Evita squeeze: extrai o slab 4D (1,1,SNR,ISR,PhiSig,PhiInt) e usa
+        % mean(., [5 6]) ANTES de reshape, garantindo dimensoes consistentes
+        % mesmo quando nSNR=1 ou nISR=1.
+        slab_doa = A_doa(ic_m, iInitPlot_agg, :, :, :, :);
+        m_doa = mean(slab_doa.^2, [5 6], 'omitnan');   % (1,1,SNR,ISR,1,1)
         rmse_doa_per_cen{ic_m} = sqrt(reshape(m_doa, [nSNR, nISR]));
 
-        slab_eps = agg_eps_F(ic_m, iInitPlot_agg, :, :, iRadiusPlot, :, :);
-        m_eps = mean(slab_eps.^2, [6 7], 'omitnan');
+        slab_eps = agg_eps_F(ic_m, iInitPlot_agg, :, :, :, :);
+        m_eps = mean(slab_eps.^2, [5 6], 'omitnan');
         rmse_eps_per_cen{ic_m} = sqrt(reshape(m_eps, [nSNR, nISR]));
     end
 
@@ -1961,12 +1937,12 @@ for iRadiusPlot = 1:nRadius
         end
         set(gca, 'YScale', 'log');
         xlabel('SNR (dB)'); ylabel('RMSE de \phi (graus)');
-        title(sprintf('RMSE de DoA vs SNR  |  ISR = %+d dB  |  init: %s  |  %s', ...
-              range_ISR_dB(iISR_fix), init_tag, radius_tag));
+        title(sprintf('RMSE de DoA vs SNR  |  ISR = %+d dB  |  init self-cal: %s', ...
+              range_ISR_dB(iISR_fix), init_tag));
         legend('Location','best','NumColumns',2);
 
         exportgraphics(fig_h, fullfile(outDir, ...
-            sprintf('rmse_doa_vs_SNR_ISR_%+d_init_%s_%s.png', range_ISR_dB(iISR_fix), init_tag, radius_tag)), ...
+            sprintf('rmse_doa_vs_SNR_ISR_%+d_init_%s.png', range_ISR_dB(iISR_fix), init_tag)), ...
             'Resolution', 200);
     end
 
@@ -1989,12 +1965,12 @@ for iRadiusPlot = 1:nRadius
         end
         set(gca, 'YScale', 'log');
         xlabel('ISR (dB)'); ylabel('RMSE de \phi (graus)');
-        title(sprintf('RMSE de DoA vs ISR  |  SNR = %+d dB  |  init: %s  |  %s', ...
-              range_SNR_dB(iSNR_fix), init_tag, radius_tag));
+        title(sprintf('RMSE de DoA vs ISR  |  SNR = %+d dB  |  init self-cal: %s', ...
+              range_SNR_dB(iSNR_fix), init_tag));
         legend('Location','best','NumColumns',2);
 
         exportgraphics(fig_h, fullfile(outDir, ...
-            sprintf('rmse_doa_vs_ISR_SNR_%+d_init_%s_%s.png', range_SNR_dB(iSNR_fix), init_tag, radius_tag)), ...
+            sprintf('rmse_doa_vs_ISR_SNR_%+d_init_%s.png', range_SNR_dB(iSNR_fix), init_tag)), ...
             'Resolution', 200);
     end
     end   % --- if plot_vs_isr ---
@@ -2025,12 +2001,12 @@ for iRadiusPlot = 1:nRadius
         yline(EPS_FLOOR, ':', sprintf('piso visual = %.0e', EPS_FLOOR), ...
               'Color',[0.5 0.5 0.5], 'LabelHorizontalAlignment','left');
         xlabel('SNR (dB)'); ylabel('RMSE de ||C_{hat} - C_{true}||_F / ||C_{true}||_F');
-        title(sprintf('RMSE Frobenius vs SNR  |  ISR = %+d dB  |  init: %s  |  %s', ...
-              range_ISR_dB(iISR_fix), init_tag, radius_tag));
+        title(sprintf('RMSE Frobenius vs SNR  |  ISR = %+d dB  |  init: %s', ...
+              range_ISR_dB(iISR_fix), init_tag));
         legend('Location','best','NumColumns',2);
 
         exportgraphics(fig_h, fullfile(outDir, ...
-            sprintf('rmse_frobenius_vs_SNR_ISR_%+d_init_%s_%s.png', range_ISR_dB(iISR_fix), init_tag, radius_tag)), ...
+            sprintf('rmse_frobenius_vs_SNR_ISR_%+d_init_%s.png', range_ISR_dB(iISR_fix), init_tag)), ...
             'Resolution', 200);
     end
 
@@ -2058,12 +2034,12 @@ for iRadiusPlot = 1:nRadius
         yline(EPS_FLOOR, ':', sprintf('piso visual = %.0e', EPS_FLOOR), ...
               'Color',[0.5 0.5 0.5], 'LabelHorizontalAlignment','left');
         xlabel('ISR (dB)'); ylabel('RMSE de ||C_{hat} - C_{true}||_F / ||C_{true}||_F');
-        title(sprintf('RMSE Frobenius vs ISR  |  SNR = %+d dB  |  init: %s  |  %s', ...
-              range_SNR_dB(iSNR_fix), init_tag, radius_tag));
+        title(sprintf('RMSE Frobenius vs ISR  |  SNR = %+d dB  |  init: %s', ...
+              range_SNR_dB(iSNR_fix), init_tag));
         legend('Location','best','NumColumns',2);
 
         exportgraphics(fig_h, fullfile(outDir, ...
-            sprintf('rmse_frobenius_vs_ISR_SNR_%+d_init_%s_%s.png', range_SNR_dB(iSNR_fix), init_tag, radius_tag)), ...
+            sprintf('rmse_frobenius_vs_ISR_SNR_%+d_init_%s.png', range_SNR_dB(iSNR_fix), init_tag)), ...
             'Resolution', 200);
     end
     end   % --- if plot_vs_isr ---
@@ -2078,17 +2054,17 @@ for iRadiusPlot = 1:nRadius
     mean_EVM_DAS_per_cen   = cell(nCoupling, 1);
     mean_EVM_MVDR_per_cen  = cell(nCoupling, 1);
     for ic_m = 1:nCoupling
-        slab = agg_BER_DAS(ic_m, iInitPlot_agg, :, :, iRadiusPlot, :, :);
-        mean_BER_DAS_per_cen{ic_m}  = reshape(mean(slab, [6 7], 'omitnan'), [nSNR, nISR]);
+        slab = agg_BER_DAS(ic_m, iInitPlot_agg, :, :, :, :);
+        mean_BER_DAS_per_cen{ic_m}  = reshape(mean(slab, [5 6], 'omitnan'), [nSNR, nISR]);
 
-        slab = agg_BER_MVDR(ic_m, iInitPlot_agg, :, :, iRadiusPlot, :, :);
-        mean_BER_MVDR_per_cen{ic_m} = reshape(mean(slab, [6 7], 'omitnan'), [nSNR, nISR]);
+        slab = agg_BER_MVDR(ic_m, iInitPlot_agg, :, :, :, :);
+        mean_BER_MVDR_per_cen{ic_m} = reshape(mean(slab, [5 6], 'omitnan'), [nSNR, nISR]);
 
-        slab = agg_EVM_DAS(ic_m, iInitPlot_agg, :, :, iRadiusPlot, :, :);
-        mean_EVM_DAS_per_cen{ic_m}  = reshape(mean(slab, [6 7], 'omitnan'), [nSNR, nISR]);
+        slab = agg_EVM_DAS(ic_m, iInitPlot_agg, :, :, :, :);
+        mean_EVM_DAS_per_cen{ic_m}  = reshape(mean(slab, [5 6], 'omitnan'), [nSNR, nISR]);
 
-        slab = agg_EVM_MVDR(ic_m, iInitPlot_agg, :, :, iRadiusPlot, :, :);
-        mean_EVM_MVDR_per_cen{ic_m} = reshape(mean(slab, [6 7], 'omitnan'), [nSNR, nISR]);
+        slab = agg_EVM_MVDR(ic_m, iInitPlot_agg, :, :, :, :);
+        mean_EVM_MVDR_per_cen{ic_m} = reshape(mean(slab, [5 6], 'omitnan'), [nSNR, nISR]);
     end
 
     % --- Funcao auxiliar inline para plotar uma metrica ---
@@ -2097,19 +2073,16 @@ for iRadiusPlot = 1:nRadius
                            use_log, nCoupling, range_coupling, nISR, nSNR, ...
                            range_ISR_dB, range_SNR_dB, init_tag, ...
                            styles_cen, markers_cen, cmap_cen, short_labels_cen, ...
-                           outDir, plot_vs_snr, plot_vs_isr, radius_tag);
+                           outDir, plot_vs_snr, plot_vs_isr);
 
-    % Plots BER/EVM: so se o pipeline de beamforming foi executado.
-    if compute_beamforming
-        % BER do DAS
-        plot_metric(mean_BER_DAS_per_cen,  'BER DAS',  'ber_das',  'BER medio (%)', false);
-        % BER do MVDR/Capon
-        plot_metric(mean_BER_MVDR_per_cen, 'BER MVDR', 'ber_mvdr', 'BER medio (%)', false);
-        % EVM do DAS
-        plot_metric(mean_EVM_DAS_per_cen,  'EVM DAS',  'evm_das',  'EVM medio (dB)', false);
-        % EVM do MVDR/Capon
-        plot_metric(mean_EVM_MVDR_per_cen, 'EVM MVDR', 'evm_mvdr', 'EVM medio (dB)', false);
-    end
+    % BER do DAS
+    plot_metric(mean_BER_DAS_per_cen,  'BER DAS',  'ber_das',  'BER medio (%)', false);
+    % BER do MVDR/Capon
+    plot_metric(mean_BER_MVDR_per_cen, 'BER MVDR', 'ber_mvdr', 'BER medio (%)', false);
+    % EVM do DAS
+    plot_metric(mean_EVM_DAS_per_cen,  'EVM DAS',  'evm_das',  'EVM medio (dB)', false);
+    % EVM do MVDR/Capon
+    plot_metric(mean_EVM_MVDR_per_cen, 'EVM MVDR', 'evm_mvdr', 'EVM medio (dB)', false);
 
     % =====================================================================
     % ACURACIA AGREGADA: um ponto por cenario (agregado sobre tudo)
@@ -2140,221 +2113,12 @@ for iRadiusPlot = 1:nRadius
     set(gca, 'YScale', 'log');
     xlabel('RMSE de \phi (graus)  [agregado]');
     ylabel('RMSE de ||C_{hat} - C_{true}||_F / ||C_{true}||_F  [agregado]');
-    title(sprintf('Acuracia agregada: erro de DoA vs erro de C (init=%s, %s)', init_tag, radius_tag));
+    title(sprintf('Acuracia agregada: erro de DoA vs erro de C (init=%s)', init_tag));
     legend('Location','best');
 
     exportgraphics(fig_h, fullfile(outDir, ...
-        sprintf('accuracy_agregada_init_%s_%s.png', init_tag, radius_tag)), ...
+        sprintf('accuracy_agregada_init_%s.png', init_tag)), ...
         'Resolution', 200);
-    end   % --- for iRadiusPlot ---
-
-    % =====================================================================
-    % NOVOS PLOTS: eixo X = raio (uma figura por valor fixo de SNR ou ISR)
-    % Agregam sobre angulos (PhiSig, PhiInt). Para cada cenario, uma curva
-    % vs raio. Soh sao gerados se nRadius > 1.
-    % =====================================================================
-    if nRadius > 1 && (plot_vs_radius_snr_fix || plot_vs_radius_isr_fix)
-        % Pre-calcula matrizes (Radius x SNR x ISR) por cenario, agregando
-        % sobre angulos. Para metodo de DoA do cenario, e' o mesmo
-        % mapeamento method_idx ja calculado acima.
-        rmse_doa_per_cen_rad = cell(nCoupling, 1);
-        rmse_eps_per_cen_rad = cell(nCoupling, 1);
-        mean_BER_DAS_per_cen_rad   = cell(nCoupling, 1);
-        mean_BER_MVDR_per_cen_rad  = cell(nCoupling, 1);
-        mean_EVM_DAS_per_cen_rad   = cell(nCoupling, 1);
-        mean_EVM_MVDR_per_cen_rad  = cell(nCoupling, 1);
-        for ic_m = 1:nCoupling
-            switch method_idx(ic_m)
-                case 1, A_doa = agg_phi_err_KW;
-                case 2, A_doa = agg_phi_err_DAS;
-                case 3, A_doa = agg_phi_err_MVDR;
-                case 4, A_doa = agg_phi_err_MUSIC;
-            end
-            % Dim do slab: (1, 1, SNR, ISR, Radius, PhiSig, PhiInt)
-            slab_doa = A_doa(ic_m, iInitPlot_agg, :, :, :, :, :);
-            % Agrega sobre PhiSig (6) e PhiInt (7), depois reshape
-            m_doa = mean(slab_doa.^2, [6 7], 'omitnan');
-            rmse_doa_per_cen_rad{ic_m} = sqrt(reshape(m_doa, [nSNR, nISR, nRadius]));
-
-            slab_eps = agg_eps_F(ic_m, iInitPlot_agg, :, :, :, :, :);
-            m_eps = mean(slab_eps.^2, [6 7], 'omitnan');
-            rmse_eps_per_cen_rad{ic_m} = sqrt(reshape(m_eps, [nSNR, nISR, nRadius]));
-
-            if compute_beamforming
-                slab = agg_BER_DAS(ic_m, iInitPlot_agg, :, :, :, :, :);
-                mean_BER_DAS_per_cen_rad{ic_m}  = reshape(mean(slab, [6 7], 'omitnan'), [nSNR, nISR, nRadius]);
-                slab = agg_BER_MVDR(ic_m, iInitPlot_agg, :, :, :, :, :);
-                mean_BER_MVDR_per_cen_rad{ic_m} = reshape(mean(slab, [6 7], 'omitnan'), [nSNR, nISR, nRadius]);
-                slab = agg_EVM_DAS(ic_m, iInitPlot_agg, :, :, :, :, :);
-                mean_EVM_DAS_per_cen_rad{ic_m}  = reshape(mean(slab, [6 7], 'omitnan'), [nSNR, nISR, nRadius]);
-                slab = agg_EVM_MVDR(ic_m, iInitPlot_agg, :, :, :, :, :);
-                mean_EVM_MVDR_per_cen_rad{ic_m} = reshape(mean(slab, [6 7], 'omitnan'), [nSNR, nISR, nRadius]);
-            end
-        end
-
-        % ---- vs raio, fixando SNR (uma figura por SNR; ISR agregado) ----
-        if plot_vs_radius_snr_fix
-            for iSNR_fix = 1:nSNR
-                % RMSE de DoA
-                fig_h = figure('Name', sprintf('RMSE DoA vs raio (SNR=%+d dB, init=%s)', ...
-                               range_SNR_dB(iSNR_fix), init_tag), ...
-                               'NumberTitle','off', 'Position',[100 100 900 600]);
-                hold on; grid on;
-                for ic = 1:nCoupling
-                    coup_code = range_coupling(ic);
-                    % Media sobre ISR para obter curva vs raio
-                    curve = squeeze(mean(rmse_doa_per_cen_rad{ic}(iSNR_fix, :, :), 2));
-                    method_label = doa_methods{method_idx(ic)};
-                    plot(range_radius, curve(:), ...
-                        'LineStyle', styles_cen{coup_code+1}, ...
-                        'Marker', markers_cen{coup_code+1}, ...
-                        'Color', cmap_cen(coup_code+1, :), ...
-                        'LineWidth', 1.8, 'MarkerSize', 8, ...
-                        'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
-                        'DisplayName', sprintf('%s (%s)', short_labels_cen{coup_code+1}, method_label));
-                end
-                set(gca, 'YScale', 'log');
-                xlabel('Raio (\lambda)'); ylabel('RMSE de \phi (graus)');
-                title(sprintf('RMSE de DoA vs raio  |  SNR = %+d dB  |  init: %s', ...
-                      range_SNR_dB(iSNR_fix), init_tag));
-                legend('Location','best','NumColumns',2);
-                exportgraphics(fig_h, fullfile(outDir, ...
-                    sprintf('rmse_doa_vs_radius_SNR_%+d_init_%s.png', range_SNR_dB(iSNR_fix), init_tag)), ...
-                    'Resolution', 200);
-
-                % RMSE Frobenius
-                fig_h = figure('Name', sprintf('RMSE Frob. vs raio (SNR=%+d dB, init=%s)', ...
-                               range_SNR_dB(iSNR_fix), init_tag), ...
-                               'NumberTitle','off', 'Position',[100 100 900 600]);
-                hold on; grid on;
-                for ic = 1:nCoupling
-                    coup_code = range_coupling(ic);
-                    if coup_code < 2, continue; end
-                    curve = squeeze(mean(rmse_eps_per_cen_rad{ic}(iSNR_fix, :, :), 2));
-                    if all(isnan(curve)), continue; end
-                    curve_plot = max(curve, EPS_FLOOR);
-                    plot(range_radius, curve_plot(:), ...
-                        'LineStyle', styles_cen{coup_code+1}, ...
-                        'Marker', markers_cen{coup_code+1}, ...
-                        'Color', cmap_cen(coup_code+1, :), ...
-                        'LineWidth', 1.8, 'MarkerSize', 8, ...
-                        'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
-                        'DisplayName', short_labels_cen{coup_code+1});
-                end
-                set(gca, 'YScale', 'log');
-                yline(EPS_FLOOR, ':', sprintf('piso visual = %.0e', EPS_FLOOR), ...
-                      'Color',[0.5 0.5 0.5], 'LabelHorizontalAlignment','left');
-                xlabel('Raio (\lambda)'); ylabel('RMSE de ||C_{hat} - C_{true}||_F / ||C_{true}||_F');
-                title(sprintf('RMSE Frobenius vs raio  |  SNR = %+d dB  |  init: %s', ...
-                      range_SNR_dB(iSNR_fix), init_tag));
-                legend('Location','best','NumColumns',2);
-                exportgraphics(fig_h, fullfile(outDir, ...
-                    sprintf('rmse_frobenius_vs_radius_SNR_%+d_init_%s.png', range_SNR_dB(iSNR_fix), init_tag)), ...
-                    'Resolution', 200);
-
-                % BER e EVM (se BF rodou)
-                if compute_beamforming
-                    plot_vs_radius_metric(mean_BER_DAS_per_cen_rad,  iSNR_fix, 1, ...
-                        'BER DAS',  'ber_das_vs_radius_SNR',  'BER medio (%)',  false, ...
-                        nCoupling, range_coupling, range_radius, range_SNR_dB, init_tag, ...
-                        styles_cen, markers_cen, cmap_cen, short_labels_cen, outDir);
-                    plot_vs_radius_metric(mean_BER_MVDR_per_cen_rad, iSNR_fix, 1, ...
-                        'BER MVDR', 'ber_mvdr_vs_radius_SNR', 'BER medio (%)',  false, ...
-                        nCoupling, range_coupling, range_radius, range_SNR_dB, init_tag, ...
-                        styles_cen, markers_cen, cmap_cen, short_labels_cen, outDir);
-                    plot_vs_radius_metric(mean_EVM_DAS_per_cen_rad,  iSNR_fix, 1, ...
-                        'EVM DAS',  'evm_das_vs_radius_SNR',  'EVM medio (dB)', false, ...
-                        nCoupling, range_coupling, range_radius, range_SNR_dB, init_tag, ...
-                        styles_cen, markers_cen, cmap_cen, short_labels_cen, outDir);
-                    plot_vs_radius_metric(mean_EVM_MVDR_per_cen_rad, iSNR_fix, 1, ...
-                        'EVM MVDR', 'evm_mvdr_vs_radius_SNR', 'EVM medio (dB)', false, ...
-                        nCoupling, range_coupling, range_radius, range_SNR_dB, init_tag, ...
-                        styles_cen, markers_cen, cmap_cen, short_labels_cen, outDir);
-                end
-            end
-        end
-
-        % ---- vs raio, fixando ISR (uma figura por ISR; SNR agregado) ----
-        if plot_vs_radius_isr_fix
-            for iISR_fix = 1:nISR
-                % RMSE de DoA
-                fig_h = figure('Name', sprintf('RMSE DoA vs raio (ISR=%+d dB, init=%s)', ...
-                               range_ISR_dB(iISR_fix), init_tag), ...
-                               'NumberTitle','off', 'Position',[100 100 900 600]);
-                hold on; grid on;
-                for ic = 1:nCoupling
-                    coup_code = range_coupling(ic);
-                    % Media sobre SNR para obter curva vs raio
-                    curve = squeeze(mean(rmse_doa_per_cen_rad{ic}(:, iISR_fix, :), 1));
-                    method_label = doa_methods{method_idx(ic)};
-                    plot(range_radius, curve(:), ...
-                        'LineStyle', styles_cen{coup_code+1}, ...
-                        'Marker', markers_cen{coup_code+1}, ...
-                        'Color', cmap_cen(coup_code+1, :), ...
-                        'LineWidth', 1.8, 'MarkerSize', 8, ...
-                        'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
-                        'DisplayName', sprintf('%s (%s)', short_labels_cen{coup_code+1}, method_label));
-                end
-                set(gca, 'YScale', 'log');
-                xlabel('Raio (\lambda)'); ylabel('RMSE de \phi (graus)');
-                title(sprintf('RMSE de DoA vs raio  |  ISR = %+d dB  |  init: %s', ...
-                      range_ISR_dB(iISR_fix), init_tag));
-                legend('Location','best','NumColumns',2);
-                exportgraphics(fig_h, fullfile(outDir, ...
-                    sprintf('rmse_doa_vs_radius_ISR_%+d_init_%s.png', range_ISR_dB(iISR_fix), init_tag)), ...
-                    'Resolution', 200);
-
-                % RMSE Frobenius
-                fig_h = figure('Name', sprintf('RMSE Frob. vs raio (ISR=%+d dB, init=%s)', ...
-                               range_ISR_dB(iISR_fix), init_tag), ...
-                               'NumberTitle','off', 'Position',[100 100 900 600]);
-                hold on; grid on;
-                for ic = 1:nCoupling
-                    coup_code = range_coupling(ic);
-                    if coup_code < 2, continue; end
-                    curve = squeeze(mean(rmse_eps_per_cen_rad{ic}(:, iISR_fix, :), 1));
-                    if all(isnan(curve)), continue; end
-                    curve_plot = max(curve, EPS_FLOOR);
-                    plot(range_radius, curve_plot(:), ...
-                        'LineStyle', styles_cen{coup_code+1}, ...
-                        'Marker', markers_cen{coup_code+1}, ...
-                        'Color', cmap_cen(coup_code+1, :), ...
-                        'LineWidth', 1.8, 'MarkerSize', 8, ...
-                        'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
-                        'DisplayName', short_labels_cen{coup_code+1});
-                end
-                set(gca, 'YScale', 'log');
-                yline(EPS_FLOOR, ':', sprintf('piso visual = %.0e', EPS_FLOOR), ...
-                      'Color',[0.5 0.5 0.5], 'LabelHorizontalAlignment','left');
-                xlabel('Raio (\lambda)'); ylabel('RMSE de ||C_{hat} - C_{true}||_F / ||C_{true}||_F');
-                title(sprintf('RMSE Frobenius vs raio  |  ISR = %+d dB  |  init: %s', ...
-                      range_ISR_dB(iISR_fix), init_tag));
-                legend('Location','best','NumColumns',2);
-                exportgraphics(fig_h, fullfile(outDir, ...
-                    sprintf('rmse_frobenius_vs_radius_ISR_%+d_init_%s.png', range_ISR_dB(iISR_fix), init_tag)), ...
-                    'Resolution', 200);
-
-                if compute_beamforming
-                    plot_vs_radius_metric(mean_BER_DAS_per_cen_rad,  iISR_fix, 2, ...
-                        'BER DAS',  'ber_das_vs_radius_ISR',  'BER medio (%)',  false, ...
-                        nCoupling, range_coupling, range_radius, range_ISR_dB, init_tag, ...
-                        styles_cen, markers_cen, cmap_cen, short_labels_cen, outDir);
-                    plot_vs_radius_metric(mean_BER_MVDR_per_cen_rad, iISR_fix, 2, ...
-                        'BER MVDR', 'ber_mvdr_vs_radius_ISR', 'BER medio (%)',  false, ...
-                        nCoupling, range_coupling, range_radius, range_ISR_dB, init_tag, ...
-                        styles_cen, markers_cen, cmap_cen, short_labels_cen, outDir);
-                    plot_vs_radius_metric(mean_EVM_DAS_per_cen_rad,  iISR_fix, 2, ...
-                        'EVM DAS',  'evm_das_vs_radius_ISR',  'EVM medio (dB)', false, ...
-                        nCoupling, range_coupling, range_radius, range_ISR_dB, init_tag, ...
-                        styles_cen, markers_cen, cmap_cen, short_labels_cen, outDir);
-                    plot_vs_radius_metric(mean_EVM_MVDR_per_cen_rad, iISR_fix, 2, ...
-                        'EVM MVDR', 'evm_mvdr_vs_radius_ISR', 'EVM medio (dB)', false, ...
-                        nCoupling, range_coupling, range_radius, range_ISR_dB, init_tag, ...
-                        styles_cen, markers_cen, cmap_cen, short_labels_cen, outDir);
-                end
-            end
-        end
-    end
 end
 
 return;
@@ -2549,7 +2313,7 @@ function plot_metric_helper(metric_per_cen, metric_name, file_prefix, ...
                             nCoupling, range_coupling, nISR, nSNR, ...
                             range_ISR_dB, range_SNR_dB, init_tag, ...
                             styles_cen, markers_cen, cmap_cen, ...
-                            short_labels_cen, outDir, pv_snr, pv_isr, radius_tag)
+                            short_labels_cen, outDir, pv_snr, pv_isr)
 %PLOT_METRIC_HELPER  Gera plots agregados de uma metrica (BER ou EVM)
 %   vs SNR (uma figura por valor de ISR) e vs ISR (uma figura por SNR).
 %   pv_snr/pv_isr controlam quais conjuntos sao gerados.
@@ -2575,13 +2339,13 @@ function plot_metric_helper(metric_per_cen, metric_name, file_prefix, ...
         end
         if use_log, set(gca, 'YScale', 'log'); end
         xlabel('SNR (dB)'); ylabel(ylabel_text);
-        title(sprintf('%s vs SNR  |  ISR = %+d dB  |  init: %s  |  %s', ...
-              metric_name, range_ISR_dB(iISR_fix), init_tag, radius_tag));
+        title(sprintf('%s vs SNR  |  ISR = %+d dB  |  init: %s', ...
+              metric_name, range_ISR_dB(iISR_fix), init_tag));
         legend('Location','best','NumColumns',2);
 
         exportgraphics(fig_h, fullfile(outDir, ...
-            sprintf('%s_vs_SNR_ISR_%+d_init_%s_%s.png', file_prefix, ...
-                    range_ISR_dB(iISR_fix), init_tag, radius_tag)), ...
+            sprintf('%s_vs_SNR_ISR_%+d_init_%s.png', file_prefix, ...
+                    range_ISR_dB(iISR_fix), init_tag)), ...
             'Resolution', 200);
     end
     end   % --- if pv_snr ---
@@ -2607,67 +2371,14 @@ function plot_metric_helper(metric_per_cen, metric_name, file_prefix, ...
         end
         if use_log, set(gca, 'YScale', 'log'); end
         xlabel('ISR (dB)'); ylabel(ylabel_text);
-        title(sprintf('%s vs ISR  |  SNR = %+d dB  |  init: %s  |  %s', ...
-              metric_name, range_SNR_dB(iSNR_fix), init_tag, radius_tag));
+        title(sprintf('%s vs ISR  |  SNR = %+d dB  |  init: %s', ...
+              metric_name, range_SNR_dB(iSNR_fix), init_tag));
         legend('Location','best','NumColumns',2);
 
         exportgraphics(fig_h, fullfile(outDir, ...
-            sprintf('%s_vs_ISR_SNR_%+d_init_%s_%s.png', file_prefix, ...
-                    range_SNR_dB(iSNR_fix), init_tag, radius_tag)), ...
+            sprintf('%s_vs_ISR_SNR_%+d_init_%s.png', file_prefix, ...
+                    range_SNR_dB(iSNR_fix), init_tag)), ...
             'Resolution', 200);
     end
     end   % --- if pv_isr ---
-end
-
-
-function plot_vs_radius_metric(metric_per_cen_rad, iFixed, fix_dim, ...
-                               metric_name, file_prefix, ylabel_text, use_log, ...
-                               nCoupling, range_coupling, range_radius, range_axis, ...
-                               init_tag, styles_cen, markers_cen, cmap_cen, ...
-                               short_labels_cen, outDir)
-%PLOT_VS_RADIUS_METRIC  Plota uma metrica (BER/EVM) vs raio, fixando um eixo.
-%   metric_per_cen_rad{ic}: matriz (nSNR x nISR x nRadius)
-%   iFixed   : indice do valor fixo (SNR ou ISR)
-%   fix_dim  : 1 se SNR fixo (agrega ISR), 2 se ISR fixo (agrega SNR)
-%   range_axis: vetor de SNRs ou ISRs (para titulo/filename)
-
-    if fix_dim == 1
-        eixo_str = 'SNR';   axis_label = 'SNR';
-    else
-        eixo_str = 'ISR';   axis_label = 'ISR';
-    end
-
-    fig_h = figure('Name', sprintf('%s vs raio (%s=%+d dB, init=%s)', ...
-                   metric_name, eixo_str, range_axis(iFixed), init_tag), ...
-                   'NumberTitle','off', 'Position',[100 100 900 600]);
-    hold on; grid on;
-    for ic = 1:nCoupling
-        coup_code = range_coupling(ic);
-        M = metric_per_cen_rad{ic};   % (nSNR x nISR x nRadius)
-        if isempty(M), continue; end
-        if fix_dim == 1
-            % SNR fixo: agrega ISR (dim 2)
-            curve = squeeze(mean(M(iFixed, :, :), 2));
-        else
-            % ISR fixo: agrega SNR (dim 1)
-            curve = squeeze(mean(M(:, iFixed, :), 1));
-        end
-        if all(isnan(curve)), continue; end
-        plot(range_radius, curve(:), ...
-            'LineStyle', styles_cen{coup_code+1}, ...
-            'Marker', markers_cen{coup_code+1}, ...
-            'Color', cmap_cen(coup_code+1, :), ...
-            'LineWidth', 1.8, 'MarkerSize', 8, ...
-            'MarkerFaceColor', cmap_cen(coup_code+1, :), ...
-            'DisplayName', short_labels_cen{coup_code+1});
-    end
-    if use_log, set(gca, 'YScale', 'log'); end
-    xlabel('Raio (\lambda)'); ylabel(ylabel_text);
-    title(sprintf('%s vs raio  |  %s = %+d dB  |  init: %s', ...
-          metric_name, axis_label, range_axis(iFixed), init_tag));
-    legend('Location','best','NumColumns',2);
-
-    exportgraphics(fig_h, fullfile(outDir, ...
-        sprintf('%s_%+d_init_%s.png', file_prefix, range_axis(iFixed), init_tag)), ...
-        'Resolution', 200);
 end
