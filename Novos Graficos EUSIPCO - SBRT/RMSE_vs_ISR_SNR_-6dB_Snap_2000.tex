@@ -4,6 +4,8 @@
 %  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
 %where you can also make suggestions and rate matlab2tikz.
 %
+\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
+%
 \begin{tikzpicture}
 
 \begin{axis}[%
@@ -11,15 +13,15 @@ width=0.951\figurewidth,
 height=\figureheight,
 at={(0\figurewidth,0\figureheight)},
 scale only axis,
-xmin=-6,
+xmin=-12,
 xmax=6,
-xlabel style={font=\color{white!15!black}},
+xlabel style={font=\color{mycolor1}},
 xlabel={ISR (dB)},
 ymode=log,
 ymin=-10,
 ymax=100,
 yminorticks=true,
-ylabel style={font=\color{white!15!black}},
+ylabel style={font=\color{mycolor1}},
 ylabel={RMSE (degrees)},
 axis background/.style={fill=white},
 axis x line*=bottom,
@@ -27,79 +29,95 @@ axis y line*=left,
 xmajorgrids,
 ymajorgrids,
 yminorgrids,
-legend style={legend cell align=left, align=left, draw=white!15!black}
+legend style={legend cell align=left, align=left}
 ]
 \addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
--6	1.47528000065008\\
--3	1.9729355930839\\
-0	2.77516478976651\\
-3	3.33071026308298\\
-6	5.02436053309157\\
+-12	2.20458528583555\\
+-9	2.40217977961259\\
+-6	3.09976200821577\\
+-3	3.81436655530942\\
+0	5.44074352936592\\
+3	6.29668654521152\\
+6	8.90426281859584\\
 };
 \addlegendentry{KW}
 
 \addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
--6	2.32390022675737\\
--3	4.37727891156463\\
-0	43.9304988662132\\
-3	86.5054421768707\\
-6	88.0724943310658\\
+-12	3.09520237965394\\
+-9	4.79062072664538\\
+-6	8.18320105958905\\
+-3	14.6743524097609\\
+0	33.5368139493466\\
+3	52.7154301562563\\
+6	59.2298714663122\\
 };
 \addlegendentry{DAS}
 
 \addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
--6	2.11222222222222\\
--3	3.69049886621315\\
-0	44.1460090702948\\
-3	87.0544217687075\\
-6	88.3873696145125\\
+-12	3.07535528620219\\
+-9	4.6760468849676\\
+-6	7.88919309320211\\
+-3	13.754939206361\\
+0	33.4338823624822\\
+3	54.0988213047928\\
+6	59.867390461918\\
 };
 \addlegendentry{Capon}
 
 \addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
--6	1.60972789115646\\
--3	5.30163265306123\\
-0	50.0373015873016\\
-3	82.9507256235828\\
-6	88.9615873015873\\
+-12	3.17804523265267\\
+-9	3.77127876931597\\
+-6	5.22294104800735\\
+-3	10.0137025825991\\
+0	36.0817870734871\\
+3	58.6996566042539\\
+6	64.5363176795642\\
 };
 \addlegendentry{MUSIC}
 
 \addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
   table[row sep=crcr]{%
--6	1.35783643644756\\
--3	2.03005184505652\\
-0	2.57059690841793\\
-3	7.12077291075512\\
-6	14.12272960578\\
+-12	6.86685882348957\\
+-9	7.01343270616812\\
+-6	7.89344627964701\\
+-3	8.45361589674746\\
+0	9.81830443998306\\
+3	13.8868669281928\\
+6	17.0046481785208\\
 };
 \addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
   table[row sep=crcr]{%
--6	3.04043083900227\\
--3	5.8646485260771\\
-0	45.7648526077098\\
-3	86.8560544217687\\
-6	88.3879818594104\\
+-12	11.4303531735212\\
+-9	13.1175013771864\\
+-6	16.1830373538798\\
+-3	22.0025654005513\\
+0	36.9918719271702\\
+3	49.0693808329938\\
+6	54.6397922461479\\
 };
 \addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
   table[row sep=crcr]{%
--6	2.31965986394558\\
--3	3.52646258503401\\
-0	46.6878458049887\\
-3	91.2171882086168\\
-6	92.4533106575964\\
+-12	12.4548696860228\\
+-9	14.1609429064151\\
+-6	16.7753423351919\\
+-3	20.8328337848556\\
+0	37.2176026897613\\
+3	51.9980917206926\\
+6	56.6973134911726\\
 };
 \addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
   table[row sep=crcr]{%
--6	50.29\\
--3	50.5268934240362\\
-0	54.7753287981859\\
-3	55.0961451247165\\
-6	56.822335600907\\
+-12	34.650882401674\\
+-9	38.6491821505848\\
+-6	42.0318574053467\\
+-3	40.9260800946815\\
+0	42.7497581379078\\
+3	45.4763387086715\\
+6	43.6263155848588\\
 };
 \end{axis}
 \end{tikzpicture}%

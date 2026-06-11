@@ -1,0 +1,123 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.951\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-12,
+xmax=6,
+xlabel style={font=\color{mycolor1}},
+xlabel={ISR (dB)},
+ymode=log,
+ymin=-10,
+ymax=100,
+yminorticks=true,
+ylabel style={font=\color{mycolor1}},
+ylabel={RMSE (degrees)},
+axis background/.style={fill=white},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=red, line width=2.0pt, mark=o, mark options={solid, red}]
+  table[row sep=crcr]{%
+-12	1.56358727225094\\
+-9	1.98729951505205\\
+-6	2.41328244137057\\
+-3	3.05483088641948\\
+0	3.9769188256309\\
+3	5.44887952740501\\
+6	7.04610811472723\\
+};
+\addlegendentry{KW}
+
+\addplot [color=green, line width=2.0pt, mark=x, mark options={solid, green}]
+  table[row sep=crcr]{%
+-12	2.77948435608658\\
+-9	4.58452217470557\\
+-6	8.05987766117138\\
+-3	14.6128401256912\\
+0	34.6548355912277\\
+3	52.8598738014427\\
+6	58.8520730086975\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=blue, line width=2.0pt, mark=square, mark options={solid, blue}]
+  table[row sep=crcr]{%
+-12	2.73463572061839\\
+-9	4.38172059842348\\
+-6	7.49373920266272\\
+-3	12.938110091251\\
+0	34.4073099854835\\
+3	55.1544992229999\\
+6	60.1439405196464\\
+};
+\addlegendentry{Capon}
+
+\addplot [color=black, line width=2.0pt, mark=diamond, mark options={solid, black}]
+  table[row sep=crcr]{%
+-12	2.1530161992125\\
+-9	2.56048975580792\\
+-6	3.1060985032266\\
+-3	7.882218518582\\
+0	32.2751104971195\\
+3	58.1260268128491\\
+6	64.7145353968603\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=red, dashed, line width=2.0pt, mark=o, mark options={solid, red}, forget plot]
+  table[row sep=crcr]{%
+-12	6.70805643685441\\
+-9	6.98615946117252\\
+-6	7.13551198292948\\
+-3	7.68018325764928\\
+0	9.35541495809123\\
+3	10.9877268281173\\
+6	14.422435309532\\
+};
+\addplot [color=green, dashed, line width=2.0pt, mark=x, mark options={solid, green}, forget plot]
+  table[row sep=crcr]{%
+-12	11.4281949735332\\
+-9	13.1718990430211\\
+-6	16.3920919344124\\
+-3	21.9553473575462\\
+0	36.6475335153748\\
+3	48.9119198707266\\
+6	54.7234127042192\\
+};
+\addplot [color=blue, dashed, line width=2.0pt, mark=square, mark options={solid, blue}, forget plot]
+  table[row sep=crcr]{%
+-12	12.9525905378807\\
+-9	14.7086903916064\\
+-6	17.0189836407421\\
+-3	21.3002361720489\\
+0	38.1770678367455\\
+3	51.51969706673\\
+6	55.3761068193436\\
+};
+\addplot [color=black, dashed, line width=2.0pt, mark=diamond, mark options={solid, black}, forget plot]
+  table[row sep=crcr]{%
+-12	38.7814293944423\\
+-9	41.2937913306936\\
+-6	43.2185216353113\\
+-3	43.7717313524218\\
+0	44.6769850501527\\
+3	44.6122999988807\\
+6	43.3241787558988\\
+};
+\end{axis}
+\end{tikzpicture}%

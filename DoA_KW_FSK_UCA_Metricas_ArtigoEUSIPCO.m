@@ -10,27 +10,18 @@ lambda = c/fc;
 r = 0.25 * lambda;    % raio 1/4 λ
 % coupling_factor = 0.3;
 
-theta_sig_deg = 90;   % plano XY
-% phi_sig_deg = 20; %20;     % ângulo do sinal conhecido
+sigma_erro_phi = 0; %10;
 
-theta_int_deg = 90;
-% phi_int_deg = -20; %-30;    % ângulo do interferidor 
-
-% SNR_dB    = -3; %-3;%2;%3%6;         % SNR por sensor p/ o sinal conhecido
-% ISR_dB   = -1; %-3; %0;%6;%-10%10;           % razão interferência vs sinal (0 dB = potências iguais). ISR_dB < 0 → interferidor mais fraco
-
-sigma_erro_phi = 0; %10; 
-
-%nTrials  = 10; %360;   % nº de realizações 
+%nTrials  = 10; %360;   % nº de realizações
 fs     = 288000;       % taxa de amostragem (Hz) para formar snapshots
 N      = 21000;        % nº de amostras
-N_DOA  = 2100;
+N_DOA  = 3100;
 t      = (0:N-1).' / fs;
 N_fm   = 10000;      % nº de amostras do sinal fm
 
 fm_msg = 1000;        % Hz - frequência da mensagem
-delta_f   = 5000;     % desvio FM 
-phi0   = 2*pi*rand;   % fase inicial aleatória do sinal 
+delta_f   = 5000;     % desvio FM
+phi0   = 2*pi*rand;   % fase inicial aleatória do sinal
 epsilon = 0.1;
 p = 1.1;
 maxIter = 100;
@@ -42,26 +33,107 @@ alpha  = 0.3;           % roll-off do RRC
 span   = 8;             % comprimento do RRC em símbolos (TX/RX)
 fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
 
-range_SNR_dB = -6:3:6; %-6:3:6; %-9:3:9;
-range_ISR_dB = -6:3:6; %-12:3:-3; %-9:3:3;
-range_snapshots = 2000:3000:N_DOA;
-range_radius = [0.25]; %[0.5 0.3 0.25 0.2 0.15 0.1]; %
-range_coupling = [0 1]; % com e sem acoplamento
-range_phi = -180:18:180;
+% =========================================================================
+% Modo de varredura angular (2D - azimute e elevacao):
+%   'cross'    -> phi e theta varrem grades via produto cartesiano.
+%                 nPhi*nTheta * nPhi*nTheta simulacoes por ponto operacional.
+%   'aleatory' -> (phi_sig, theta_sig) e (phi_int, theta_int) sorteados
+%                 aleatoriamente, respeitando separacao angular esferica
+%                 minima. n_rand_angles pares por ponto operacional.
+% =========================================================================
+experiment_mode = 'aleatory';   % 'cross' | 'aleatory'
+
+% Parametros do modo 'aleatory'
+n_rand_angles  = 500;            % quantos pares sortear por ponto operacional
+min_sep_deg    = 10;            % separacao angular esferica minima (graus)
+theta_min_rand = 10;            % limite inferior de theta no sorteio (evita zenith)
+theta_max_rand = 90;            % limite superior de theta no sorteio
+
+range_SNR_dB    = -6:3:6;
+range_ISR_dB    = -12:3:6;
+range_snapshots = N_DOA; %2000:3000:N_DOA;
+range_radius    = [0.22];
+range_coupling  = [0 1];        % 0 = sem coupling, 1 = com coupling
+
+% Grades angulares verdadeiras (usadas em 'cross')
+range_phi_true   = -180:18:180;       % azimutes verdadeiros
+range_theta_true = 0:15:90;           % elevacoes verdadeiras [0,90] step 15
+
+switch experiment_mode
+    case 'cross'
+        % Produto cartesiano de (phi, theta) para sig e int
+        [PhiG, ThetaG] = meshgrid(range_phi_true, range_theta_true);
+        sig_dirs = [PhiG(:), ThetaG(:)];  % nPairs x 2 (col1=phi, col2=theta)
+        int_dirs = sig_dirs;              % mesmo conjunto para interferente
+        % Pares serao formados via duplo loop excluindo iguais
+        nSigDirs = size(sig_dirs, 1);
+        nIntDirs = size(int_dirs, 1);
+        nPairsPerOp = nSigDirs * nIntDirs;   % cap superior; pares iguais sao puladas
+        pair_mode = 'cross';
+
+    case 'aleatory'
+        % Sorteia n_rand_angles pares (sig, int) respeitando separacao
+        % esferica minima. Angulos FIXOS para todos os pontos operacionais
+        % (so SNR/ISR/ruido variam entre pontos).
+        rng(12345, 'twister');
+        sig_dirs = zeros(n_rand_angles, 2);   % [phi, theta]
+        int_dirs = zeros(n_rand_angles, 2);
+        for kk = 1:n_rand_angles
+            % Sorteia SOI
+            ps = -180 + 360*rand;
+            ts = theta_min_rand + (theta_max_rand - theta_min_rand)*rand;
+            % Sorteia interferente com separacao esferica minima
+            while true
+                pi_ = -180 + 360*rand;
+                ti_ = theta_min_rand + (theta_max_rand - theta_min_rand)*rand;
+                d_sph = spherical_angular_distance(ts, ps, ti_, pi_);
+                if d_sph >= min_sep_deg
+                    break;
+                end
+            end
+            sig_dirs(kk, :) = [ps, ts];
+            int_dirs(kk, :) = [pi_, ti_];
+        end
+        nPairsPerOp = n_rand_angles;
+        pair_mode = 'paired';
+
+    otherwise
+        error('experiment_mode invalido: %s', experiment_mode);
+end
+
 nMethods = 4;
 methods = ["KW","DAS","MPDR","MUSIC"];
 
-nSNR = numel(range_SNR_dB);
-nISR = numel(range_ISR_dB);
-nRadius  = numel(range_radius);
+nSNR        = numel(range_SNR_dB);
+nISR        = numel(range_ISR_dB);
+nRadius     = numel(range_radius);
 nSnapshots  = numel(range_snapshots);
-nPhi  = numel(range_phi);
-nCoupling  = numel(range_coupling);
+nCoupling   = numel(range_coupling);
 
-TotalSim = nSNR*nISR*nRadius*nCoupling*nSnapshots*nPhi*nPhi;
-iTotal = 0;
-% Armazenamento
-RMSE = zeros(nMethods, nSNR, nISR, nRadius, nCoupling, nSnapshots, nPhi*nPhi);
+% =========================================================================
+% Grade de busca 2D para metodos classicos (DAS, MPDR, MUSIC)
+% theta passo 1 grau, phi passo 0.5 grau (sweep refinado)
+% =========================================================================
+theta_scan_step = 1;
+phi_scan_step   = 0.5;
+theta_scan_grid = 1:theta_scan_step:90;          % evita zenith (degenerescencia)
+phi_scan_grid   = -180:phi_scan_step:180;
+nThetaScan = numel(theta_scan_grid);
+nPhiScan   = numel(phi_scan_grid);
+
+% Vetores planos (theta, phi) para cada ponto da grade 2D
+[PhiScanG, ThetaScanG] = meshgrid(phi_scan_grid, theta_scan_grid);
+theta_scan_flat = ThetaScanG(:);   % nGridPts x 1
+phi_scan_flat   = PhiScanG(:);     % nGridPts x 1
+nGridPts        = numel(theta_scan_flat);
+fprintf('Grade de busca 2D: %d pontos (theta=%d, phi=%d)\n', ...
+        nGridPts, nThetaScan, nPhiScan);
+
+TotalSim = nSNR*nISR*nRadius*nCoupling*nSnapshots*nPairsPerOp;
+iTotal   = 0;
+
+% Armazenamento (ultima dim agora indexa o par angular dentro do ponto operacional)
+RMSE = zeros(nMethods, nSNR, nISR, nRadius, nCoupling, nSnapshots, nPairsPerOp);
 
 %% ======= Coupling Matrix Estimation =======
 
@@ -156,8 +228,34 @@ for iRadius = 1:nRadius
     Coupling_matrices(:,:,iRadius) = Ctx;%inv(Ctx);
 end
 
+%% ======= Pré-computação dos steering vectors da grade 2D =======
+% A matriz de steering vectors da grade de busca (theta, phi) e' fixa por raio.
+% Pre-computar fora do loop evita milhoes de chamadas a steering_vec_uca.
+fprintf('Pre-computando matriz de steering vectors 2D (%d pontos x %d raios)...\n', ...
+        nGridPts, nRadius);
+tic_pre = tic;
+A_scan_cell = cell(nRadius, 1);
+for iRadius_pre = 1:nRadius
+    radius_pre = range_radius(iRadius_pre) * lambda;
+    A = zeros(M, nGridPts);
+    for kk = 1:nGridPts
+        A(:, kk) = utils.steering_vec_uca(M, radius_pre, lambda, ...
+                                          theta_scan_flat(kk), phi_scan_flat(kk));
+    end
+    A_scan_cell{iRadius_pre} = A;
+end
+fprintf('  ...pre-computacao concluida em %.2f s\n', toc(tic_pre));
+
+% Vetor unitario das direcoes verdadeiras para metrica esferica
+% (sera (re)usado dentro do loop)
+
 %% ======= DoA KW vs Delay and Sum vs Capon =======
 
+sweep_t0 = tic;
+fprintf('\n=== INICIO DO LOOP PRINCIPAL ===\n');
+fprintf('Total de simulacoes: %d  (modo %s, %d pares angulares)\n', ...
+        TotalSim, experiment_mode, nPairsPerOp);
+fprintf('================================\n\n');
 
 for iSNR = 1:nSNR
     for iISR = 1:nISR
@@ -169,17 +267,40 @@ for iSNR = 1:nSNR
                 radius = range_radius(iRadius)*lambda;
                 Coupling = range_coupling(iCoupling);
 
-                ii = 1;
-                for iPhi = 1:nPhi
-                    phi_sig_deg = range_phi(iPhi);
+                % Steering scan matrix (pre-computada) para este raio
+                A_scan = A_scan_cell{iRadius};
 
-                    for iiPhi = 1:nPhi
-                        phi_int_deg = range_phi(iiPhi);
+                % =========================================================
+                % Geracao da lista de pares angulares para este ponto operacional
+                % =========================================================
+                if strcmp(pair_mode, 'cross')
+                    % Produto cartesiano (sig_dirs x int_dirs), descartando iguais
+                    pair_list = zeros(nPairsPerOp, 4);  % [phi_s, theta_s, phi_i, theta_i]
+                    cnt = 0;
+                    for is = 1:size(sig_dirs, 1)
+                        for ii_ = 1:size(int_dirs, 1)
+                            if is == ii_  % mesma direcao -> pula
+                                continue;
+                            end
+                            cnt = cnt + 1;
+                            pair_list(cnt, :) = [sig_dirs(is, 1), sig_dirs(is, 2), ...
+                                                 int_dirs(ii_, 1), int_dirs(ii_, 2)];
+                        end
+                    end
+                    pair_list = pair_list(1:cnt, :);
+                else  % 'paired' (modo 'aleatory')
+                    pair_list = [sig_dirs, int_dirs];   % colunas [phi_s,theta_s,phi_i,theta_i]
+                end
+                nPairs_actual = size(pair_list, 1);
 
-                        j=1;
+                ii = 1;   % indice linear do par para armazenamento
+                for iPair = 1:nPairs_actual
+                    phi_sig_deg   = pair_list(iPair, 1);
+                    theta_sig_deg = pair_list(iPair, 2);
+                    phi_int_deg   = pair_list(iPair, 3);
+                    theta_int_deg = pair_list(iPair, 4);
 
-                        %phi_sig_deg = -180 + 360*rand;
-                        %phi_int_deg = -180 + 360*rand;
+                    j = 1;
 
                         % ----- Forma de onda conhecida (q) e interferidor "ruído" (r) -----
 
@@ -205,14 +326,25 @@ for iSNR = 1:nSNR
 
                         for K = range_snapshots
                             iTotal = iTotal + 1;
-                            % ----- DoA KW
-                            fprintf('--> Sim %d / %d , ii = %d , j = %d , K = %d / %d \n', iTotal, TotalSim, ...
-                                ii, j, K, N_DOA);
-                            % theta_hat_deg   = doa_kw_2007(X(:,1:K), q(1:K), M, d, lambda, 1);        % ell = 1 com M=4
+                            % --- Progresso da simulacao ---
+                            elapsed = toc(sweep_t0);
+                            if iTotal > 1
+                                eta_sec = elapsed * (TotalSim - iTotal) / (iTotal - 1);
+                                eta_str = datestr(seconds(eta_sec), 'HH:MM:SS');
+                            else
+                                eta_str = '--:--:--';
+                            end
+                            fprintf(['--> Sim %d / %d (%.1f%%)  |  SNR=%+d ISR=%+d Coup=%d r=%d  |  ' ...
+                                     'sig=(%+6.1f, %4.1f)  int=(%+6.1f, %4.1f)  K=%d  |  ' ...
+                                     'decorrido %s  ETA %s\n'], ...
+                                    iTotal, TotalSim, 100*iTotal/TotalSim, ...
+                                    SNR_dB, ISR_dB, Coupling, iRadius, ...
+                                    phi_sig_deg, theta_sig_deg, phi_int_deg, theta_int_deg, K, ...
+                                    datestr(seconds(elapsed), 'HH:MM:SS'), eta_str);
 
+                            % ----- DoA KW (2D nativo) -----
                             beta = 2*pi*(0:M-1)'/M;
-                            [theta_hat_deg, phi_hat_deg] = doa_kw_uca(X(:,1:K), q(1:K).', radius, lambda, beta);
-                            % [theta_new_hat_deg, phi_new_hat_deg] = new_doa_kw_uca(X(:,1:K), q(1:K).', radius, lambda, beta);
+                            [theta_hat_KW, phi_hat_KW] = doa_kw_uca(X(:,1:K), q(1:K).', radius, lambda, beta);
 
                             % Matriz de covariância
                             Rxx = (X(:,1:K)*X(:,1:K)')/size(X(:,1:K),2);
@@ -221,75 +353,59 @@ for iSNR = 1:nSNR
 
                             % Decomposição espectral
                             [eigvec, eigval] = eig(Rxx_dl);
-                            [lambda_eig, idx] = sort(diag(eigval), 'descend');
-                            E = eigvec(:, idx);
+                            [~, idx_eig] = sort(diag(eigval), 'descend');
+                            E = eigvec(:, idx_eig);
 
-                            % Número de fontes conhecidas (K)
-                            Ksrc = 2;   % ajuste se tiver mais fontes
-                            En = E(:, Ksrc+1:end);  % subespaço do ruído
+                            % Número de fontes conhecidas
+                            Ksrc = 2;
+                            En = E(:, Ksrc+1:end);
+                            EnEnH = En * En';
 
-                            % Varredura angular (azimute, plano horizontal)
-                            phi_scan = -180:0.01:180;    % graus
-                            theta_scan = 90;            % fixa em 90° (plano XY)
-
-                            P_DAS   = zeros(size(phi_scan));
-                            P_MVDR  = zeros(size(phi_scan));
-                            P_MUSIC = zeros(size(phi_scan));
-
+                            % ===== Varredura 2D (theta, phi) VETORIZADA =====
+                            % Para A_scan (M x nGridPts) e B (M x M) hermitiana,
+                            % o vetor [a_k' * B * a_k] (k=1..nGridPts) e' sum(conj(A) .* (B*A), 1).
                             Rinv = inv(Rxx_dl);
+                            BA_DAS   = Rxx   * A_scan;
+                            BA_MVDR  = Rinv  * A_scan;
+                            BA_MUSIC = EnEnH * A_scan;
 
-                            for ang = 1:numel(phi_scan)
-                                % Estimando apenas o angulo phi
-                                a = utils.steering_vec_uca(M, radius, lambda, theta_sig_deg, phi_scan(ang));  % Mx1
-                                % ----- Delay-and-Sum -----
-                                P_DAS(ang)  = abs(a' * Rxx * a);
-                                % ----- Capon (MPDR) -----
-                                denom     = real(a' * Rinv * a);
-                                P_MVDR(ang) = 1 ./ max(denom, eps);
-                                % ----- MUSIC -----
-                                P_MUSIC(ang) = 1 ./ real(a' * (En * En') * a);
-                            end
+                            P_DAS_flat   = abs(  sum(conj(A_scan) .* BA_DAS,   1) );
+                            denom_mvdr   = real( sum(conj(A_scan) .* BA_MVDR,  1) );
+                            P_MVDR_flat  = 1 ./ max(denom_mvdr, eps);
+                            denom_music  = real( sum(conj(A_scan) .* BA_MUSIC, 1) );
+                            P_MUSIC_flat = 1 ./ max(denom_music, eps);
 
-                            % Normalização (dB) e estimativa dos picos
-                            P_DAS_dB   = 10*log10(P_DAS / max(P_DAS));
-                            P_MVDR_dB  = 10*log10(P_MVDR / max(P_MVDR));
-                            P_MUSIC_dB = 10*log10(P_MUSIC / max(P_MUSIC));
+                            % Indices dos picos (na grade 2D plana)
+                            [~, i_das  ] = max(P_DAS_flat);
+                            [~, i_mvdr ] = max(P_MVDR_flat);
+                            [~, i_music] = max(P_MUSIC_flat);
 
-                            [~,i_das ] = max(P_DAS);
-                            [~,i_mvdr] = max(P_MVDR);
-                            [~, idx_music] = max(P_MUSIC);
+                            % Recupera (theta, phi) estimados de cada metodo
+                            theta_DAS   = theta_scan_flat(i_das);    phi_DAS   = phi_scan_flat(i_das);
+                            theta_MVDR  = theta_scan_flat(i_mvdr);   phi_MVDR  = phi_scan_flat(i_mvdr);
+                            theta_MUSIC = theta_scan_flat(i_music);  phi_MUSIC = phi_scan_flat(i_music);
 
-                            phi_DAS  = phi_scan(i_das);
-                            phi_MVDR = phi_scan(i_mvdr);
-                            phi_MUSIC = phi_scan(idx_music);
+                            % ===== Erro angular ESFERICO (geodesico) =====
+                            err_KW    = spherical_angular_distance(theta_sig_deg, phi_sig_deg, theta_hat_KW,  phi_hat_KW);
+                            err_DAS   = spherical_angular_distance(theta_sig_deg, phi_sig_deg, theta_DAS,     phi_DAS);
+                            err_MVDR  = spherical_angular_distance(theta_sig_deg, phi_sig_deg, theta_MVDR,    phi_MVDR);
+                            err_MUSIC = spherical_angular_distance(theta_sig_deg, phi_sig_deg, theta_MUSIC,   phi_MUSIC);
 
-                            % Cálculo do erro em relação ao ângulo verdadeiro
-                            RMSE(:,iSNR,iISR,iRadius, iCoupling, j, ii) = [
-                                abs(mod(phi_hat_deg - phi_sig_deg + 180,360)-180);
-                                abs(mod(phi_DAS     - phi_sig_deg + 180,360)-180);
-                                abs(mod(phi_MVDR    - phi_sig_deg + 180,360)-180);
-                                abs(mod(phi_MUSIC   - phi_sig_deg + 180,360)-180)
-                                ];
+                            RMSE(:, iSNR, iISR, iRadius, iCoupling, j, ii) = ...
+                                [err_KW; err_DAS; err_MVDR; err_MUSIC];
                             j = j + 1;
                         end
                         ii = ii + 1;
+                end  % iPair
+            end  % iCoupling
+        end  % iRadius
+    end  % iISR
+end  % iSNR
 
-                        % %fprintf('θ verdadeiro (broadside): %+.2f° | θ estimado: %+.2f°\n', phi0_deg, phi_hat_deg);
-                        % fprintf('%1.0f Antenas, Raio %3.1f cm, Freq %4.0f MHz | θ sinal conhecido: %+5.2f° | θ interferidor: %+5.2f° | SNR=%+3.0f dB, INR=%+3.0f dB\n', ...
-                        %     M, r*100, fc/1e6, phi_sig_deg, phi_int_deg, SNR_dB, ISR_dB);
-                        % fprintf('Estimativa KW             : %+5.4f°\n', phi_hat_deg);
-                        % % fprintf('Estimativa New KW         : %+5.4f°\n', phi_new_hat_deg);
-                        % fprintf('Estimativa Delay-and-Sum  : %+5.4f°\n', phi_DAS);
-                        % fprintf('Estimativa Capon          : %+5.4f°\n', phi_MVDR);
-                        % fprintf('Estimativa MUSIC          : %+5.4f°\n', phi_MUSIC);
-                    end
-                end
-            end
-        end
-    end
-end
+fprintf('\nLoop principal concluido em %s\n', ...
+        datestr(seconds(toc(sweep_t0)), 'HH:MM:SS'));
 
-RMSE_mean = mean(RMSE, 7);   % média ao longo da 7ª dimensão (trials)
+RMSE_mean = mean(RMSE, 7);   % média ao longo dos pares angulares
 %K_fixed = range_snapshots(end);
 K_fixed = numel(range_snapshots);
 

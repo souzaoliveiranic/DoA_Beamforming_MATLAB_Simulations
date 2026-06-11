@@ -816,7 +816,7 @@ classdef utils
         % ==========  preâmbulo conhecido com K_kw < K amostras).   ============
         % =====================================================================
 
-        function [X, y_ref, k0_true, Xsig, Xint, Xn] = ...
+        function [X, y_ref, k0_true, Xsig, Xint, Xn, bits_full, sym_full, bits_pre, sym_pre] = ...
                 simulate_data_uca_v3(M, r, lambda, ...
                                      phi_sig_deg, phi_int_deg, ...
                                      theta_sig_deg, theta_int_deg, ...
@@ -848,6 +848,11 @@ classdef utils
             %    y_ref    : 1 x K_kw, forma de onda de referência do preâmbulo.
             %    k0_true  : devolvido para o chamador construir a janela.
             %    Xsig, Xint, Xn : componentes separadas (M x K cada).
+            %    bits_full : bits de TODO o SOI ativo (preâmbulo + payload),
+            %                na ordem temporal. Para medir BER do sinal todo.
+            %    sym_full  : símbolos PAM (+1/-1) correspondentes a bits_full.
+            %    bits_pre  : apenas os bits do preâmbulo (subconjunto inicial).
+            %    sym_pre   : símbolos do preâmbulo.
 
             if nargin < 19 || isempty(k0_true) || k0_true <= 0
                 k0_true = floor((K - K_kw)/2) + 1;
@@ -869,22 +874,38 @@ classdef utils
 
             % --------------------------------------------------------
             % Preâmbulo (K_kw amostras) e dados (K - k0_true - K_kw + 1 - 1 amostras)
-            Nsym_pre = ceil(K_kw / sps) + 4;
-            [q_pre, ~, ~, ~, ~] = utils.fsk2_mod(Nsym_pre, Rs, sps, alpha, span, fd);
-            q_pre = q_pre(:);
-            % Corta para exatamente K_kw amostras (descarta transiente RRC)
+            % IMPORTANTE: NAO removemos o atraso de grupo (gd) do TX aqui.
+            % O fsk2_demod compensa o atraso total (TX+RX = 2*gd) ao amostrar
+            % em idx0 = 2*gd+1. Manter o gd do TX preserva a convencao de
+            % atraso esperada pelo demodulador (evita desalinhamento de
+            % simbolos -> BER ~50% / EVM positivo).
             gd = span*sps/2;
-            q_pre = q_pre(gd+1 : gd+K_kw);
+            Nsym_pre = ceil(K_kw / sps) + span + 4;
+            [q_pre, bits_pre_all, ~, ~, sym_pre_all] = utils.fsk2_mod(Nsym_pre, Rs, sps, alpha, span, fd);
+            q_pre = q_pre(:);
+            q_pre = q_pre(1 : K_kw);          % primeiras K_kw amostras (com transiente TX)
+            nsym_pre_valid = floor(K_kw / sps);
+            bits_pre = bits_pre_all(1:nsym_pre_valid);
+            sym_pre  = sym_pre_all(1:nsym_pre_valid);
 
             N_data_after = K - (k0_true - 1) - K_kw;   % amostras após o preâmbulo
             if N_data_after > 0
-                Nsym_data = ceil(N_data_after / sps) + 4;
-                [q_data, ~, ~, ~, ~] = utils.fsk2_mod(Nsym_data, Rs, sps, alpha, span, fd);
+                Nsym_data = ceil(N_data_after / sps) + span + 4;
+                [q_data, bits_data_all, ~, ~, sym_data_all] = utils.fsk2_mod(Nsym_data, Rs, sps, alpha, span, fd);
                 q_data = q_data(:);
-                q_data = q_data(gd+1 : gd+N_data_after);
+                q_data = q_data(1 : N_data_after);   % sem corte de gd
+                nsym_data_valid = floor(N_data_after / sps);
+                bits_data = bits_data_all(1:nsym_data_valid);
+                sym_data  = sym_data_all(1:nsym_data_valid);
             else
                 q_data = [];
+                bits_data = [];
+                sym_data  = [];
             end
+
+            % Bits/simbolos de TODO o SOI ativo (preambulo + payload), em ordem
+            bits_full = [bits_pre(:); bits_data(:)];
+            sym_full  = [sym_pre(:);  sym_data(:)];
 
             % Sinal completo transmitido pelo SOI (1 x K)
             q_full = zeros(K, 1);
