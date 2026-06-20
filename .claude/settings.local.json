@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la)",
+      "Bash(cat MEMORY.md)",
+      "PowerShell(& \"D:\\\\Program Files\\\\MATLAB\\\\R2025a\\\\bin\\\\matlab.exe\" -batch \"disp\\('=== ITERATIVO ==='\\); disp\\(checkcode\\('DoA_KW_UCA_SelfCal_Iterativo.m','-string'\\)\\); disp\\('=== MULTIDIR ==='\\); disp\\(checkcode\\('DoA_KW_UCA_SelfCal_MultiDir.m','-string'\\)\\)\")"
+    ]
+  }
+}
