@@ -1,0 +1,179 @@
+closea all; clc; clear;
+% =========================================================================
+% EXPERIMENTO: Auto-calibracao CEGA multi-transmissao (KW only)
+% -------------------------------------------------------------------------
+% Estuda a recuperacao da matriz de acoplamento C e a qualidade do DoA
+% quando NAO se conhece a direcao do sinal, acumulando L transmissoes da
+% MESMA forma de onda conhecida (fonte em movimento -> diversidade natural).
+%
+% USA O MODELO DE SINAL REAL DO SCRIPT: utils.simulate_data_uca_v3
+% (pacote FSK-2 com preambulo + payload), a matriz de acoplamento real
+% Coupling_matrices_real, e os mesmos parametros (Rs, sps, fs, K, K_kw...).
+%
+% >>> Este bloco assume que o script principal JA foi executado o suficiente
+%     para definir as variaveis: M, lambda, fs, K, K_kw, Rs, sps, alpha,
+%     span, fd, theta_sig_deg, theta_int_deg, exp_radius_m, interf_type,
+%     Coupling_matrices_real (ou Cmat), outDir, e ter no path utils.*,
+%     doa_kw_uca, estimate_C_circulant_pool, estimate_C_selfcal_multishot.
+%     Rode-o logo apos o bloco 'plot_selfcal_vs_iter', reaproveitando o setup.
+%
+% Varreduras: L (transmissoes), interferente FIXO vs MOVEL, correlacao rho.
+% Saidas: multishot_frobenius_vs_L.png, multishot_rmse_doa_vs_L.png
+% SEM ORACLE: a self-cal roda cega; C_true entra so' na medicao.
+% =========================================================================
+
+% ---- ponto de operacao deste estudo (ajuste a vontade) ----
+ms_SNR_dB   = 3;
+ms_ISR_dB   = -3;            % ISR fixo; o efeito fixo/movel aparece em ISR>=0
+ms_lambda   = 1e-2;        % Tikhonov no pool (recuperacao de C). Ver trade-off.
+ms_n_outer  = 3;
+ms_min_sep  = 25;
+L_list      = [1 2 4 6 8 12];
+rho_list    = [0.0 0.3 0.5];
+ms_n_rep    = 60;
+
+% Matriz de acoplamento VERDADEIRA: usa a REAL do script (pode ser nao-circ.).
+if exist('Cmat','var') && ~isempty(Cmat)
+    C_true_ms = Cmat;
+elseif exist('Coupling_matrices_real','var')
+    C_true_ms = Coupling_matrices_real(:,:,1);
+else
+    error('Defina Cmat ou Coupling_matrices_real antes deste bloco.');
+end
+CtN  = C_true_ms / C_true_ms(1,1);          % normaliza diag=1 p/ comparacao
+froT = norm(CtN,'fro');
+
+% saida
+if ~exist('outDir','var') || isempty(outDir), outDir = pwd; end
+
+conds  = {'movel','fixo','conhecida'};
+nL = numel(L_list); nRho = numel(rho_list); nC = numel(conds);
+fro_acc = zeros(nC,nL,nRho);
+doa_acc = zeros(nC,nL,nRho);
+
+fprintf('\n[multishot] SNR=%+d ISR=%+d lambda=%.0e  (modelo de sinal v3)\n', ms_SNR_dB, ms_ISR_dB, ms_lambda);
+for ir = 1:nRho
+  rho = rho_list(ir);
+  fprintf('  rho=%.1f ...\n', rho);
+  for il = 1:nL
+    L = L_list(il);
+    acc = zeros(nC,2);
+    for rep = 1:ms_n_rep
+      % --- gera L transmissoes (mesma waveform, direcoes do sinal aleatorias) ---
+      Xc_mov = cell(1,L); Xc_fix = cell(1,L);
+      qv = [];  k0 = [];
+      phis_true = zeros(1,L);
+      psi_fix = randi([-180,179]);
+      for l = 1:L
+        phi_sig = randi([-180,179]);
+        phis_true(l) = phi_sig;
+        % --- interferente MOVEL: direcao nova, respeitando separacao ---
+        phi_int_mov = randi([-180,179]);
+        while min(abs(phi_int_mov-phi_sig),360-abs(phi_int_mov-phi_sig)) < ms_min_sep
+          phi_int_mov = randi([-180,179]);
+        end
+
+        % MODELO DE SINAL REAL (sinal + ruido; interferente injetado a parte
+        % p/ controlar correlacao e direcao). Usamos ISR muito baixo aqui p/
+        % praticamente desligar o interferente interno do v3 e adiciona-lo
+        % manualmente com a correlacao rho desejada.
+        [Xs, y_ref, k0t, Xsig, ~, Xn] = utils.simulate_data_uca_v3( ...
+            M, exp_radius_m, lambda, phi_sig, phi_int_mov, ...
+            theta_sig_deg, theta_int_deg, ms_SNR_dB, -200, ...   % ISR=-200 => interf interno ~0
+            K, K_kw, fs, Rs, sps, alpha, span, fd, interf_type, []);
+        if isempty(qv), qv = y_ref(:); k0 = k0t; end
+
+        % --- interferente controlado: waveform com correlacao rho com qv ---
+        % qv e' o preambulo (K_kw). Construimos um interferente de K amostras
+        % cuja parte no preambulo tem correlacao rho com qv.
+        Kc = size(Xs,2);
+        w  = (randn(1,Kc)+1j*randn(1,Kc))/sqrt(2);
+        % alinha a correlacao na janela do preambulo
+        q_full = zeros(1,Kc); q_full(k0:k0+K_kw-1) = qv.';
+        eq = norm(q_full); if eq<eps, eq=1; end
+        q_unit = q_full/eq*sqrt(Kc);                      % potencia ~1
+        vint = rho*q_unit + sqrt(1-rho^2)*w;
+        vint = vint/sqrt(mean(abs(vint).^2));             % normaliza potencia
+        ia = 10^(ms_ISR_dB/20);
+
+        a_im = utils.steering_vec_uca(M, exp_radius_m, lambda, theta_int_deg, phi_int_mov);
+        a_if = utils.steering_vec_uca(M, exp_radius_m, lambda, theta_int_deg, psi_fix);
+        Iint_mov = a_im*(ia*vint);
+        Iint_fix = a_if*(ia*vint);
+
+        % aplica acoplamento real: X = C*(sinal + interf) + ruido_ja_em_Xn?
+        % Xs ja' inclui sinal+ruido (ISR baixo). Separamos: sinal=Xsig, ruido=Xn.
+        % Acoplamento incide em sinal e interferente (nao no ruido termico).
+        Xc_mov{l} = C_true_ms*(Xsig + Iint_mov) + Xn;
+        Xc_fix{l} = C_true_ms*(Xsig + Iint_fix) + Xn;
+      end
+
+      % janelas do preambulo
+      Xw_mov = cell(1,L); Xw_fix = cell(1,L);
+      for l=1:L
+        Xw_mov{l} = Xc_mov{l}(:, k0:k0+K_kw-1);
+        Xw_fix{l} = Xc_fix{l}(:, k0:k0+K_kw-1);
+      end
+
+      % (1) CEGO + interferente MOVEL
+      [Cm, phim] = estimate_C_selfcal_multishot(Xw_mov, qv, M, exp_radius_m, lambda, ms_n_outer, ms_lambda, eye(M));
+      em = abs(phim-phis_true); em=min(em,360-em);
+      acc(1,1)=acc(1,1)+norm(Cm/Cm(1,1)-CtN,'fro')/froT; acc(1,2)=acc(1,2)+mean(em.^2);
+
+      % (2) CEGO + interferente FIXO
+      [Cf, phif] = estimate_C_selfcal_multishot(Xw_fix, qv, M, exp_radius_m, lambda, ms_n_outer, ms_lambda, eye(M));
+      ef = abs(phif-phis_true); ef=min(ef,360-ef);
+      acc(2,1)=acc(2,1)+norm(Cf/Cf(1,1)-CtN,'fro')/froT; acc(2,2)=acc(2,2)+mean(ef.^2);
+
+      % (3) Referencia: DIRECOES CONHECIDAS (pool direto, interf movel)
+      A_known = zeros(M,L); B_known = zeros(M,L);
+      for l=1:L
+        A_known(:,l) = utils.steering_vec_uca(M, exp_radius_m, lambda, theta_sig_deg, phis_true(l));
+        B_known(:,l) = Xw_mov{l}*conj(qv)/(qv'*qv);
+      end
+      Ck = estimate_C_circulant_pool(B_known, A_known, M, ms_lambda, eye(M));
+      acc(3,1)=acc(3,1)+norm(Ck/Ck(1,1)-CtN,'fro')/froT; acc(3,2)=acc(3,2)+0;
+    end
+    fro_acc(:,il,ir) = acc(:,1)/ms_n_rep;
+    doa_acc(:,il,ir) = sqrt(acc(:,2)/ms_n_rep);
+  end
+end
+
+% ---------------- Plots ----------------
+styles = {'-s','-^','--o'};
+cols   = [0.13 0.47 0.71; 0.85 0.37 0.0; 0.5 0.5 0.5];
+names  = {'CEGO + interf. movel','CEGO + interf. fixo','direcoes conhecidas (ref)'};
+nrows  = ceil(nRho/2);
+
+f1 = figure('Name','C-recovery vs L (multishot KW)','NumberTitle','off','Position',[60 60 1100 760]);
+for ir=1:nRho
+  subplot(nrows,2,ir); hold on; grid on;
+  for ic=1:nC
+    plot(L_list, squeeze(fro_acc(ic,:,ir)), styles{ic}, 'Color',cols(ic,:), ...
+         'LineWidth',1.6,'MarkerSize',5,'MarkerFaceColor',cols(ic,:));
+  end
+  title(sprintf('\\rho = %.1f', rho_list(ir)));
+  xlabel('L (transmissoes)'); ylabel('||C^{hat}-C^{true}||_F/||C^{true}||_F');
+  xlim([0 max(L_list)+1]); ylim([0 max(0.6, max(fro_acc(:))*1.05)]);
+  if ir==1, legend(names,'Location','northeast','FontSize',7); end
+end
+sgtitle(sprintf('Recuperacao de C (multishot CEGO, KW)  |  SNR=%+d, ISR=%+d, \\lambda=%.0e  [sem oracle]', ms_SNR_dB, ms_ISR_dB, ms_lambda));
+exportgraphics(f1, fullfile(outDir,'multishot_frobenius_vs_L.png'), 'Resolution', 200);
+fprintf('  -> multishot_frobenius_vs_L.png\n');
+
+f2 = figure('Name','DoA RMSE vs L (multishot KW)','NumberTitle','off','Position',[80 60 1100 760]);
+for ir=1:nRho
+  subplot(nrows,2,ir); hold on; grid on;
+  for ic=1:2
+    plot(L_list, squeeze(doa_acc(ic,:,ir)), styles{ic}, 'Color',cols(ic,:), ...
+         'LineWidth',1.6,'MarkerSize',5,'MarkerFaceColor',cols(ic,:));
+  end
+  title(sprintf('\\rho = %.1f', rho_list(ir)));
+  xlabel('L (transmissoes)'); ylabel('RMSE de \phi (graus)');
+  xlim([0 max(L_list)+1]);
+  if ir==1, legend(names(1:2),'Location','northeast','FontSize',7); end
+end
+sgtitle(sprintf('RMSE de DoA por transmissao (KW, multishot CEGO)  |  SNR=%+d, ISR=%+d', ms_SNR_dB, ms_ISR_dB));
+exportgraphics(f2, fullfile(outDir,'multishot_rmse_doa_vs_L.png'), 'Resolution', 200);
+fprintf('  -> multishot_rmse_doa_vs_L.png\n');
+fprintf('[multishot] concluido.\n');

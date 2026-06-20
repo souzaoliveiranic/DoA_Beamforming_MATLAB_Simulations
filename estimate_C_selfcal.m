@@ -1,7 +1,7 @@
 function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
     estimate_C_selfcal(X, q, M, radius, lambda, doa_method, ...
                        phi_grid_deg, max_iter, tol_phi, tol_C, C_true_for_log, ...
-                       damping, init_mode)
+                       damping, init_mode, force_full_iters)
 % ESTIMATE_C_SELFCAL  Self-calibration alternante: estima conjuntamente
 %   DoA e matriz de acoplamento. Aceita 4 metodos de DoA: 'DAS', 'CAPON',
 %   'MUSIC', 'KW'.
@@ -68,10 +68,20 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
     if nargin < 11,                          C_true_for_log = [];          end
     if nargin < 12 || isempty(damping),      damping = 1.0;                end
     if nargin < 13 || isempty(init_mode),    init_mode = 'identity';       end
+    if nargin < 14 || isempty(force_full_iters), force_full_iters = false; end
 
     doa_method = upper(doa_method);
     q = q(:);
     qHq = q' * q;
+
+    % [DIAG] Confirma no terminal que ESTA versao (robusta, sem parada)
+    % esta carregada. Imprime uma unica vez por sessao MATLAB.
+    persistent versao_avisada
+    if isempty(versao_avisada)
+        fprintf(['[estimate_C_selfcal] versao ROBUSTA carregada ' ...
+                 '(safe_inv + sem parada + resid protegido).\n']);
+        versao_avisada = true;
+    end
 
     % b_hat sem compensacao: usado tanto para DoA-KW quanto para LS de C
     b_hat_orig = X * conj(q) / qHq;
@@ -128,6 +138,10 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
     history.err_F_per_iter = nan(max_iter, 1);
     history.delta_C        = nan(max_iter, 1);
     history.delta_phi      = nan(max_iter, 1);
+    history.resid_per_iter = nan(max_iter, 1);   % residuo observavel (opcao 2):
+    %  ||b_hat_comp - alpha*a(phi_hat)|| / ||b_hat_comp||, com b_hat_comp da
+    %  assinatura COMPENSADA. Mede quanto a assinatura compensada se afasta de
+    %  um steering ideal -> candidato a criterio de parada (usa so' q e geometria).
     history.n_iter         = 0;
 
     if ~isempty(C_true_for_log)
@@ -137,7 +151,7 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
     n_iter = 0;
     for it = 1:max_iter
         % --- 1. Aplica D = inv(C) e prepara dados compensados p/ DoA ----
-        D = inv(C_hat);
+        D = safe_inv(C_hat);
         Y = D * X;                            % dados compensados (todos os metodos usam)
 
         % --- 2. Estima DoA usando o metodo selecionado ------------------
@@ -172,6 +186,12 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
 
             case 'MUSIC'
                 R_y = (Y * Y') / size(Y,2);
+                % Sanitiza R_y: se Y tiver nao-finito (C mal-cond.), evita
+                % que eig lance erro fatal. Substitui por identidade.
+                if ~all(isfinite(R_y(:)))
+                    R_y = eye(M);
+                end
+                R_y = (R_y + R_y') / 2;            % forca hermitiana
                 [V, D_eig] = eig(R_y);
                 [~, idx_sort] = sort(real(diag(D_eig)), 'descend');
                 V = V(:, idx_sort);
@@ -211,6 +231,29 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
             c_hat = [C_new(1, 2:M/2).' ; C_new(1, M/2+1)];
         end
 
+        % --- 2.2 Metrica observavel (Opcao 2): residuo da assinatura --------
+        % Mede quao bem b_comp = (D*X)*q*/qHq se ajusta a um steering ideal
+        % a(phi_hat). Usa Y = safe_inv(C_hat)*X, i.e. o C ATUAL (antes de
+        % atualizar para C_new). Se a compensacao corrige o acoplamento,
+        % b_comp ~ alpha*a(phi_hat) e o residuo cai; se distorce, sobe.
+        %
+        %   resid = ||b_comp - alpha*a(phi_hat)|| / ||b_comp||,
+        %   alpha = (a_hat^H b_comp)/(a_hat^H a_hat)   [LS escalar]
+        %
+        % C_hat fixo aqui -> NAO sofre do "LS minimiza o residuo".
+        % NAO usa C_true nem phi_true -> completamente observavel.
+        % Protecao: se b_comp tiver nao-finito (C mal-condicionado em iter
+        % anteriores), registra resid=1 (pior caso) em vez de propagar NaN.
+        b_hat_comp = (Y * conj(q)) / qHq;           % Y = safe_inv(C_hat)*X (C ANTES de atualizar)
+        if all(isfinite(b_hat_comp)) && norm(b_hat_comp) > eps
+            alpha_obs  = (a_hat' * b_hat_comp) / (a_hat' * a_hat);
+            resid_obs  = norm(b_hat_comp - alpha_obs * a_hat) / norm(b_hat_comp);
+            if ~isfinite(resid_obs), resid_obs = 1.0; end
+        else
+            resid_obs = 1.0;   % assinatura degenerada -> totalmente desalinhada
+        end
+        history.resid_per_iter(it) = resid_obs;
+
         % --- Logging por iteracao ---------------------------------------
         history.phi_per_iter(it) = phi_hat_deg;
         cur_err_F = nan;
@@ -234,10 +277,11 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
         C_prev   = C_new;
         n_iter   = it;
 
-        % --- Criterio de parada (apos pelo menos 2 iter) ----------------
-        if (it >= 2) && (d_phi < tol_phi) && (d_C < tol_C)
-            break;
-        end
+        % --- SEM criterio de parada: roda SEMPRE ate max_iter -----------
+        % A pedido: nenhuma parada antecipada. O grafico resid-vs-iter e
+        % RMSE-vs-iter precisa da trajetoria completa de todas as iteracoes.
+        % (force_full_iters/tol_phi/tol_C mantidos na assinatura por
+        %  compatibilidade, mas o loop nunca quebra antes de max_iter.)
     end
 
     history.n_iter = n_iter;
@@ -246,19 +290,45 @@ function [C_hat, c_hat, alpha_hat, phi_hat_deg, history] = ...
     history.err_F_per_iter = history.err_F_per_iter(1:n_iter);
     history.delta_C        = history.delta_C(1:n_iter);
     history.delta_phi      = history.delta_phi(1:n_iter);
+    history.resid_per_iter = history.resid_per_iter(1:n_iter);
 
-    % --- Anti-divergencia: se o C final for pior que o melhor visto, ----
-    %     retorna o melhor (so faz sentido se C_true_for_log foi dado).  --
+    % --- Logging final do erro de Frobenius (NAO altera o C retornado) ---
+    % IMPORTANTE: C_true_for_log e' usado SOMENTE para registrar metricas
+    % (err_F). O C retornado e' SEMPRE o da ultima iteracao. Usar C_true
+    % para escolher a "melhor" iteracao seria um criterio ORACLE (C_true
+    % nao esta' disponivel na pratica) e inflaria artificialmente o
+    % desempenho do self-cal, mascarando a divergencia. Por isso o
+    % mecanismo anti-divergencia foi removido.
     if ~isempty(C_true_for_log)
         final_err_F = norm(C_hat - C_true_for_log, 'fro') / norm_Ctrue;
-        if final_err_F > 1.5 * best_err_F
-            % Algoritmo divergiu apos atingir o minimo. Volta para best_C.
-            C_hat = best_C;
-            history.diverged = true;
-            history.best_err_F = best_err_F;
-        else
-            history.diverged = false;
-            history.best_err_F = final_err_F;
-        end
+        history.diverged    = (final_err_F > 1.5 * best_err_F);  % so' informativo
+        history.best_err_F  = best_err_F;                        % melhor visto (info)
+        history.final_err_F = final_err_F;                       % erro do C retornado
+    end
+end
+
+
+% =========================================================================
+function D = safe_inv(C)
+% SAFE_INV  Inversao robusta a singularidade. Se C for bem-condicionada,
+%   D = inv(C). Caso contrario, usa Tikhonov: D = (C'C + mu I)^-1 C',
+%   com mu escalado pela norma de C. Nunca retorna Inf/NaN.
+    M = size(C,1);
+    % Silencia avisos de singularidade (esperados e tratados aqui).
+    % Restaura o estado anterior automaticamente ao sair (onCleanup).
+    ws = warning('off','MATLAB:singularMatrix');
+    wn = warning('off','MATLAB:nearlySingularMatrix');
+    cleanupObj = onCleanup(@() warning([ws wn]));
+    rc = rcond(C);
+    if isfinite(rc) && rc > 1e-12
+        D = inv(C);
+        if all(isfinite(D(:))), return; end
+    end
+    % Fallback regularizado (pseudo-inversa amortecida)
+    mu = 1e-6 * (norm(C,'fro')^2 / M + eps);
+    D  = (C'*C + mu*eye(M)) \ C';
+    % Ultima salvaguarda: se ainda houver nao-finito, usa identidade
+    if ~all(isfinite(D(:)))
+        D = eye(M);
     end
 end

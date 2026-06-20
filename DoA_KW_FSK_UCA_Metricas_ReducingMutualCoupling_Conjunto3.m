@@ -83,7 +83,27 @@ use_doa_estimate_in_bf = true;   % <-- alterar conforme necessidade
 %          Acelera drasticamente o full sweep (elimina demodulacao FSK).
 % true  -> pipeline completo (DoA + beamforming + BER + EVM).
 % =========================================================================
-compute_beamforming = true;
+compute_beamforming = false;
+
+% =========================================================================
+% Auto-calibracao (self-cal) nos cenarios 6-9.
+% true  -> comportamento normal: estima C iterativamente e compensa o sinal
+%          antes de estimar DoA e formar feixe.
+% false -> NAO compensa. Usa o primeiro DoA calculado por cada metodo
+%          (KW/DAS/MVDR/MUSIC) sobre o sinal ACOPLADO (sem compensar) e
+%          segue direto para o beamforming. Util para isolar o efeito da
+%          compensacao. Nao afeta os cenarios 0-5 nem o BF-Direto (10).
+% =========================================================================
+use_selfcal = true;
+
+% =========================================================================
+% Quais formadores de feixe calcular. Pelo menos um deve ser true.
+%   compute_mpdr -> Capon / MPDR (w = Rinv a / (a^H Rinv a))
+%   compute_das  -> Delay-and-Sum (w = a / M)
+% O BF-Direto (cenario 10) tem beamformer proprio e nao depende destas.
+% =========================================================================
+compute_mpdr = true;
+compute_das  = false;
 
 % =========================================================================
 % Metodo de DoA usado como REFERENCIA nos cenarios sem self-cal
@@ -132,8 +152,9 @@ doa_scan_step = 0.5;
 % =========================================================================
 experiment_mode = 'aleatory';   % 'cross' | 'accuracy' | 'resolution' | 'aleatory'
 
+no_coupling = false;
 % Parametros do modo 'aleatory'
-n_rand_angles  = 50;    % quantos pares (phi_sig, phi_int) sortear
+n_rand_angles  = 20;    % quantos pares (phi_sig, phi_int) sortear
 min_sep_deg    = 10;    % separacao angular minima entre sinal e interferente
 
 if quick_run
@@ -168,18 +189,18 @@ else
             rng(12345, 'twister');   % reprodutibilidade dos angulos
             range_phi_sig = zeros(1, n_rand_angles);
             range_phi_int = zeros(1, n_rand_angles);
-for kk = 1:n_rand_angles
-    ps  = randi([-180, 179]);     % inteiro em [-180, 179]
-    pi_ = randi([-180, 179]);
-    % Garante separacao minima (distancia circular)
-    d = abs(ps - pi_); d = min(d, 360 - d);
-    while d < min_sep_deg
-        pi_ = randi([-180, 179]);
-        d = abs(ps - pi_); d = min(d, 360 - d);
-    end
-    range_phi_sig(kk) = ps;
-    range_phi_int(kk) = pi_;
-end
+            for kk = 1:n_rand_angles
+                ps  = randi([-180, 179]);     % inteiro em [-180, 179]
+                pi_ = randi([-180, 179]);
+                % Garante separacao minima (distancia circular)
+                d = abs(ps - pi_); d = min(d, 360 - d);
+                while d < min_sep_deg
+                    pi_ = randi([-180, 179]);
+                    d = abs(ps - pi_); d = min(d, 360 - d);
+                end
+                range_phi_sig(kk) = ps;
+                range_phi_int(kk) = pi_;
+            end
             pair_mode = 'paired';
         otherwise
             error('experiment_mode invalido: %s', experiment_mode);
@@ -204,7 +225,8 @@ range_radius = [0.20]; %[0.25 0.2 0.15 0.1];
 %   7 = com coupling, comp. via SELF-CAL com CAPON
 %   8 = com coupling, comp. via SELF-CAL com MUSIC
 %   9 = com coupling, comp. via SELF-CAL com KW
-range_coupling = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10];
+%range_coupling = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10];
+range_coupling = [0, 1, 2, 4, 6, 7, 8, 9, 10];
 
 % --- parametros da calibracao (Khan 2020): UMA medicao de uma direcao conhecida ---
 phi_cal_deg   = 0;     % azimute da fonte de calibracao (Coupling=4)
@@ -231,7 +253,7 @@ C_noncirc_level = 0.02;        % 2% de quebra de circulancia (fixo)
 % (b) Erro de sincronismo temporal: receptor correlaciona X com q assumindo
 %     alinhamento perfeito; na pratica ha offset fracionario de amostras.
 %     Modelado como deslocamento (shift) aplicado ao q usado pelo receptor.
-sync_error_samples = 0;%0.5;      % offset fracionario em amostras (fixo)
+sync_error_samples = 10*sps;      % offset fracionario em amostras (fixo)
 
 % --- Override: se clean_simulation=true, zera todas as imperfeicoes ---
 if clean_simulation
@@ -261,7 +283,7 @@ colors =  ["red", "green", "blue", "black", "magenta", "cyan", "yellow"];
 line_style =   ["-", "--", ":","-."]; % linha continua sem acoplamento % linha tracejada com acoplamento
 
 % Criar pasta 'graficos'
-outDir = fullfile(pwd, 'Reduce Mutual Coupling Graphs');
+outDir = fullfile(pwd, 'Reduce Mutual Coupling Graphs2');
 if ~exist(outDir, 'dir')
     mkdir(outDir);
 end
@@ -343,8 +365,11 @@ for iRadius = 1:nRadius
     radius = range_radius(iRadius)*lambda;
     % Ctx = Z;
     Ctx = compute_Ctx_for_R(fc, M, radius, Z0);
-    Coupling_matrices(:,:,iRadius) = Ctx; % matriz ideal circulante
-
+    if(no_coupling)
+        Coupling_matrices(:,:,iRadius) = eye(M) %Ctx; % matriz ideal circulante
+    else
+        Coupling_matrices(:,:,iRadius) = Ctx;
+    end
     % --- IMPERFEICAO 1: Quebra de circulancia ---
     % Adiciona perturbacao aleatoria (NAO circulante) com intensidade
     % proporcional a magnitude media dos elementos de Ctx. A matriz "real"
@@ -807,38 +832,44 @@ for iSNR = 1:nSNR
                                     X  = D_kw_multi{iRadius} * X;
                                     Xk = D_kw_multi{iRadius} * Xk;
                                 case {6, 7, 8, 9}   % SELF-CAL com DAS/CAPON/MUSIC/KW
-                                    radius_m_sc = range_radius(iRadius)*lambda;
-                                    sc_method = selfcal_methods{Coupling - 5};
+                                    if use_selfcal
+                                        radius_m_sc = range_radius(iRadius)*lambda;
+                                        sc_method = selfcal_methods{Coupling - 5};
 
-                                    % Determina o init para esta passada
-                                    init_str = range_selfcal_init{iInit};
-                                    switch init_str
-                                        case 'identity'
-                                            init_arg = 'identity';
-                                        case 'kw_offline'
-                                            init_arg = C_kw_1dir{iRadius};
-                                        otherwise
-                                            init_arg = init_str;
-                                    end
+                                        % Determina o init para esta passada
+                                        init_str = range_selfcal_init{iInit};
+                                        switch init_str
+                                            case 'identity'
+                                                init_arg = 'identity';
+                                            case 'kw_offline'
+                                                init_arg = C_kw_1dir{iRadius};
+                                            otherwise
+                                                init_arg = init_str;
+                                        end
 
-                                    % Self-cal ESTIMA C usando so' a janela do
-                                    % preambulo (Xk, q_misaligned), depois APLICA
-                                    % a compensacao no sinal TODO (X) e na janela (Xk).
-                                    t_sc = tic;
-                                    [C_sc, ~, ~, ~, sc_hist_iter] = estimate_C_selfcal(...
-                                        Xk, q_misaligned, M, radius_m_sc, lambda, ...
-                                        sc_method, selfcal_grid_deg, ...
-                                        selfcal_max_iter, [], [], C_true, ...
-                                        selfcal_damping, init_arg);
-                                    X  = (C_sc \ X);
-                                    Xk = (C_sc \ Xk);
-                                    % --- Ganho de processamento: tempo do caminho classico ---
-                                    proc_time_classico = proc_time_classico + toc(t_sc);
-                                    proc_count_classico = proc_count_classico + 1;
-                                    if isfield(sc_hist_iter, 'n_iter')
-                                        selfcal_niter_total = selfcal_niter_total + sc_hist_iter.n_iter;
-                                        selfcal_niter_count = selfcal_niter_count + 1;
+                                        % Self-cal ESTIMA C usando so' a janela do
+                                        % preambulo (Xk, q_misaligned), depois APLICA
+                                        % a compensacao no sinal TODO (X) e na janela (Xk).
+                                        t_sc = tic;
+                                        [C_sc, ~, ~, ~, sc_hist_iter] = estimate_C_selfcal(...
+                                            Xk, q_misaligned, M, radius_m_sc, lambda, ...
+                                            sc_method, selfcal_grid_deg, ...
+                                            selfcal_max_iter, [], [], C_true, ...
+                                            selfcal_damping, init_arg);
+                                        X  = (C_sc \ X);
+                                        Xk = (C_sc \ Xk);
+                                        % --- Ganho de processamento: tempo do caminho classico ---
+                                        proc_time_classico = proc_time_classico + toc(t_sc);
+                                        proc_count_classico = proc_count_classico + 1;
+                                        if isfield(sc_hist_iter, 'n_iter')
+                                            selfcal_niter_total = selfcal_niter_total + sc_hist_iter.n_iter;
+                                            selfcal_niter_count = selfcal_niter_count + 1;
+                                        end
                                     end
+                                    % use_selfcal=false: NAO compensa. X e Xk
+                                    % permanecem acoplados; o DoA abaixo sera'
+                                    % estimado sobre o sinal nao-compensado e o
+                                    % beamformer apontara' nesse DoA.
                                 end
 
                             % ----- DoA KW (estimacao sobre a janela do preambulo Xk) -----
@@ -1079,18 +1110,28 @@ for iSNR = 1:nSNR
                                 P   = eye(M) - C * ((C' * C) \ C');
                                 f_c = C * ((C' * C) \ f);
 
-                                % ---- Capon ----
+                                % ---- Capon / MPDR ----
                                 % Rxx estimado na JANELA do preambulo (Xk);
                                 % pesos aplicados no sinal TODO (X compensado).
                                 Rxx = (Xk*Xk')/K_kw;
                                 delta = 1e-3 * trace(Rxx)/M;
                                 Rinv = inv(Rxx + delta*eye(M));
-                                w_capon = (Rinv*a_sig) / (a_sig' * Rinv * a_sig);
-                                y_capon = w_capon' * X;       % saida sobre o sinal todo
+                                if compute_mpdr
+                                    w_capon = (Rinv*a_sig) / (a_sig' * Rinv * a_sig);
+                                    y_capon = w_capon' * X;       % saida sobre o sinal todo
+                                else
+                                    w_capon = zeros(M,1);
+                                    y_capon = zeros(1, size(X,2));
+                                end
 
                                 % ---- Delay-and-Sum (DAS) ----
-                                w_das = a_sig / M;
-                                y_das = w_das' * X;       % saída DAS (sinal todo)
+                                if compute_das
+                                    w_das = a_sig / M;
+                                    y_das = w_das' * X;       % saída DAS (sinal todo)
+                                else
+                                    w_das = zeros(M,1);
+                                    y_das = zeros(1, size(X,2));
+                                end
 
                                 % ---- BF-Direto: MPDR apontado pela assinatura
                                 %      espacial estimada b_hat (cenario 10) ----
@@ -1211,8 +1252,16 @@ for iSNR = 1:nSNR
                                 % saida do beamformer a partir de k0_true.
                                 act = k0_true:K;   % indices da parte ativa do SOI
                                 [bits_hat_in, BER_in, pam_rx_mf1, sym_rx1]    = utils.fsk2_demod(X(1, act),     bits, Rs, sps, alpha, span, fd);
-                                [bits_hat_das, BER_das, pam_rx_mf2, sym_rx2]  = utils.fsk2_demod(y_das(act),    bits, Rs, sps, alpha, span, fd);
-                                [bits_hat_mvdr, BER_mvdr, pam_rx_mf3, sym_rx3]= utils.fsk2_demod(y_capon(act),  bits, Rs, sps, alpha, span, fd);
+                                if compute_das
+                                    [bits_hat_das, BER_das, pam_rx_mf2, sym_rx2]  = utils.fsk2_demod(y_das(act),    bits, Rs, sps, alpha, span, fd);
+                                else
+                                    BER_das = NaN; sym_rx2 = [];
+                                end
+                                if compute_mpdr
+                                    [bits_hat_mvdr, BER_mvdr, pam_rx_mf3, sym_rx3]= utils.fsk2_demod(y_capon(act),  bits, Rs, sps, alpha, span, fd);
+                                else
+                                    BER_mvdr = NaN; sym_rx3 = [];
+                                end
 
                                 % BF-Direto (cenario 10): demodula a saida y_bhat
                                 if Coupling == 10
@@ -1230,8 +1279,16 @@ for iSNR = 1:nSNR
 
                                 % Calcula EVM
                                 [EVM_in,  EVMdB_in]                 = utils.calc_evm_real(sym_rx1,  sym_tx);
-                                [EVM_das, EVMdB_das]                = utils.calc_evm_real(sym_rx2, sym_tx);
-                                [EVM_mvdr,EVMdB_mvdr]               = utils.calc_evm_real(sym_rx3, sym_tx);
+                                if compute_das
+                                    [EVM_das, EVMdB_das]            = utils.calc_evm_real(sym_rx2, sym_tx);
+                                else
+                                    EVM_das = NaN; EVMdB_das = NaN;
+                                end
+                                if compute_mpdr
+                                    [EVM_mvdr,EVMdB_mvdr]           = utils.calc_evm_real(sym_rx3, sym_tx);
+                                else
+                                    EVM_mvdr = NaN; EVMdB_mvdr = NaN;
+                                end
 
                                 EVM_scan_in(ang) = 20*log10(EVM_in);
                                 EVM_scan_mvdr(ang) = 20*log10(EVM_mvdr);
@@ -1256,10 +1313,14 @@ for iSNR = 1:nSNR
                                 %  use_doa_estimate_in_bf).
                                 if abs(phi_scan(ang) - phi_bf_target) < 1e-9
                                     idxB = {iCoupling, iInit, iSNR, iISR, iPhi, iiPhi};
-                                    agg_BER_DAS(idxB{:})  = agg_BER_DAS(idxB{:})  + BER_das  * 100;
-                                    agg_BER_MVDR(idxB{:}) = agg_BER_MVDR(idxB{:}) + BER_mvdr * 100;
-                                    agg_EVM_DAS(idxB{:})  = agg_EVM_DAS(idxB{:})  + 20*log10(EVM_das);
-                                    agg_EVM_MVDR(idxB{:}) = agg_EVM_MVDR(idxB{:}) + 20*log10(EVM_mvdr);
+                                    if compute_das
+                                        agg_BER_DAS(idxB{:})  = agg_BER_DAS(idxB{:})  + BER_das  * 100;
+                                        agg_EVM_DAS(idxB{:})  = agg_EVM_DAS(idxB{:})  + 20*log10(EVM_das);
+                                    end
+                                    if compute_mpdr
+                                        agg_BER_MVDR(idxB{:}) = agg_BER_MVDR(idxB{:}) + BER_mvdr * 100;
+                                        agg_EVM_MVDR(idxB{:}) = agg_EVM_MVDR(idxB{:}) + 20*log10(EVM_mvdr);
+                                    end
                                     if Coupling == 10
                                         agg_BER_BHAT(idxB{:}) = agg_BER_BHAT(idxB{:}) + BER_bhat * 100;
                                         agg_EVM_BHAT(idxB{:}) = agg_EVM_BHAT(idxB{:}) + 20*log10(EVM_bhat);
@@ -1270,9 +1331,12 @@ for iSNR = 1:nSNR
                                     if Coupling == 10
                                         bp_capture(iCoupling).w     = w_bhat;
                                         bp_capture(iCoupling).kind  = 'BF-Direto';
-                                    else
+                                    elseif compute_mpdr
                                         bp_capture(iCoupling).w     = w_capon;
                                         bp_capture(iCoupling).kind  = 'Capon';
+                                    elseif compute_das
+                                        bp_capture(iCoupling).w     = w_das;
+                                        bp_capture(iCoupling).kind  = 'DAS';
                                     end
                                     bp_capture(iCoupling).phi_target = phi_bf_target;
                                     bp_capture(iCoupling).C_real     = Coupling_matrices_real(:,:,iRadius);
@@ -2367,14 +2431,16 @@ for iInitPlot_agg = 1:nInits
 
     % Plots BER/EVM: so se o pipeline de beamforming foi executado.
     if compute_beamforming
-        % BER do DAS
-        plot_metric(mean_BER_DAS_per_cen,  'BER DAS',  'ber_das',  'BER medio (%)', false);
-        % BER do MVDR/Capon
-        plot_metric(mean_BER_MVDR_per_cen, 'BER MVDR', 'ber_mvdr', 'BER medio (%)', false);
-        % EVM do DAS
-        plot_metric(mean_EVM_DAS_per_cen,  'EVM DAS',  'evm_das',  'EVM medio (dB)', false);
-        % EVM do MVDR/Capon
-        plot_metric(mean_EVM_MVDR_per_cen, 'EVM MVDR', 'evm_mvdr', 'EVM medio (dB)', false);
+        if compute_das
+            % BER e EVM do DAS
+            plot_metric(mean_BER_DAS_per_cen,  'BER DAS',  'ber_das',  'BER medio (%)', false);
+            plot_metric(mean_EVM_DAS_per_cen,  'EVM DAS',  'evm_das',  'EVM medio (dB)', false);
+        end
+        if compute_mpdr
+            % BER e EVM do MVDR/Capon
+            plot_metric(mean_BER_MVDR_per_cen, 'BER MVDR', 'ber_mvdr', 'BER medio (%)', false);
+            plot_metric(mean_EVM_MVDR_per_cen, 'EVM MVDR', 'evm_mvdr', 'EVM medio (dB)', false);
+        end
     end
 
     % =====================================================================

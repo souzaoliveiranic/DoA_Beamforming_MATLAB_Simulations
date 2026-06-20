@@ -57,7 +57,7 @@ quick_run = false;   % <-- alterar conforme necessidade
 %   clean_simulation = false  -> usa os valores definidos abaixo
 %                                (cenario realista com imperfeicoes).
 % =========================================================================
-clean_simulation = true;  % <-- alterar conforme necessidade
+clean_simulation = false;  % <-- alterar conforme necessidade
 
 % =========================================================================
 % Numero de ensembles (rodadas Monte Carlo por ponto de operacao).
@@ -83,7 +83,7 @@ use_doa_estimate_in_bf = true;   % <-- alterar conforme necessidade
 %          Acelera drasticamente o full sweep (elimina demodulacao FSK).
 % true  -> pipeline completo (DoA + beamforming + BER + EVM).
 % =========================================================================
-compute_beamforming = true;
+compute_beamforming = false;
 
 % =========================================================================
 % Metodo de DoA usado como REFERENCIA nos cenarios sem self-cal
@@ -133,7 +133,7 @@ doa_scan_step = 0.5;
 experiment_mode = 'aleatory';   % 'cross' | 'accuracy' | 'resolution' | 'aleatory'
 
 % Parametros do modo 'aleatory'
-n_rand_angles  = 50;    % quantos pares (phi_sig, phi_int) sortear
+n_rand_angles  = 20;    % quantos pares (phi_sig, phi_int) sortear
 min_sep_deg    = 10;    % separacao angular minima entre sinal e interferente
 
 if quick_run
@@ -144,7 +144,7 @@ if quick_run
     pair_mode = 'cross';
 else
     range_SNR_dB = -9:3:12;
-    range_ISR_dB = [-60 -3 3 10 20 40];%-6:1:-3;
+    range_ISR_dB = [-20 -6 -3 3];%-6:1:-3;
     % Regime de jammer FRACO->FORTE. O eigencanceler (cenario 11) so' deve
     % superar/igualar o BF-Direto em ISR alto (>~+10 dB), onde o autovetor
     % dominante de R e' o interferente. Em ISR baixo (~+3 dB) o MVDR domina.
