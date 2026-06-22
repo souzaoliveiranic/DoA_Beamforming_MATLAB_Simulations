@@ -37,13 +37,13 @@ M      = 8;            % nº de elementos do UCA
 fc     = 500e6;        % Hz
 c      = 3e8;
 lambda = c/fc;
-r      = 0.1*lambda;   % raio 0.2 lambda
+r      = 0.25*lambda;   % raio 0.2 lambda
 
 theta_sig_deg = 90;    % elevacao (plano XY)
 
 %% ---- Parametros do sinal (FSK-2 conhecido) ----
 fs    = 288000;        % taxa de amostragem (Hz)
-N     = 2100;          % nº de amostras (multiplo de sps)
+N     = 9900;          % nº de amostras (multiplo de sps)
 Rs    = 9600;          % taxa de simbolos
 sps   = 30;            % amostras por simbolo
 alpha = 0.3;           % roll-off RRC
@@ -51,7 +51,7 @@ span  = 8;             % comprimento RRC (simbolos)
 fd    = 4.8e3;         % desvio de frequencia FSK
 
 %% ---- Parametros do experimento ----
-maxIter      = 12;                  % <-- LIMITE de iteracoes (parametro)
+maxIter      = 2;                  % <-- LIMITE de iteracoes (parametro)
 range_SNR_dB = [-6, 0, 6, 12];      % cenarios de SNR
 methods      = {'KW','DAS','CAPON','MUSIC'};   % rodam em paralelo
 nMethods     = numel(methods);
@@ -89,6 +89,7 @@ nSNR           = numel(range_SNR_dB);
 % Convergencia (somas sobre angulos x realizacoes -> RMSE/medio por iteracao)
 sumsq_err_iter = zeros(nMethods, maxIter, nSNR);  % SOMA (erro DoA)^2 por iteracao
 sum_errF_iter  = zeros(nMethods, maxIter, nSNR);  % SOMA erro Frobenius por iteracao
+sum_frob_orc   = zeros(maxIter, nSNR);            % SOMA Frobenius do ORACLE (ang. sabido) por iteracao
 cnt            = zeros(1, nSNR);                   % nº de realizacoes por SNR
 % Erros por realizacao (final-iter / referencias) p/ scatter, RMSE e MEDIANA
 Eabs_final  = zeros(nMethods, n_angles, n_trials, nSNR);  % |erro DoA| iterativo (ultima iter)
@@ -125,6 +126,14 @@ for iSNR = 1:nSNR
             % --- Assinatura espacial acoplada (FIXA ao longo das iteracoes) ---
             qHq        = q'*q;
             b_hat_orig = X_coupled*conj(q)/qHq;
+
+            % --- ORACLE iterativo: MESMO laco, mas usando SEMPRE o angulo
+            %     verdadeiro (DoA perfeita). Sem damping (u=1), a cada iteracao
+            %     C = LS(b_hat, a(phi_true)) e' constante -> trajetoria plana.
+            a_true   = utils.steering_vec_uca(M, r, lambda, theta_sig_deg, phi_sig_deg);
+            C_orc    = estimate_C_circulant_uca(b_hat_orig, a_true, M);
+            frob_orc = norm(C_orc - C_true,'fro')/normCtrue;
+            sum_frob_orc(:,iSNR) = sum_frob_orc(:,iSNR) + frob_orc;   % mesma p/ todas as iteracoes
 
             % --- Self-cal iterativo: um laco independente por metodo de DoA ---
             for im = 1:nMethods
@@ -168,6 +177,7 @@ for iSNR = 1:nSNR
     rmse_iter(:,:,iSNR)  = sqrt(sumsq_err_iter(:,:,iSNR) / cnt(iSNR));
     meanF_iter(:,:,iSNR) =      sum_errF_iter(:,:,iSNR)  / cnt(iSNR);
 end
+mean_frob_orc = sum_frob_orc ./ cnt;   % (maxIter x nSNR): trajetoria do oracle
 
 % Por azimute: RMSE e MEDIANA sobre as realizacoes (dim 3 = trials)
 rmse_angle_iter   = squeeze(sqrt(mean(Eabs_final.^2,  3)));  % nMethods x n_angles x nSNR
@@ -220,6 +230,8 @@ for iSNR = 1:nSNR
             'Color',colorsM(im,:), 'LineWidth',1.6, 'MarkerFaceColor',colorsM(im,:), ...
             'DisplayName',methods{im});
     end
+    plot(1:maxIter, flr(mean_frob_orc(:,iSNR)), 'k--p', 'LineWidth',1.6, ...
+        'MarkerFaceColor','k','MarkerSize',5, 'DisplayName','oracle (ang. sabido)');
     set(gca,'YScale','log');
     xlabel('Iteracao'); ylabel('media de ||C_{hat}-C_{true}||_F / ||C_{true}||_F');
     title('Erro da matriz de acoplamento vs iteracao');
@@ -235,6 +247,8 @@ for iSNR = 1:nSNR
     SNR_dB = range_SNR_dB(iSNR);
     fig = figure('Name', sprintf('Erro por azimute SNR=%+d dB', SNR_dB), ...
                  'Color','w', 'Position',[60 60 1300 820]);
+    vv   = flr([reshape(rmse_angle_iter(:,:,iSNR),[],1); reshape(rmse_angle_noComp(:,:,iSNR),[],1)]);
+    yl_s = [min(vv)*0.8, max(vv)*1.3];   % limites Y COMUNS aos 4 paineis
     for im = 1:nMethods
         subplot(2,2,im); hold on; grid on;
         semilogy(phi_sorted, flr(rmse_angle_iter(im,ord,iSNR)), [mk_only{im} '-'], ...
@@ -247,7 +261,7 @@ for iSNR = 1:nSNR
             'DisplayName','mediana global (iter)');
         set(gca,'YScale','log');
         xlabel('azimute \phi (graus)'); ylabel('RMSE de DoA (graus)');
-        xlim([-180 180]); xticks(-180:90:180);
+        xlim([-180 180]); xticks(-180:90:180); ylim(yl_s);
         title(sprintf('%s  | mediana iter=%.3f, semComp=%.3f', ...
             methods{im}, med_final(im,iSNR), med_noComp(im,iSNR)));
         legend('Location','best');
