@@ -34,11 +34,11 @@ r      = 0.1*lambda;   % raio (abertura pequena -> acoplamento forte, C dificil)
 theta_sig_deg = 90;
 
 %% ---- Parametros do sinal (FSK-2 conhecido) ----
-fs = 288000; N = 9900;%2100; 
+fs = 288000; N = 2100;%9900;%2100; 
 Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 
 %% ---- Parametros do experimento ----
-maxIter      = 2;
+maxIter      = 12;
 u            = 1;                 % <-- PASSO de relaxacao da atualizacao de C (1 = sem suavizar)
 range_u      = [1.0 0.7 0.5 0.3];   % varredura de u (figura dedicada)
 snr_u_demo   = 6;                   % SNR usada na varredura de u (dB)

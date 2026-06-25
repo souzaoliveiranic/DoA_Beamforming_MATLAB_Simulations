@@ -50,8 +50,8 @@ beta_uca     = 2*pi*(0:M-1).'/M;
 K            = floor(M/2);
 
 % --- Monte Carlo ---
-n_angles = 100;             % azimutes aleatorios (no grid)
-n_trials = 5;             % realizacoes por azimute
+n_angles = 500;             % azimutes aleatorios (no grid)
+n_trials = 10;             % realizacoes por azimute
 n_real   = n_angles*n_trials;
 rng(2026, 'twister');
 phi_set  = round( (-180 + 360*rand(1, n_angles)) / grid_step ) * grid_step;
@@ -239,20 +239,40 @@ end
 
 %% ---- (B) SCATTER de erro por azimute (1 painel/metodo, mesmo ylim) ----
 [phi_sorted, ord] = sort(phi_set);
+% Beampattern do arranjo (referencia angular, no eixo Y DIREITO de cada painel):
+% array factor IDEAL apontado em bp_ref_deg, vs azimute, normalizado (dB).
+% Para o padrao ACOPLADO, troque A_dict por (C_true*A_dict).
+bp_ref_deg = 0;
+a_bp_ref = utils.steering_vec_uca(M, r, lambda, theta_sig_deg, bp_ref_deg);
+BP_pow   = abs(a_bp_ref' * A_dict).^2;          % 1 x nGrid
+BP_dB    = 10*log10(BP_pow / max(BP_pow));
+% Posicoes angulares das antenas do UCA: beta_m = 360*(m-1)/M (graus)
+ant_deg  = sort(wrapTo180((0:M-1)*360/M));
 for iSNR = 1:nSNR
     SNR_dB = range_SNR_dB(iSNR);
     fig = figure('Name',sprintf('Erro por azimute SNR=%+d dB',SNR_dB),'Color','w','Position',[60 60 1300 820]);
     vv   = flr([reshape(rmse_angle_iter(:,:,iSNR),[],1); reshape(rmse_angle_noComp(:,:,iSNR),[],1)]);
     yl_s = [min(vv)*0.8, max(vv)*1.3];
     for im = 1:nMethods
-        subplot(2,2,im); hold on; grid on;
-        semilogy(phi_sorted, flr(rmse_angle_iter(im,ord,iSNR)), [mk_only{im} '-'], ...
+        subplot(2,2,im);
+        yyaxis left; hold on; grid on;
+        plot(phi_sorted, flr(rmse_angle_iter(im,ord,iSNR)), [mk_only{im} '-'], ...
             'Color',colorsM(im,:),'LineWidth',1.4,'MarkerFaceColor',colorsM(im,:),'DisplayName','iterativo');
-        semilogy(phi_sorted, flr(rmse_angle_noComp(im,ord,iSNR)), [mk_only{im} ':'], ...
+        plot(phi_sorted, flr(rmse_angle_noComp(im,ord,iSNR)), [mk_only{im} ':'], ...
             'Color',colorsM(im,:),'LineWidth',1.0,'MarkerFaceColor','none','DisplayName','sem comp.');
-        yline(flr(med_final(im,iSNR)), 'k--', 'LineWidth',1.0, 'DisplayName','mediana global (iter)');
-        set(gca,'YScale','log'); xlabel('azimute \phi (graus)'); ylabel('RMSE de DoA (graus)');
-        xlim([-180 180]); xticks(-180:90:180); ylim(yl_s);
+        set(gca,'YScale','log'); ylabel('RMSE de DoA (graus)'); ylim(yl_s);
+        yyaxis right;
+        plot(phi_grid_deg, BP_dB, '-', 'Color',[0.45 0.45 0.45],'LineWidth',1.3,'DisplayName','beampattern do arranjo (dB)');
+        ylabel('beampattern (dB)'); ylim([-40 3]);
+        ax = gca; ax.YAxis(1).Color = [0 0 0]; ax.YAxis(2).Color = [0.45 0.45 0.45];
+        % marcadores das posicoes angulares das antenas do UCA
+        for ka = 1:numel(ant_deg)
+            xl = xline(ant_deg(ka), ':', 'Color',[0.90 0.45 0.0],'LineWidth',1.1);
+            if ka==1, xl.DisplayName='posicao das antenas'; else, xl.HandleVisibility='off'; end
+        end
+        plot(ant_deg, repmat(min(ylim)+0.4,size(ant_deg)), '^', 'Color',[0.90 0.45 0.0], ...
+            'MarkerFaceColor',[0.90 0.45 0.0],'MarkerSize',6,'HandleVisibility','off');
+        xlabel('azimute \phi (graus)'); xlim([-180 180]); xticks(-180:90:180);
         title(sprintf('%s  | mediana iter=%.3f, semComp=%.3f', methods{im}, med_final(im,iSNR), med_noComp(im,iSNR)));
         legend('Location','best');
     end
