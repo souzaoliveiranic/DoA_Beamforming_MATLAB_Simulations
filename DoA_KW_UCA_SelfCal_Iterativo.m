@@ -239,6 +239,7 @@ for iSNR = 1:nSNR
 
     exportgraphics(fig, fullfile(outDir, ...
         sprintf('selfcal_iter_SNR_%+03d.png', SNR_dB)), 'Resolution',180);
+    matlab2tikz(fullfile(outDir, sprintf('selfcal_iter_SNR_%+03d.tex', SNR_dB)), 'width','\figurewidth','height','\figureheight');
 end
 
 % --- (B) SCATTER de erro POR AZIMUTE (sugestao 1): 1 figura/SNR, 4 subplots ---
@@ -270,6 +271,7 @@ for iSNR = 1:nSNR
         SNR_dB, n_trials), 'FontWeight','bold');
     exportgraphics(fig, fullfile(outDir, ...
         sprintf('scatter_azimute_SNR_%+03d.png', SNR_dB)), 'Resolution',170);
+    matlab2tikz(fullfile(outDir, sprintf('scatter_azimute_SNR_%+03d.tex', SNR_dB)), 'width','\figurewidth','height','\figureheight');
 end
 
 % --- (C) Resumo vs SNR: RMSE e MEDIANA (iterativo vs sem compensacao) ---
@@ -318,6 +320,7 @@ function plot_summary_vs_snr(range_SNR_dB, M_iter, M_noComp, methods, ...
                    ylab, n_angles, n_trials, r_over_lambda));
     legend('Location','eastoutside');
     exportgraphics(fig, fname, 'Resolution',180);
+    matlab2tikz(regexprep(fname,'\.png$','.tex'), 'width','\figurewidth','height','\figureheight');
 end
 
 function phi_hat = doa_estimate(X, method, q, r, lambda, beta_uca, A_dict, phi_grid_deg)

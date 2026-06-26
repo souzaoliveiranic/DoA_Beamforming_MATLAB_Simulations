@@ -129,6 +129,7 @@ title('Frobenius vs raio'); legend('Location','best');
 sgtitle(sprintf('Influencia da ABERTURA  (N=%d, SNR=%+d dB, %d realizacoes, u=%.2f)', ...
     range_N(iN), SNR_fixed, n_real, u),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'C_vs_raio.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'C_vs_raio.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- (B) vs N (raio = range_radius(r_base_idx)) ----
 ir = r_base_idx;
@@ -154,6 +155,7 @@ title('Frobenius vs N'); legend('Location','best');
 sgtitle(sprintf('Influencia de N  (raio=%.2f\\lambda, SNR=%+d dB, %d realizacoes, u=%.2f)', ...
     range_radius(ir), SNR_fixed, n_real, u),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'C_vs_N.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'C_vs_N.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- (C) GRADE raio x N: piso (oracle multi-dir) e pratico (KW) ----
 rad_colors = cool(nRad);
@@ -175,6 +177,7 @@ set(gca,'YScale','log','XScale','log'); xlabel('N (amostras)'); ylabel('residuo 
 title('Self-cal KW (pratico): compRes vs N por raio'); legend('Location','best');
 sgtitle(sprintf('Limite recuperavel de C: raio x N  (SNR=%+d dB, %d realizacoes)', SNR_fixed, n_real),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'C_grade_raio_x_N.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'C_grade_raio_x_N.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Resumo numerico ----
 fprintf('\n===== RESIDUO DE COMPENSACAO (oracle multi-dir P=%d) — grade raio x N =====\n', P_oracle);

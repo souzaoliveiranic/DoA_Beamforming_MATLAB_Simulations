@@ -251,6 +251,7 @@ for iSNR = 1:nSNR
 
     sgtitle(sprintf('Damped self-cal  SNR=%+d dB, u=%.2f, raio=%.2f\\lambda', SNR_dB, u, r/lambda),'FontWeight','bold');
     exportgraphics(fig, fullfile(outDir, sprintf('damped_iter_SNR_%+03d.png',SNR_dB)),'Resolution',170);
+    matlab2tikz(fullfile(outDir, sprintf('damped_iter_SNR_%+03d.tex',SNR_dB)), 'width','\figurewidth','height','\figureheight');
 end
 
 % --- (U) efeito do passo u na trajetoria de C (Frobenius vs iter) ---
@@ -270,6 +271,7 @@ end
 sgtitle(sprintf('Efeito do passo de relaxacao u na evolucao de C  (SNR=%+d dB, raio=%.2f\\lambda)', ...
     snr_u_demo, r/lambda),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'efeito_passo_u.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'efeito_passo_u.tex'), 'width','\figurewidth','height','\figureheight');
 
 % --- (D) resumo metricas de C vs SNR (3 metricas), com oracle ---
 fig = figure('Color','w','Position',[60 80 1500 470]);
@@ -290,6 +292,7 @@ end
 sgtitle(sprintf('Metricas de C vs SNR  (u=%.2f, %d realizacoes, raio=%.2f\\lambda)', ...
     u, n_real, r/lambda),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'resumo_metricas_C_vs_snr.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'resumo_metricas_C_vs_snr.tex'), 'width','\figurewidth','height','\figureheight');
 
 % --- (E) plano complexo dos coeficientes por SNR (metodos + oracle) ---
 ck_colors = [0.85 0.10 0.10; 0.10 0.60 0.15; 0.10 0.30 0.85; 0.60 0.15 0.65];
@@ -322,6 +325,7 @@ for iSNR = 1:nSNR
         'SNR=%+d dB, u=%.2f, %d realizacoes, raio=%.2f\\lambda'], ...
         K, range_SNR_dB(iSNR), u, n_real, r/lambda),'FontWeight','bold');
     exportgraphics(fig, fullfile(outDir, sprintf('coeficientes_complexo_SNR_%+03d.png',range_SNR_dB(iSNR))),'Resolution',160);
+    matlab2tikz(fullfile(outDir, sprintf('coeficientes_complexo_SNR_%+03d.tex',range_SNR_dB(iSNR))), 'width','\figurewidth','height','\figureheight');
 end
 
 %% ---- Resumo numerico ----

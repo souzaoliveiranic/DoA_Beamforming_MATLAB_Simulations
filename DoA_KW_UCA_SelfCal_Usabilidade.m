@@ -158,6 +158,7 @@ title(sprintf(['Usabilidade do desacoplamento: perda de SNR vs SNR\n' ...
     'u=%.2f, raio=%.2f\\lambda, %d realizacoes'], u, r/lambda, n_real));
 legend('Location','eastoutside');
 exportgraphics(fig, fullfile(outDir,'usabilidade_perda_SNR_vs_snr.png'),'Resolution',180);
+matlab2tikz(fullfile(outDir,'usabilidade_perda_SNR_vs_snr.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- (b) Decomposicao: amplificacao de ruido e fidelidade de steering ----
 fig = figure('Color','w','Position',[60 80 1300 500]);
@@ -180,6 +181,7 @@ xlabel('SNR (dB)'); ylabel('fidelidade de steering  |a^H DCa|^2/(||a||^2||DCa||^
 xticks(range_SNR_dB); ylim([0 1.05]); title('Fidelidade de steering (1 = sem acoplamento residual)'); legend('Location','best');
 sgtitle(sprintf('Decomposicao da usabilidade  (u=%.2f, raio=%.2f\\lambda)', u, r/lambda),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'usabilidade_decomposicao.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'usabilidade_decomposicao.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Resumo numerico ----
 fprintf('\n===== USABILIDADE (perda de SNR em dB; menor=melhor) =====\n');

@@ -40,12 +40,12 @@ payload_len = 9900;             % PAYLOAD (amostras p/ medir BER/EVM)
 K           = K_kw + payload_len;
 k0          = 1;                % preambulo comeca na amostra 1 (sem zeros antes)
 
-ISR_dB   = 0;            % interferente-para-sinal (co-canal). Use -100 p/ desligar.
+ISR_dB   = -2;            % interferente-para-sinal (co-canal). Use -100 p/ desligar.
 sep_deg  = 10;          % separacao angular SOI-interferente
 interf_t = 'fsk2';      % interferente co-canal (mesma modulacao)
 
 maxIter  = 6; u = 0.5;  % self-cal (KW)
-range_SNR_dB = [-6 -3 0 3 6 9 12];
+range_SNR_dB = [-12 -9 -6 -3 0 3 6 9 12];
 methods = {'KW','DAS','CAPON','MUSIC'};  nM = numel(methods);
 bf_list = {'DAS','CAPON'};  nBF = numel(bf_list);
 phi_grid_deg = -180:0.5:180;
@@ -61,15 +61,28 @@ outDir = fullfile(pwd,'Pipeline BER-EVM Graphs'); if ~exist(outDir,'dir'), mkdir
 
 %% ---- C_true ----
 C_true = compute_Ctx_for_R(fc, M, r, 50);
-fprintf('C_true (raio=%.2f lambda, cond=%.1f), ISR=%+d dB, sep=%d deg, K_kw=%d, payload=%d\n', ...
-    r/lambda, cond(C_true), ISR_dB, sep_deg, K_kw, payload_len);
+% Normaliza C_true para PRESERVAR energia (rede de acoplamento passiva: nao
+% cria potencia / nao melhora SNR). Escala s tal que a media angular de
+% ||C a(phi)||^2 seja M = ||a||^2 (igual ao caso sem acoplamento). Sem isso,
+% como ||C a||^2 pode superar M, o caso "Ideal" apareceria com BER MENOR que
+% o "No-MC" (ganho ficticio do acoplamento).
+gbar = 0; CtC = C_true'*C_true;
+for ig = 1:numel(phi_grid_deg)
+    ag = utils.steering_vec_uca(M, r, lambda, theta_sig_deg, phi_grid_deg(ig));
+    gbar = gbar + real(ag'*CtC*ag);
+end
+gbar = gbar/numel(phi_grid_deg);            % media de ||C a||^2
+s_norm = sqrt(M/gbar);  C_true = s_norm*C_true;
+fprintf('C_true (raio=%.2f lambda, cond=%.1f, norm s=%.3f, <||Ca||^2>=%.2f->%d), ISR=%+d dB, sep=%d deg, K_kw=%d, payload=%d\n', ...
+    r/lambda, cond(C_true), s_norm, gbar, M, ISR_dB, sep_deg, K_kw, payload_len);
 
 %% ---- Acumuladores (BER linear, EVM rms linear) ----
 nSNR = numel(range_SNR_dB);
-sBER_id = zeros(nBF,nSNR);    sEVM_id = zeros(nBF,nSNR);     % ideal (ref)
-sBER_mn = zeros(nBF,nSNR);    sEVM_mn = zeros(nBF,nSNR);     % manifold (ref)
-sBER_sc = zeros(nBF,nM,nSNR); sEVM_sc = zeros(nBF,nM,nSNR);  % sem comp por metodo
-sBER_iv = zeros(nBF,nM,nSNR); sEVM_iv = zeros(nBF,nM,nSNR);  % inversao por metodo
+sBER_id  = zeros(nBF,nSNR);    sEVM_id  = zeros(nBF,nSNR);    % No-MC  (sem acoplamento, a_true)
+sBER_idl = zeros(nBF,nSNR);    sEVM_idl = zeros(nBF,nSNR);    % Ideal  (acoplado, C_true e angulo conhecidos: s=C_true*a_true)
+sBER_kw  = zeros(nBF,nSNR);    sEVM_kw  = zeros(nBF,nSNR);    % BF-KW (beamforming c/ known-waveform: steering medido b_hat)
+sBER_sc  = zeros(nBF,nM,nSNR); sEVM_sc  = zeros(nBF,nM,nSNR); % sem comp por metodo (No-Comp = Capon)
+sBER_iv  = zeros(nBF,nM,nSNR); sEVM_iv  = zeros(nBF,nM,nSNR); % inversao por metodo
 cnt = zeros(1,nSNR);
 
 t0 = tic;
@@ -113,10 +126,15 @@ for iSNR = 1:nSNR
             % --- beamforming (pesos do preambulo) + BER/EVM no PAYLOAD ---
             for ib = 1:nBF
                 bf = bf_list{ib};
-                [b,e] = bf_demod(X_ideal_full,   Xk_i,  a_true, bf, act, nsym_pre, bits_full, sym_full, Rs, sps, alpha, span, fd);
-                sBER_id(ib,iSNR)=sBER_id(ib,iSNR)+b;  sEVM_id(ib,iSNR)=sEVM_id(ib,iSNR)+e;
-                [b,e] = bf_demod(X_coupled_full, Xk_c,  b_hat,  bf, act, nsym_pre, bits_full, sym_full, Rs, sps, alpha, span, fd);
-                sBER_mn(ib,iSNR)=sBER_mn(ib,iSNR)+b;  sEVM_mn(ib,iSNR)=sEVM_mn(ib,iSNR)+e;
+                % No-MC: canal SEM acoplamento, steering verdadeiro
+                [b,e] = bf_demod(X_ideal_full,   Xk_i,  a_true,        bf, act, nsym_pre, bits_full, sym_full, Rs, sps, alpha, span, fd);
+                sBER_id(ib,iSNR)=sBER_id(ib,iSNR)+b;    sEVM_id(ib,iSNR)=sEVM_id(ib,iSNR)+e;
+                % Ideal: canal acoplado, C_true E angulo conhecidos (s = C_true*a_true)
+                [b,e] = bf_demod(X_coupled_full, Xk_c,  C_true*a_true, bf, act, nsym_pre, bits_full, sym_full, Rs, sps, alpha, span, fd);
+                sBER_idl(ib,iSNR)=sBER_idl(ib,iSNR)+b;  sEVM_idl(ib,iSNR)=sEVM_idl(ib,iSNR)+e;
+                % BF-KW: steering medido b_hat (known-waveform; sem conhecer C nem o angulo)
+                [b,e] = bf_demod(X_coupled_full, Xk_c,  b_hat,         bf, act, nsym_pre, bits_full, sym_full, Rs, sps, alpha, span, fd);
+                sBER_kw(ib,iSNR)=sBER_kw(ib,iSNR)+b;    sEVM_kw(ib,iSNR)=sEVM_kw(ib,iSNR)+e;
                 for m = 1:nM
                     [b,e] = bf_demod(X_coupled_full, Xk_c,  a_cm{m}, bf, act, nsym_pre, bits_full, sym_full, Rs, sps, alpha, span, fd);
                     sBER_sc(ib,m,iSNR)=sBER_sc(ib,m,iSNR)+b;  sEVM_sc(ib,m,iSNR)=sEVM_sc(ib,m,iSNR)+e;
@@ -132,10 +150,16 @@ end
 
 %% ---- Consolidacao ----
 cS = reshape(cnt,1,nSNR);  cS3 = reshape(cnt,1,1,nSNR);
-BER_id = sBER_id./cS;  EVM_id = 20*log10(sEVM_id./cS);
-BER_mn = sBER_mn./cS;  EVM_mn = 20*log10(sEVM_mn./cS);
-BER_sc = sBER_sc./cS3; EVM_sc = 20*log10(sEVM_sc./cS3);
-BER_iv = sBER_iv./cS3; EVM_iv = 20*log10(sEVM_iv./cS3);
+BER_id  = sBER_id./cS;   EVM_id  = 20*log10(sEVM_id./cS);    % No-MC
+BER_idl = sBER_idl./cS;  EVM_idl = 20*log10(sEVM_idl./cS);   % Ideal
+BER_kw  = sBER_kw./cS;   EVM_kw  = 20*log10(sEVM_kw./cS);    % BF-KW
+BER_sc  = sBER_sc./cS3;  EVM_sc  = 20*log10(sEVM_sc./cS3);
+BER_iv  = sBER_iv./cS3;  EVM_iv  = 20*log10(sEVM_iv./cS3);
+
+% No-Comp (sem compensacao) = sem-comp apontando com Capon
+iCap = find(strcmp(methods,'CAPON'));
+BER_nc = reshape(BER_sc(:,iCap,:), nBF, nSNR);  EVM_nc = reshape(EVM_sc(:,iCap,:), nBF, nSNR);
+
 nsym_pay = floor(payload_len/sps);
 flrB = @(x) max(x, 0.5/(max(cnt)*nsym_pay));     % piso ~ 1 erro no payload
 
@@ -147,7 +171,7 @@ strat_name = {'sem comp.','inversao (D)'};
 %   (a) FRACAO    : escala LOG (potencia de 10), sc=1   -> fracao 0..1
 %   (b) PORCENTAGEM: escala LINEAR 0..100 (ticks inteiros), sc=100 -> %
 % Mesmos dados, so muda escala/limites/ticks do eixo y.
-allB = flrB([BER_sc(:); BER_iv(:); BER_mn(:); BER_id(:)]);  ylB0 = [min(allB)*0.7, 1];
+allB = flrB([BER_sc(:); BER_iv(:); BER_id(:); BER_idl(:); BER_kw(:)]);  ylB0 = [min(allB)*0.7, 1];
 ber_modes = { 'frac', 1,   'BER (payload)',    'pipeline_BER_vs_snr.png',     'log'; ...
               'pct',  100, 'BER (%, payload)', 'pipeline_BER_pct_vs_snr.png', 'linear' };
 for imode = 1:size(ber_modes,1)
@@ -164,8 +188,11 @@ for imode = 1:size(ber_modes,1)
                 plot(range_SNR_dB, sc*flrB(squeeze(Bm(ib,m,:))), mkM{m}, 'Color',colsM(m,:), ...
                     'LineWidth',1.7,'MarkerFaceColor',colsM(m,:),'MarkerSize',6,'DisplayName',methods{m});
             end
-            plot(range_SNR_dB, sc*flrB(BER_mn(ib,:)), 'k-', 'LineWidth',2.4,'DisplayName','manifold');
-            plot(range_SNR_dB, sc*flrB(BER_id(ib,:)), 'k--','LineWidth',1.4,'DisplayName','ideal');
+            % referencias: No-MC (sem acoplamento), Ideal (C_true e phi conhecidos), No-Comp (Capon sem comp)
+            plot(range_SNR_dB, sc*flrB(BER_id(ib,:)),  'k--','LineWidth',1.6,'DisplayName','No-MC');
+            plot(range_SNR_dB, sc*flrB(BER_idl(ib,:)), 'k-', 'LineWidth',2.4,'DisplayName','Ideal');
+            plot(range_SNR_dB, sc*flrB(BER_nc(ib,:)),  ':', 'Color',[0.55 0.55 0.55],'LineWidth',2.2,'DisplayName','No-Comp (Capon)');
+            plot(range_SNR_dB, sc*flrB(BER_kw(ib,:)),  '-.','Color',[0.60 0 0.70],'LineWidth',2.2,'DisplayName','BF-KW');
             set(gca,'YScale',yscl); xlabel('SNR (dB)'); ylabel(ylab); xticks(range_SNR_dB);
             if strcmp(yscl,'linear')
                 ylim([0 55]); yticks(0:10:55);     % % com numeros inteiros 0..100
@@ -179,10 +206,11 @@ for imode = 1:size(ber_modes,1)
     unit_str = ber_modes{imode,1}; if strcmp(unit_str,'pct'), unit_str='%'; else, unit_str='fracao'; end
     sgtitle(sprintf('BER (payload, %s) vs SNR por metodo de DoA  (raio=%.2f\\lambda, ISR=%+d dB, sep=%d^o)', unit_str, r/lambda, ISR_dB, sep_deg),'FontWeight','bold');
     exportgraphics(fig, fullfile(outDir,fout),'Resolution',170);
+    matlab2tikz(fullfile(outDir, regexprep(fout,'\.png$','.tex')), 'width','\figurewidth','height','\figureheight');
 end
 
 %% =================== FIG 2: EVM (2x2: beamformer x estrategia) ===================
-allE = [EVM_sc(:); EVM_iv(:); EVM_mn(:); EVM_id(:)];  ylE = [min(allE)-1, max(allE)+1];
+allE = [EVM_sc(:); EVM_iv(:); EVM_id(:); EVM_idl(:); EVM_kw(:)];  ylE = [min(allE)-1, max(allE)+1];
 fig = figure('Color','w','Position',[40 50 1250 860]);
 for ib = 1:nBF
     for js = 1:2
@@ -192,8 +220,11 @@ for ib = 1:nBF
             plot(range_SNR_dB, squeeze(Em(ib,m,:)), mkM{m}, 'Color',colsM(m,:), ...
                 'LineWidth',1.7,'MarkerFaceColor',colsM(m,:),'MarkerSize',6,'DisplayName',methods{m});
         end
-        plot(range_SNR_dB, EVM_mn(ib,:), 'k-', 'LineWidth',2.4,'DisplayName','manifold');
-        plot(range_SNR_dB, EVM_id(ib,:), 'k--','LineWidth',1.4,'DisplayName','ideal');
+        % referencias: No-MC, Ideal (C_true e phi conhecidos), No-Comp (Capon sem comp)
+        plot(range_SNR_dB, EVM_id(ib,:),  'k--','LineWidth',1.6,'DisplayName','No-MC');
+        plot(range_SNR_dB, EVM_idl(ib,:), 'k-', 'LineWidth',2.4,'DisplayName','Ideal');
+        plot(range_SNR_dB, EVM_nc(ib,:),  ':', 'Color',[0.55 0.55 0.55],'LineWidth',2.2,'DisplayName','No-Comp (Capon)');
+        plot(range_SNR_dB, EVM_kw(ib,:),  '-.','Color',[0.60 0 0.70],'LineWidth',2.2,'DisplayName','BF-KW');
         xlabel('SNR (dB)'); ylabel('EVM (dB, payload)'); xticks(range_SNR_dB); ylim(ylE);
         title(sprintf('%s  |  %s', bf_list{ib}, strat_name{js}));
         if ib==1 && js==1, legend('Location','northeast'); end
@@ -201,14 +232,72 @@ for ib = 1:nBF
 end
 sgtitle(sprintf('EVM (payload) vs SNR por metodo de DoA  (raio=%.2f\\lambda, ISR=%+d dB, sep=%d^o)', r/lambda, ISR_dB, sep_deg),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'pipeline_EVM_vs_snr.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'pipeline_EVM_vs_snr.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Resumo numerico (Capon) ----
 ibC = find(strcmp(bf_list,'CAPON'));
 fprintf('\n===== BER (%%) payload, Capon, INVERSAO por metodo, vs SNR =====\n');
 fprintf('%-10s', 'SNR'); fprintf('%9d', range_SNR_dB); fprintf('\n');
 for m=1:nM, fprintf('%-10s', methods{m}); fprintf('%9.3f', 100*squeeze(BER_iv(ibC,m,:))); fprintf('\n'); end
-fprintf('%-10s', 'manifold'); fprintf('%9.3f', 100*BER_mn(ibC,:)); fprintf('\n');
-fprintf('%-10s', 'ideal');    fprintf('%9.3f', 100*BER_id(ibC,:)); fprintf('\n');
+fprintf('%-10s', 'BF-KW');    fprintf('%9.3f', 100*BER_kw(ibC,:));  fprintf('\n');
+fprintf('--- referencias ---\n');
+fprintf('%-10s', 'No-MC');    fprintf('%9.3f', 100*BER_id(ibC,:));  fprintf('\n');
+fprintf('%-10s', 'Ideal');    fprintf('%9.3f', 100*BER_idl(ibC,:)); fprintf('\n');
+fprintf('%-10s', 'No-Comp');  fprintf('%9.3f', 100*BER_nc(ibC,:));  fprintf('\n');
+
+%% =================== FIG 3: BEAMPATTERNS (cenario representativo) ===================
+% UM unico pacote (angulos e SNR fixos). Mostra o PADRAO ESPACIAL EFETIVO de
+% cada estrategia: resposta |w_eff^H h(phi)|^2 a uma fonte real chegando de phi
+% NO CANAL REAL com acoplamento, h(phi)=C_true*a(phi). Normalizado ao maximo.
+% Marca o SOI e o interferente -> da' p/ ver onde aponta o lobulo e se ha' nulo.
+rng(7,'twister');                                   % cenario reprodutivel
+phi_bp_sig = 40;  SNR_bp = 6;                       % AJUSTAVEL
+phi_bp_int = 60; %wrapTo180(phi_bp_sig + sep_deg);
+[Xtot_b, yb, k0b, Xs_b, Xi_b, Xn_b] = utils.simulate_data_uca_v3(M, r, lambda, ...
+    phi_bp_sig, phi_bp_int, theta_sig_deg, theta_sig_deg, SNR_bp, ISR_dB, K, K_kw, ...
+    fs, Rs, sps, alpha, span, fd, interf_t, k0);
+qb = yb(:);  winb = k0b:k0b+K_kw-1;
+Xc_full_b = C_true*(Xs_b + Xi_b) + Xn_b;            % preambulo acoplado
+Xk_ib = Xtot_b(:,winb);  Xk_cb = Xc_full_b(:,winb);
+b_hatb  = Xk_cb*conj(qb)/(qb'*qb);
+a_trueb = utils.steering_vec_uca(M, r, lambda, theta_sig_deg, phi_bp_sig);
+c_finb  = selfcal_kw(Xk_cb, b_hatb, qb, M, r, lambda, theta_sig_deg, beta_uca, phi_grid_deg, u, maxIter);
+Db      = safe_inv(reconstruct_C(c_finb, M));
+Ydpre_b = Db*Xk_cb;                                 % preambulo desacoplado
+% steerings: No-Comp aponta com Capon (acoplado); inversao aponta com KW (desacoplado)
+a_nc   = utils.steering_vec_uca(M, r, lambda, theta_sig_deg, doa_estimate(Xk_cb,  'CAPON', qb, r, lambda, beta_uca, phi_grid_deg));
+a_ivkw = utils.steering_vec_uca(M, r, lambda, theta_sig_deg, doa_estimate(Ydpre_b,'KW',    qb, r, lambda, beta_uca, phi_grid_deg));
+
+% dicionario de steering e manifold real (com acoplamento) por azimute
+A_plot = zeros(M, numel(phi_grid_deg));
+for ig = 1:numel(phi_grid_deg), A_plot(:,ig) = utils.steering_vec_uca(M, r, lambda, theta_sig_deg, phi_grid_deg(ig)); end
+H_plot = C_true*A_plot;
+
+fig = figure('Color','w','Position',[40 60 1300 560]);
+for ib = 1:nBF
+    bf = bf_list{ib};
+    w_nomc = bf_weights(Xk_ib,   a_trueb,        bf);   % opera no canal SEM acoplamento
+    w_idl  = bf_weights(Xk_cb,   C_true*a_trueb, bf);
+    w_kw   = bf_weights(Xk_cb,   b_hatb,         bf);
+    w_nc   = bf_weights(Xk_cb,   a_nc,           bf);
+    w_iv   = bf_weights(Ydpre_b, a_ivkw,         bf);   % opera no canal DESACOPLADO
+    subplot(1,nBF,ib); hold on; grid on;
+    plot(phi_grid_deg, bp_db(w_nomc, A_plot),    'k--','LineWidth',1.4,'DisplayName','No-MC');
+    plot(phi_grid_deg, bp_db(w_idl,  H_plot),    'k-', 'LineWidth',1.8,'DisplayName','Ideal');
+    plot(phi_grid_deg, bp_db(w_kw,   H_plot),    '-.', 'Color',[0.60 0 0.70],'LineWidth',2.0,'DisplayName','BF-KW');
+    plot(phi_grid_deg, bp_db(w_nc,   H_plot),    ':',  'Color',[0.55 0.55 0.55],'LineWidth',2.0,'DisplayName','No-Comp (Capon)');
+    plot(phi_grid_deg, bp_db(Db'*w_iv, H_plot),  '-',  'Color',[0.10 0.25 0.85],'LineWidth',1.3,'DisplayName','inversao (KW)');
+    xline(phi_bp_sig,'-','Color',[0 0.6 0],'LineWidth',1.6,'DisplayName','SOI');
+    xline(phi_bp_int,'-','Color',[0.85 0 0],'LineWidth',1.6,'DisplayName','interferente');
+    xlim([-180 180]); xticks(-180:45:180); ylim([-50 2]);
+    xlabel('azimute \phi (graus)'); ylabel('ganho normalizado (dB)');
+    title(bf); if ib==1, legend('Location','southwest','FontSize',8); end
+end
+sgtitle(sprintf('Beampatterns efetivos no canal real  (SOI=%d^o, interf=%d^o, SNR=%+d dB, ISR=%+d dB, raio=%.2f\\lambda)', ...
+    phi_bp_sig, phi_bp_int, SNR_bp, ISR_dB, r/lambda),'FontWeight','bold');
+exportgraphics(fig, fullfile(outDir,'pipeline_beampatterns.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'pipeline_beampatterns.tex'), 'width','\figurewidth','height','\figureheight');
+
 fprintf('\nFiguras salvas em: %s\n', outDir);
 
 % =========================================================================
@@ -218,13 +307,7 @@ function [ber, evm] = bf_demod(Y_full, Y_pre, s, bf, act, nsym_pre, bits_full, s
 % Pesos formados no PREAMBULO (Y_pre): DAS=s/(s'*s) ou Capon/MPDR com a
 % covariancia do preambulo. Aplica ao sinal todo (Y_full) e mede BER/EVM
 % APENAS no PAYLOAD (simbolos apos os nsym_pre do preambulo).
-    M = size(Y_full,1);
-    if strcmpi(bf,'DAS')
-        w = s/(s'*s + eps);
-    else  % CAPON / MPDR (covariancia do preambulo)
-        Kp = size(Y_pre,2);  R = (Y_pre*Y_pre')/Kp;  R = R + 1e-3*trace(R)/M*eye(M);
-        ws = R\s;  w = ws/(s'*ws + eps);
-    end
+    w = bf_weights(Y_pre, s, bf);
     y = w'*Y_full;                                            % aplica ao sinal todo (1 x K)
     [bits_hat, ~, ~, sym_rx] = utils.fsk2_demod(y(act), bits_full, Rs, sps, alpha, span, fd);
     i0 = nsym_pre + 1;                                        % primeiro simbolo do payload
@@ -234,6 +317,26 @@ function [ber, evm] = bf_demod(Y_full, Y_pre, s, bf, act, nsym_pre, bits_full, s
     if i0 <= Ls, [evm,~] = utils.calc_evm_real(sym_rx(i0:Ls), sym_full(i0:Ls)); else, evm = 1.0; end
     if ~isfinite(ber), ber = 0.5; end
     if ~isfinite(evm), evm = 1.0; end
+end
+
+function w = bf_weights(Y_pre, s, bf)
+% Pesos do beamformer formados no PREAMBULO Y_pre.
+%   DAS  : casado          w = s/(s's)
+%   CAPON: MPDR/Capon      w = R^{-1}s / (s' R^{-1} s),  R = cov. do preambulo
+    M = size(Y_pre,1);
+    if strcmpi(bf,'DAS')
+        w = s/(s'*s + eps);
+    else  % CAPON / MPDR (covariancia do preambulo, com diagonal loading)
+        Kp = size(Y_pre,2);  R = (Y_pre*Y_pre')/Kp;  R = R + 1e-3*trace(R)/M*eye(M);
+        ws = R\s;  w = ws/(s'*ws + eps);
+    end
+end
+
+function PdB = bp_db(w, H)
+% Resposta espacial |w^H h(phi)|^2 (dB), normalizada ao maximo (0 dB).
+% H(:,k) = manifold da fonte que chega de phi_k (a(phi) ou C*a(phi)).
+    p = abs(w'*H).^2;
+    PdB = 10*log10(p/(max(p)+eps));
 end
 
 function c_fin = selfcal_kw(X_coupled, b_hat_orig, q, M, r, lambda, theta_deg, beta_uca, phi_grid_deg, u, maxIter)

@@ -134,6 +134,7 @@ xticks(range_SNR_dB); title(sprintf(['DoA (Capon): inversao \\equiv manifold (eq
     'raio=%.2f\\lambda, %d azimutes x %d realizacoes,  C_{est}: self-cal KW'], r/lambda, n_angles, n_trials));
 legend('Location','northeast');
 exportgraphics(fig, fullfile(outDir,'manifold_doa_rmse_vs_snr.png'),'Resolution',180);
+matlab2tikz(fullfile(outDir,'manifold_doa_rmse_vs_snr.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% =====================================================================
 %   PARTE 2: GANHO DE ARRAY (SNR de saida) vs SNR de entrada
@@ -156,6 +157,7 @@ xticks(range_SNR_dB); title(sprintf(['Beamforming: ganho de array vs SNR  (raio=
     'manifold (casado, sem inverter)  \\geq  inversao (amplifica ruido)'], r/lambda));
 legend('Location','best');
 exportgraphics(fig, fullfile(outDir,'manifold_ganho_array_vs_snr.png'),'Resolution',180);
+matlab2tikz(fullfile(outDir,'manifold_ganho_array_vs_snr.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Resumo ----
 fprintf('\n===== RMSE de DoA (graus) =====\n');

@@ -128,6 +128,7 @@ end
 sgtitle(sprintf('DoA por metodo: nao compensado vs compensado  (raio=%.2f\\lambda, %d az x %d real)', ...
     r/lambda, n_angles, n_trials),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'pormetodo_doa_rmse.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'pormetodo_doa_rmse.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% =================== FIGURA 2: ganho de array por metodo ===================
 allG = [G_inv(:); G_ideal(:); G_acop(:); G_man(:); G_opt(:)];
@@ -146,6 +147,7 @@ end
 sgtitle(sprintf(['Beamforming por metodo: inverter Chat_m vs manifold  (raio=%.2f\\lambda)\n' ...
     'manifold (independe do metodo) atinge o otimo; inverter fica abaixo'], r/lambda),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'pormetodo_ganho_array.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'pormetodo_ganho_array.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Resumo ----
 fprintf('\n===== RMSE de DoA compensado (graus), por metodo =====\n');

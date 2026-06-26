@@ -235,6 +235,7 @@ for iSNR = 1:nSNR
 
     sgtitle(sprintf('Convergencia  SNR=%+d dB, u=%.2f, raio=%.2f\\lambda', SNR_dB, u, r/lambda),'FontWeight','bold');
     exportgraphics(fig, fullfile(outDir, sprintf('convergencia_SNR_%+03d.png',SNR_dB)),'Resolution',170);
+    matlab2tikz(fullfile(outDir, sprintf('convergencia_SNR_%+03d.tex',SNR_dB)), 'width','\figurewidth','height','\figureheight');
 end
 
 %% ---- (B) SCATTER de erro por azimute (1 painel/metodo, mesmo ylim) ----
@@ -278,6 +279,7 @@ for iSNR = 1:nSNR
     end
     sgtitle(sprintf('Erro de DoA por azimute  (SNR=%+d dB, u=%.2f, %d realizacoes/azimute)', SNR_dB, u, n_trials),'FontWeight','bold');
     exportgraphics(fig, fullfile(outDir, sprintf('scatter_azimute_SNR_%+03d.png',SNR_dB)),'Resolution',170);
+    matlab2tikz(fullfile(outDir, sprintf('scatter_azimute_SNR_%+03d.tex',SNR_dB)), 'width','\figurewidth','height','\figureheight');
 end
 
 %% ---- (C) resumo de DoA vs SNR: RMSE e MEDIANA ----
@@ -303,6 +305,7 @@ for sp = 1:3
 end
 sgtitle(sprintf('Metricas de C vs SNR  (u=%.2f, %d realizacoes, raio=%.2f\\lambda)', u, n_real, r/lambda),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'resumo_metricas_C_vs_snr.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'resumo_metricas_C_vs_snr.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- (E) plano complexo dos coeficientes por SNR ----
 for iSNR = 1:nSNR
@@ -334,6 +337,7 @@ for iSNR = 1:nSNR
         'SNR=%+d dB, u=%.2f, %d realizacoes, raio=%.2f\\lambda'], ...
         K, range_SNR_dB(iSNR), u, n_real, r/lambda),'FontWeight','bold');
     exportgraphics(fig, fullfile(outDir, sprintf('coeficientes_complexo_SNR_%+03d.png',range_SNR_dB(iSNR))),'Resolution',160);
+    matlab2tikz(fullfile(outDir, sprintf('coeficientes_complexo_SNR_%+03d.tex',range_SNR_dB(iSNR))), 'width','\figurewidth','height','\figureheight');
 end
 
 %% ---- (F) BARRAS: |Delta c_k| por coeficiente, comparando metodos (+oracle) ----
@@ -356,6 +360,7 @@ end
 sgtitle(sprintf('Erro medio por coeficiente |\\Deltac_k| (valores)  (u=%.2f, raio=%.2f\\lambda)', ...
     u, r/lambda),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'erro_por_coeficiente_barras.png'),'Resolution',170);
+matlab2tikz(fullfile(outDir,'erro_por_coeficiente_barras.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Resumo numerico ----
 fprintf('\n===== RESUMO (u=%.2f, %d realizacoes) =====\n', u, n_real);
@@ -392,6 +397,7 @@ function plot_summary_vs_snr(range_SNR_dB, M_iter, M_noComp, methods, colorsM, m
                    ylab, n_angles, n_trials, u, r_over_lambda));
     legend('Location','eastoutside');
     exportgraphics(fig, fname, 'Resolution',180);
+    matlab2tikz(regexprep(fname,'\.png$','.tex'), 'width','\figurewidth','height','\figureheight');
 end
 
 function [frob_it, cres_it, derr_it, c_fin] = selfcal_one_damped(method, X_coupled, ...

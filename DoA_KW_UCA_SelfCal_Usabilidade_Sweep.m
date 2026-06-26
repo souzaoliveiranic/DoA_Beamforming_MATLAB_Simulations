@@ -107,6 +107,7 @@ set(gca,'YDir','reverse'); xlabel('raio (\lambda)'); ylabel('perda de SNR de arr
 xticks(range_radius); title(sprintf('Usabilidade vs ABERTURA  (N=%d, SNR=%+d dB, %d realizacoes, u=%.2f)', N_base, SNR_fixed, n_real, u));
 legend('Location','eastoutside');
 exportgraphics(fig, fullfile(outDir,'usabilidade_vs_raio.png'),'Resolution',180);
+matlab2tikz(fullfile(outDir,'usabilidade_vs_raio.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Figura (2): perda vs N ----
 fig = figure('Color','w','Position',[60 80 1000 620]); hold on; grid on;
@@ -123,6 +124,7 @@ set(gca,'YDir','reverse','XScale','log'); xlabel('N (amostras)'); ylabel('perda 
 xticks(range_N); title(sprintf('Usabilidade vs N  (raio=%.2f\\lambda, SNR=%+d dB, %d realizacoes, u=%.2f)', r_base, SNR_fixed, n_real, u));
 legend('Location','eastoutside');
 exportgraphics(fig, fullfile(outDir,'usabilidade_vs_N.png'),'Resolution',180);
+matlab2tikz(fullfile(outDir,'usabilidade_vs_N.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Resumo numerico (raio) ----
 fprintf('\n===== Perda de SNR (dB) vs RAIO (N=%d, SNR=%+d dB) =====\n', N_base, SNR_fixed);
