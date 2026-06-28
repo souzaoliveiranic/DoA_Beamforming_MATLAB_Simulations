@@ -1,0 +1,159 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.427\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmode=log,
+xmin=5,
+xmax=280,
+xminorticks=true,
+xlabel style={font=\color{mycolor1}},
+xlabel={$\text{comprimento do treino  K}_{\text{kw}}\text{ (simbolos)}$},
+ymode=log,
+ymin=1,
+ymax=100,
+yminorticks=true,
+ylabel style={font=\color{mycolor1}},
+ylabel={RMSE do azimute do SOI (graus)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor1}},
+title={Erro de apontamento ao SOI},
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=red, line width=1.9pt, mark=o, mark options={solid, red}]
+  table[row sep=crcr]{%
+5	28.8730409499654\\
+10	25.8898155981757\\
+20	23.1660306400012\\
+40	15.3427125720691\\
+70	3.64498250634963\\
+140	2.11926620345431\\
+280	1.79776173400514\\
+};
+\addlegendentry{KW}
+
+\addplot [color=green, line width=1.9pt, mark=x, mark options={solid, green}]
+  table[row sep=crcr]{%
+5	24.6545102806078\\
+10	29.4463583807832\\
+20	29.735148007815\\
+40	17.408421888532\\
+70	9.75477019470708\\
+140	9.09276303372567\\
+280	9.36187774177426\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=blue, line width=1.9pt, mark=square, mark options={solid, blue}]
+  table[row sep=crcr]{%
+5	55.4724160999657\\
+10	62.6530368362956\\
+20	75.5789846085396\\
+40	66.8283065806695\\
+70	58.7090435326994\\
+140	49.272607372136\\
+280	48.3227987471687\\
+};
+\addlegendentry{Capon}
+
+\addplot [color=black, line width=1.9pt, mark=diamond, mark options={solid, black}]
+  table[row sep=crcr]{%
+5	26.7040509617763\\
+10	29.8081058847844\\
+20	30.5549171041865\\
+40	20.9745065182344\\
+70	14.0523833376458\\
+140	12.4634950898485\\
+280	12.767053066958\\
+};
+\addlegendentry{MUSIC}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.427\figurewidth,
+height=\figureheight,
+at={(0.562\figurewidth,0\figureheight)},
+scale only axis,
+xmode=log,
+xmin=5,
+xmax=280,
+xminorticks=true,
+xlabel style={font=\color{mycolor1}},
+xlabel={$\text{comprimento do treino  K}_{\text{kw}}\text{ (simbolos)}$},
+ymin=-3,
+ymax=103,
+ylabel style={font=\color{mycolor1}},
+ylabel={P(travar no interferente) (\%)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor1}},
+title={Fracao travada no interferente},
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=red, line width=1.9pt, mark=o, mark options={solid, red}]
+  table[row sep=crcr]{%
+5	0.666666666666667\\
+10	2\\
+20	2.66666666666667\\
+40	0.666666666666667\\
+70	0\\
+140	0\\
+280	0\\
+};
+\addlegendentry{KW}
+
+\addplot [color=green, line width=1.9pt, mark=x, mark options={solid, green}]
+  table[row sep=crcr]{%
+5	0\\
+10	2.66666666666667\\
+20	3.33333333333333\\
+40	0.666666666666667\\
+70	0\\
+140	0\\
+280	0\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=blue, line width=1.9pt, mark=square, mark options={solid, blue}]
+  table[row sep=crcr]{%
+5	22.6666666666667\\
+10	28.6666666666667\\
+20	35.3333333333333\\
+40	29.3333333333333\\
+70	20\\
+140	14\\
+280	14\\
+};
+\addlegendentry{Capon}
+
+\addplot [color=black, line width=1.9pt, mark=diamond, mark options={solid, black}]
+  table[row sep=crcr]{%
+5	0\\
+10	2\\
+20	2.66666666666667\\
+40	0.666666666666667\\
+70	0\\
+140	0\\
+280	0\\
+};
+\addlegendentry{MUSIC}
+
+\end{axis}
+\end{tikzpicture}%

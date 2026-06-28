@@ -255,9 +255,9 @@ end
 % UM unico pacote. Padrao espacial efetivo no canal real h(phi)=C_true*a(phi),
 % normalizado ao maximo. Usa o ISR fixo do sweep de SNR.
 rng(7,'twister');
-phi_bp_sig = 40;  SNR_bp = 6;  ISR_bp = -6; phi_bp_int = 90;
+phi_bp_sig = 40;  SNR_bp = 6;  phi_bp_int = 90;
 [Xtot_b, yb, k0b, Xs_b, Xi_b, Xn_b] = utils.simulate_data_uca_v3(M, r, lambda, ...
-    phi_bp_sig, phi_bp_int, theta_sig_deg, theta_sig_deg, SNR_bp, ISR_bp, K, K_kw, ...
+    phi_bp_sig, phi_bp_int, theta_sig_deg, theta_sig_deg, SNR_bp, ISR_fix, K, K_kw, ...
     fs, Rs, sps, alpha, span, fd, interf_t, k0);
 qb = yb(:);  winb = k0b:k0b+K_kw-1;
 Xc_full_b = C_true*(Xs_b + Xi_b) + Xn_b;
@@ -295,7 +295,7 @@ for ib = 1:nBF
     title(bf); if ib==1, legend('Location','southwest','FontSize',8); end
 end
 sgtitle(sprintf('Beampatterns efetivos no canal real  (SOI=%d^o, interf=%d^o, SNR=%+d dB, ISR=%+d dB, raio=%.2f\\lambda)', ...
-    phi_bp_sig, phi_bp_int, SNR_bp, ISR_bp, r/lambda),'FontWeight','bold');
+    phi_bp_sig, phi_bp_int, SNR_bp, ISR_fix, r/lambda),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'pipeline_beampatterns.png'),'Resolution',170);
 matlab2tikz(fullfile(outDir,'pipeline_beampatterns.tex'), 'width','\figurewidth','height','\figureheight');
 
@@ -320,10 +320,10 @@ plot(phi_grid_deg, nrm(P_capon), '-','Color',[0.49 0.18 0.56],'LineWidth',1.8,'D
 plot(phi_grid_deg, nrm(P_music), '-','Color',[0.85 0.33 0.10],'LineWidth',1.8,'DisplayName','MUSIC');
 xline(phi_bp_sig,'--','Color',[0 0.6 0],   'LineWidth',1.6,'DisplayName','SOI');
 xline(phi_bp_int,'--','Color',[0.85 0 0],  'LineWidth',1.6,'DisplayName','interferente');
-xlim([-180 180]); xticks(-180:45:180); ylim([-10 2]);
+xlim([-180 180]); xticks(-180:45:180); ylim([-40 2]);
 xlabel('azimute \phi (graus)'); ylabel('espectro normalizado (dB)');
 title(sprintf('Espectros de DoA no preambulo acoplado  (SOI=%d^o, interf=%d^o, SNR=%+d dB, ISR=%+d dB, raio=%.2f\\lambda)', ...
-    phi_bp_sig, phi_bp_int, SNR_bp, ISR_bp, r/lambda));
+    phi_bp_sig, phi_bp_int, SNR_bp, ISR_fix, r/lambda));
 legend('Location','southwest');
 exportgraphics(fig, fullfile(outDir,'pipeline_doa_spectra.png'),'Resolution',170);
 matlab2tikz(fullfile(outDir,'pipeline_doa_spectra.tex'), 'width','\figurewidth','height','\figureheight');

@@ -1,0 +1,233 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.427\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-50,
+xmax=50,
+xlabel style={font=\color{mycolor1}},
+xlabel={$\text{erro de sincronismo  }\Delta\text{ / T}_{\text{sym}}$},
+ymode=log,
+ymin=3.21248921443503,
+ymax=110.219821556947,
+yminorticks=true,
+ylabel style={font=\color{mycolor1}},
+ylabel={RMSE do azimute do SOI (graus)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor1}},
+title={Erro de apontamento ao SOI},
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=red, line width=1.9pt, mark=o, mark options={solid, red}]
+  table[row sep=crcr]{%
+-50	91.871537794846\\
+-20	66.2927001698836\\
+-10	74.041118881747\\
+-5	71.2037431835119\\
+-2	68.2862129794094\\
+-1	79.1813295871435\\
+-0.5	15.4874412637997\\
+-0.25	3.55124322892058\\
+0	3.21248921443503\\
+0.25	3.4649321320547\\
+0.5	4.0754253488645\\
+1	76.153727798816\\
+2	74.8989496605798\\
+5	72.0274957784702\\
+10	71.7628910188126\\
+20	79.3040598383702\\
+50	71.1564627781764\\
+};
+\addlegendentry{KW}
+
+\addplot [color=green, line width=1.9pt, mark=x, mark options={solid, green}]
+  table[row sep=crcr]{%
+-50	108.775579575147\\
+-20	34.126709464568\\
+-10	11.2538939997798\\
+-5	9.69815284362506\\
+-2	8.86343727470556\\
+-1	9.69979533613101\\
+-0.5	9.45696550329196\\
+-0.25	9.18902732372816\\
+0	16.8688748375403\\
+0.25	17.1158668577681\\
+0.5	8.61732520938178\\
+1	16.210661665247\\
+2	8.63817994203253\\
+5	8.83356747522455\\
+10	15.6774090238472\\
+20	9.08413622118984\\
+50	10.0789297066204\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=blue, line width=1.9pt, mark=square, mark options={solid, blue}]
+  table[row sep=crcr]{%
+-50	110.219821556947\\
+-20	72.2909719552561\\
+-10	65.2180064087287\\
+-5	64.6280086858682\\
+-2	62.2381273522963\\
+-1	61.7295937548724\\
+-0.5	58.0470097352764\\
+-0.25	62.9560548319006\\
+0	59.3075491617775\\
+0.25	66.7604854369415\\
+0.5	63.5651916009132\\
+1	60.8723801117963\\
+2	56.9124912726497\\
+5	63.8478867101008\\
+10	63.4564186646011\\
+20	57.5148385041206\\
+50	58.3509935907943\\
+};
+\addlegendentry{Capon}
+
+\addplot [color=black, line width=1.9pt, mark=diamond, mark options={solid, black}]
+  table[row sep=crcr]{%
+-50	102.5733117749\\
+-20	36.6895997294756\\
+-10	16.6859494764719\\
+-5	13.7165730364285\\
+-2	12.3481101229249\\
+-1	12.9045213069902\\
+-0.5	12.7878242726244\\
+-0.25	12.7816608713174\\
+0	18.9680782221011\\
+0.25	19.3033043229843\\
+0.5	12.5637518632811\\
+1	19.2938198211796\\
+2	11.9565730848216\\
+5	12.3394601076463\\
+10	18.0529366553582\\
+20	12.9025127411057\\
+50	14.1498202510101\\
+};
+\addlegendentry{MUSIC}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.427\figurewidth,
+height=\figureheight,
+at={(0.562\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-50,
+xmax=50,
+xlabel style={font=\color{mycolor1}},
+xlabel={$\text{erro de sincronismo  }\Delta\text{ / T}_{\text{sym}}$},
+ymin=-3,
+ymax=103,
+ylabel style={font=\color{mycolor1}},
+ylabel={P(travar no interferente) (\%)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor1}},
+title={Fracao travada no interferente},
+xmajorgrids,
+ymajorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=red, line width=1.9pt, mark=o, mark options={solid, red}]
+  table[row sep=crcr]{%
+-50	60\\
+-20	35.3333333333333\\
+-10	41.3333333333333\\
+-5	34\\
+-2	30.6666666666667\\
+-1	40.6666666666667\\
+-0.5	0.666666666666667\\
+-0.25	0\\
+0	0\\
+0.25	0\\
+0.5	0\\
+1	38.6666666666667\\
+2	38\\
+5	36\\
+10	42.6666666666667\\
+20	40\\
+50	37.3333333333333\\
+};
+\addlegendentry{KW}
+
+\addplot [color=green, line width=1.9pt, mark=x, mark options={solid, green}]
+  table[row sep=crcr]{%
+-50	100\\
+-20	4\\
+-10	0\\
+-5	0\\
+-2	0\\
+-1	0\\
+-0.5	0\\
+-0.25	0\\
+0	0.666666666666667\\
+0.25	0.666666666666667\\
+0.5	0\\
+1	0.666666666666667\\
+2	0\\
+5	0\\
+10	0.666666666666667\\
+20	0\\
+50	0\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=blue, line width=1.9pt, mark=square, mark options={solid, blue}]
+  table[row sep=crcr]{%
+-50	76\\
+-20	30.6666666666667\\
+-10	25.3333333333333\\
+-5	26.6666666666667\\
+-2	24\\
+-1	22.6666666666667\\
+-0.5	22.6666666666667\\
+-0.25	24.6666666666667\\
+0	24.6666666666667\\
+0.25	28\\
+0.5	20\\
+1	22.6666666666667\\
+2	18\\
+5	21.3333333333333\\
+10	24.6666666666667\\
+20	21.3333333333333\\
+50	19.3333333333333\\
+};
+\addlegendentry{Capon}
+
+\addplot [color=black, line width=1.9pt, mark=diamond, mark options={solid, black}]
+  table[row sep=crcr]{%
+-50	100\\
+-20	4\\
+-10	0\\
+-5	0\\
+-2	0\\
+-1	0\\
+-0.5	0\\
+-0.25	0\\
+0	0.666666666666667\\
+0.25	0.666666666666667\\
+0.5	0\\
+1	0.666666666666667\\
+2	0\\
+5	0\\
+10	0.666666666666667\\
+20	0\\
+50	0\\
+};
+\addlegendentry{MUSIC}
+
+\end{axis}
+\end{tikzpicture}%

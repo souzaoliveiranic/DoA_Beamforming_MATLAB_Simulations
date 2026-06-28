@@ -1,0 +1,576 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
+\definecolor{mycolor5}{rgb}{0.60000,0.00000,0.70000}%
+\definecolor{mycolor6}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.421\figurewidth,
+height=0.419\figureheight,
+at={(0\figurewidth,0.581\figureheight)},
+scale only axis,
+xmin=-15,
+xmax=15,
+xtick={-15, -12,  -9,  -6,  -3,   0,   3,   6,   9,  12,  15},
+xlabel style={font=\color{mycolor6}},
+xlabel={ISR (dB)},
+ymin=-23.0671720160053,
+ymax=77.1576780902719,
+ylabel style={font=\color{mycolor6}},
+ylabel={EVM (dB, payload)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor6}},
+title={DAS  $|$  sem comp.},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.7pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-15	-20.8243971482794\\
+-12	-17.876213737325\\
+-9	-14.8802530961476\\
+-6	-11.8683026044446\\
+-3	-8.70762575606665\\
+0	5.78920148058432\\
+3	57.9912435848825\\
+6	36.6580176077333\\
+9	47.0872113889797\\
+12	45.7750351086366\\
+15	37.3018353917109\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.7pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+-15	-20.8198343664497\\
+-12	-17.8674358633824\\
+-9	-14.8638389283591\\
+-6	-11.8383696369568\\
+-3	-8.65613718626758\\
+0	7.43419999736781\\
+3	39.9358683756042\\
+6	36.8149411877511\\
+9	43.0444074970988\\
+12	43.5641087291035\\
+15	37.3477281103417\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.7pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+-15	-20.8269527801957\\
+-12	-17.880794236756\\
+-9	-14.8848861362716\\
+-6	-11.8833294699422\\
+-3	-8.74663227228904\\
+0	19.4074779763248\\
+3	41.8274978288951\\
+6	43.0797432277417\\
+9	44.5754615143529\\
+12	51.6295955675768\\
+15	38.0503465519313\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+-15	-20.8198343664497\\
+-12	-17.8673694890249\\
+-9	-14.8638128069903\\
+-6	-11.8382425521819\\
+-3	-8.65609940278119\\
+0	7.43419999736781\\
+3	39.9358680558515\\
+6	36.8149584148395\\
+9	43.0444083613721\\
+12	43.5641087291035\\
+15	37.3477281103417\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, dashed, line width=1.6pt]
+  table[row sep=crcr]{%
+-15	-20.6351848440124\\
+-12	-17.7883481388484\\
+-9	-14.8494259314541\\
+-6	-11.86018118202\\
+-3	-8.31915040723503\\
+0	7.61978751507371\\
+3	49.1210822284616\\
+6	36.6017902111679\\
+9	47.5645835646231\\
+12	42.0738039688865\\
+15	37.6762214648576\\
+};
+\addlegendentry{No-MC}
+
+\addplot [color=black, line width=2.4pt]
+  table[row sep=crcr]{%
+-15	-20.8324160248857\\
+-12	-17.875738733131\\
+-9	-14.8790411042483\\
+-6	-11.8626413618578\\
+-3	-8.7049258028657\\
+0	5.2290355944702\\
+3	41.9147765491758\\
+6	36.6174265463126\\
+9	44.873715615098\\
+12	70.4886709164089\\
+15	37.3504727882383\\
+};
+\addlegendentry{Ideal}
+
+\addplot [color=white!55!black, dotted, line width=2.2pt]
+  table[row sep=crcr]{%
+-15	-20.8269527801957\\
+-12	-17.880794236756\\
+-9	-14.8848861362716\\
+-6	-11.8833294699422\\
+-3	-8.74663227228904\\
+0	19.4074779763248\\
+3	41.8274978288951\\
+6	43.0797432277417\\
+9	44.5754615143529\\
+12	51.6295955675768\\
+15	38.0503465519313\\
+};
+\addlegendentry{No-Comp (Capon)}
+
+\addplot [color=mycolor5, dashdotted, line width=2.2pt]
+  table[row sep=crcr]{%
+-15	-20.8310217646666\\
+-12	-17.8738561635773\\
+-9	-14.8763962631554\\
+-6	-11.859022329994\\
+-3	-8.6994301722708\\
+0	5.39249857148062\\
+3	41.7433770300605\\
+6	36.6130203371586\\
+9	47.6696779386517\\
+12	49.9478457928868\\
+15	37.3693145500029\\
+};
+\addlegendentry{BF-KW}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.421\figurewidth,
+height=0.419\figureheight,
+at={(0.554\figurewidth,0.581\figureheight)},
+scale only axis,
+xmin=-15,
+xmax=15,
+xtick={-15, -12,  -9,  -6,  -3,   0,   3,   6,   9,  12,  15},
+xlabel style={font=\color{mycolor6}},
+xlabel={ISR (dB)},
+ymin=-23.0671720160053,
+ymax=77.1576780902719,
+ylabel style={font=\color{mycolor6}},
+ylabel={EVM (dB, payload)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor6}},
+title={DAS  $|$  inversao (D)},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids
+]
+\addplot [color=mycolor1, line width=1.7pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-15	-20.8519410562523\\
+-12	-17.9009564412602\\
+-9	-14.9069615346124\\
+-6	-11.8903951633427\\
+-3	-8.73018377918043\\
+0	5.10249035640452\\
+3	40.8817112205964\\
+6	36.504674240509\\
+9	43.6827073132477\\
+12	60.5404071109814\\
+15	37.15341293482\\
+};
+\addplot [color=mycolor2, line width=1.7pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-15	-20.8457089155155\\
+-12	-17.8895490304657\\
+-9	-14.8854978988486\\
+-6	-11.8513891319854\\
+-3	-8.6633468057879\\
+0	7.15227344402633\\
+3	41.0774335793676\\
+6	36.7903007901029\\
+9	57.0879639860208\\
+12	47.4345494066069\\
+15	37.0989360971883\\
+};
+\addplot [color=mycolor3, line width=1.7pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}, forget plot]
+  table[row sep=crcr]{%
+-15	-20.845532184361\\
+-12	-17.8889558558006\\
+-9	-14.884952838991\\
+-6	-11.8515455961283\\
+-3	-8.66375764568474\\
+0	7.14259355051613\\
+3	41.0818237555026\\
+6	36.7573736757338\\
+9	57.0839920579149\\
+12	47.4154448458563\\
+15	37.0950644899196\\
+};
+\addplot [color=mycolor4, line width=1.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}, forget plot]
+  table[row sep=crcr]{%
+-15	-20.8465903004798\\
+-12	-17.8918315134567\\
+-9	-14.8794913473967\\
+-6	-11.8509504282735\\
+-3	-8.66746792042324\\
+0	7.14835656055018\\
+3	41.0777413101287\\
+6	36.7903007901029\\
+9	57.0879639859943\\
+12	47.4345494066069\\
+15	37.0989360971883\\
+};
+\addplot [color=black, dashed, line width=1.6pt, forget plot]
+  table[row sep=crcr]{%
+-15	-20.6351848440124\\
+-12	-17.7883481388484\\
+-9	-14.8494259314541\\
+-6	-11.86018118202\\
+-3	-8.31915040723503\\
+0	7.61978751507371\\
+3	49.1210822284616\\
+6	36.6017902111679\\
+9	47.5645835646231\\
+12	42.0738039688865\\
+15	37.6762214648576\\
+};
+\addplot [color=black, line width=2.4pt, forget plot]
+  table[row sep=crcr]{%
+-15	-20.8324160248857\\
+-12	-17.875738733131\\
+-9	-14.8790411042483\\
+-6	-11.8626413618578\\
+-3	-8.7049258028657\\
+0	5.2290355944702\\
+3	41.9147765491758\\
+6	36.6174265463126\\
+9	44.873715615098\\
+12	70.4886709164089\\
+15	37.3504727882383\\
+};
+\addplot [color=white!55!black, dotted, line width=2.2pt, forget plot]
+  table[row sep=crcr]{%
+-15	-20.8269527801957\\
+-12	-17.880794236756\\
+-9	-14.8848861362716\\
+-6	-11.8833294699422\\
+-3	-8.74663227228904\\
+0	19.4074779763248\\
+3	41.8274978288951\\
+6	43.0797432277417\\
+9	44.5754615143529\\
+12	51.6295955675768\\
+15	38.0503465519313\\
+};
+\addplot [color=mycolor5, dashdotted, line width=2.2pt, forget plot]
+  table[row sep=crcr]{%
+-15	-20.8310217646666\\
+-12	-17.8738561635773\\
+-9	-14.8763962631554\\
+-6	-11.859022329994\\
+-3	-8.6994301722708\\
+0	5.39249857148062\\
+3	41.7433770300605\\
+6	36.6130203371586\\
+9	47.6696779386517\\
+12	49.9478457928868\\
+15	37.3693145500029\\
+};
+\end{axis}
+
+\begin{axis}[%
+width=0.421\figurewidth,
+height=0.419\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-15,
+xmax=15,
+xtick={-15, -12,  -9,  -6,  -3,   0,   3,   6,   9,  12,  15},
+xlabel style={font=\color{mycolor6}},
+xlabel={ISR (dB)},
+ymin=-23.0671720160053,
+ymax=77.1576780902719,
+ylabel style={font=\color{mycolor6}},
+ylabel={EVM (dB, payload)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor6}},
+title={CAPON  $|$  sem comp.},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids
+]
+\addplot [color=mycolor1, line width=1.7pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-15	51.5738478088441\\
+-12	50.0099217381537\\
+-9	37.5970341404173\\
+-6	38.2202739736466\\
+-3	49.2724860593222\\
+0	39.773579126021\\
+3	37.7418561966523\\
+6	39.2049191005978\\
+9	37.9730014384006\\
+12	39.5194025335592\\
+15	42.3982664469074\\
+};
+\addplot [color=mycolor2, line width=1.7pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-15	36.8793398228661\\
+-12	42.611817510464\\
+-9	36.9207930936281\\
+-6	40.8019839766804\\
+-3	37.0586550002073\\
+0	40.250538032366\\
+3	44.216534835046\\
+6	37.8172282788686\\
+9	41.3236998808854\\
+12	37.1672718858297\\
+15	39.5993543245194\\
+};
+\addplot [color=mycolor3, line width=1.7pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}, forget plot]
+  table[row sep=crcr]{%
+-15	40.0417206864114\\
+-12	44.16567632771\\
+-9	41.1731880425192\\
+-6	39.6894651627001\\
+-3	37.3545860204748\\
+0	42.7422392703604\\
+3	36.2772180795946\\
+6	34.85223496733\\
+9	31.6712171730732\\
+12	28.219897168944\\
+15	19.4953196943087\\
+};
+\addplot [color=mycolor4, line width=1.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}, forget plot]
+  table[row sep=crcr]{%
+-15	36.8793398228661\\
+-12	42.6131605795066\\
+-9	36.6357749558062\\
+-6	40.8002208702554\\
+-3	37.1752044688349\\
+0	40.250538032366\\
+3	44.2176759444081\\
+6	37.8159080555223\\
+9	41.3211025133024\\
+12	37.1672718858297\\
+15	39.5993543245194\\
+};
+\addplot [color=black, dashed, line width=1.6pt, forget plot]
+  table[row sep=crcr]{%
+-15	-20.847203025466\\
+-12	-18.2105279757769\\
+-9	-15.6893278042809\\
+-6	-13.155328857675\\
+-3	-6.36725066166057\\
+0	2.10474751071589\\
+3	6.65939889891399\\
+6	9.08904572881984\\
+9	10.4240276656018\\
+12	11.3500176843798\\
+15	11.5982243207176\\
+};
+\addplot [color=black, line width=2.4pt, forget plot]
+  table[row sep=crcr]{%
+-15	-22.0671720160053\\
+-12	-20.0818208975989\\
+-9	-18.7468475143565\\
+-6	-18.148346937864\\
+-3	-17.6950399697764\\
+0	-16.3509229680262\\
+3	-14.6583222909327\\
+6	-13.4627178386836\\
+9	-13.0738892958953\\
+12	-13.2879353321519\\
+15	-12.6994308443395\\
+};
+\addplot [color=white!55!black, dotted, line width=2.2pt, forget plot]
+  table[row sep=crcr]{%
+-15	40.0417206864114\\
+-12	44.16567632771\\
+-9	41.1731880425192\\
+-6	39.6894651627001\\
+-3	37.3545860204748\\
+0	42.7422392703604\\
+3	36.2772180795946\\
+6	34.85223496733\\
+9	31.6712171730732\\
+12	28.219897168944\\
+15	19.4953196943087\\
+};
+\addplot [color=mycolor5, dashdotted, line width=2.2pt, forget plot]
+  table[row sep=crcr]{%
+-15	-21.7916422094528\\
+-12	-19.6745448281993\\
+-9	-18.159900464021\\
+-6	-17.4597060288979\\
+-3	-17.4474430045874\\
+0	-16.8950434137221\\
+3	-15.2660411996968\\
+6	-14.8962519946049\\
+9	-13.8605941715655\\
+12	-13.916500555291\\
+15	-13.2903119305732\\
+};
+\end{axis}
+
+\begin{axis}[%
+width=0.421\figurewidth,
+height=0.419\figureheight,
+at={(0.554\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-15,
+xmax=15,
+xtick={-15, -12,  -9,  -6,  -3,   0,   3,   6,   9,  12,  15},
+xlabel style={font=\color{mycolor6}},
+xlabel={ISR (dB)},
+ymin=-23.0671720160053,
+ymax=77.1576780902719,
+ylabel style={font=\color{mycolor6}},
+ylabel={EVM (dB, payload)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor6}},
+title={CAPON  $|$  inversao (D)},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids
+]
+\addplot [color=mycolor1, line width=1.7pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-15	-21.7799795813174\\
+-12	-19.6881837954925\\
+-9	-18.1252907334535\\
+-6	-17.3637811279586\\
+-3	-17.0390617489054\\
+0	-16.2690910733838\\
+3	-14.1536832624424\\
+6	-13.4361392372881\\
+9	-12.5283388531646\\
+12	-12.2675051795802\\
+15	-9.56456421925401\\
+};
+\addplot [color=mycolor2, line width=1.7pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-15	-20.7803780979308\\
+-12	-17.9056110337584\\
+-9	-14.9098644106329\\
+-6	-11.8996853042818\\
+-3	-8.56053657823075\\
+0	9.24427503020721\\
+3	35.8157347637603\\
+6	37.9943172239861\\
+9	44.1103920786534\\
+12	39.5156980215748\\
+15	39.4044975994894\\
+};
+\addplot [color=mycolor3, line width=1.7pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}, forget plot]
+  table[row sep=crcr]{%
+-15	-20.7569721722049\\
+-12	-17.81549652499\\
+-9	-14.8425575016044\\
+-6	-11.910912151349\\
+-3	-8.65432177704356\\
+0	9.34410873584986\\
+3	40.7669154321893\\
+6	37.4850127576622\\
+9	40.7516186651831\\
+12	76.1576780902719\\
+15	39.5183170303081\\
+};
+\addplot [color=mycolor4, line width=1.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}, forget plot]
+  table[row sep=crcr]{%
+-15	-14.5561718833749\\
+-12	-12.7638666572367\\
+-9	-7.49509504502022\\
+-6	-8.65397319213529\\
+-3	-7.18600118373419\\
+0	9.17443589878394\\
+3	35.8821495410102\\
+6	37.9943172239861\\
+9	44.1103920786534\\
+12	39.5156980215748\\
+15	39.4044975994894\\
+};
+\addplot [color=black, dashed, line width=1.6pt, forget plot]
+  table[row sep=crcr]{%
+-15	-20.847203025466\\
+-12	-18.2105279757769\\
+-9	-15.6893278042809\\
+-6	-13.155328857675\\
+-3	-6.36725066166057\\
+0	2.10474751071589\\
+3	6.65939889891399\\
+6	9.08904572881984\\
+9	10.4240276656018\\
+12	11.3500176843798\\
+15	11.5982243207176\\
+};
+\addplot [color=black, line width=2.4pt, forget plot]
+  table[row sep=crcr]{%
+-15	-22.0671720160053\\
+-12	-20.0818208975989\\
+-9	-18.7468475143565\\
+-6	-18.148346937864\\
+-3	-17.6950399697764\\
+0	-16.3509229680262\\
+3	-14.6583222909327\\
+6	-13.4627178386836\\
+9	-13.0738892958953\\
+12	-13.2879353321519\\
+15	-12.6994308443395\\
+};
+\addplot [color=white!55!black, dotted, line width=2.2pt, forget plot]
+  table[row sep=crcr]{%
+-15	40.0417206864114\\
+-12	44.16567632771\\
+-9	41.1731880425192\\
+-6	39.6894651627001\\
+-3	37.3545860204748\\
+0	42.7422392703604\\
+3	36.2772180795946\\
+6	34.85223496733\\
+9	31.6712171730732\\
+12	28.219897168944\\
+15	19.4953196943087\\
+};
+\addplot [color=mycolor5, dashdotted, line width=2.2pt, forget plot]
+  table[row sep=crcr]{%
+-15	-21.7916422094528\\
+-12	-19.6745448281993\\
+-9	-18.159900464021\\
+-6	-17.4597060288979\\
+-3	-17.4474430045874\\
+0	-16.8950434137221\\
+3	-15.2660411996968\\
+6	-14.8962519946049\\
+9	-13.8605941715655\\
+12	-13.916500555291\\
+15	-13.2903119305732\\
+};
+\end{axis}
+\end{tikzpicture}%
