@@ -1,0 +1,259 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.75000,0.10000,0.10000}%
+\definecolor{mycolor2}{rgb}{0.10000,0.45000,0.85000}%
+\definecolor{mycolor3}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.421\figurewidth,
+height=0.419\figureheight,
+at={(0\figurewidth,0.581\figureheight)},
+scale only axis,
+xmin=-10,
+xmax=15,
+xtick={-9, -6, -3,  0,  3,  6,  9, 12},
+xlabel style={font=\color{mycolor3}},
+xlabel={SNR (dB)},
+ymode=log,
+ymin=0.0379473319220206,
+ymax=74.1891674033346,
+yminorticks=true,
+ylabel style={font=\color{mycolor3}},
+ylabel={RMSE de DoA (graus)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor3}},
+title={KW},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=white!35!black, dashed, line width=1.8pt]
+  table[row sep=crcr]{%
+-9	1.09584288521097\\
+-6	0.78551885391796\\
+-3	0.569273317734664\\
+0	0.385835689740956\\
+3	0.276269198944111\\
+6	0.200804755922085\\
+9	0.139981581010736\\
+12	0.10057704649013\\
+};
+\addlegendentry{ideal (sem acopl.)}
+
+\addplot [color=mycolor1, line width=1.8pt, mark=square*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-9	2.11998851140256\\
+-6	1.46845448531382\\
+-3	1.07745720517672\\
+0	0.767008171644404\\
+3	0.59755201269571\\
+6	0.479363485096703\\
+9	0.43072164946447\\
+12	0.373007899486815\\
+};
+\addlegendentry{nao compensado}
+
+\addplot [color=mycolor2, line width=1.8pt, mark=*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+-9	0.982805774040612\\
+-6	0.690579760621589\\
+-3	0.486713671218179\\
+0	0.361805283073643\\
+3	0.257462903634977\\
+6	0.183999444633607\\
+9	0.145363291649826\\
+12	0.119901741690521\\
+};
+\addlegendentry{compensado (self-cal)}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.421\figurewidth,
+height=0.419\figureheight,
+at={(0.554\figurewidth,0.581\figureheight)},
+scale only axis,
+xmin=-10,
+xmax=15,
+xtick={-9, -6, -3,  0,  3,  6,  9, 12},
+xlabel style={font=\color{mycolor3}},
+xlabel={SNR (dB)},
+ymode=log,
+ymin=0.0379473319220206,
+ymax=74.1891674033346,
+yminorticks=true,
+ylabel style={font=\color{mycolor3}},
+ylabel={RMSE de DoA (graus)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor3}},
+title={DAS},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids
+]
+\addplot [color=white!35!black, dashed, line width=1.8pt, forget plot]
+  table[row sep=crcr]{%
+-9	1.61655497895989\\
+-6	0.967729300992793\\
+-3	0.648459713474939\\
+0	0.438178046004133\\
+3	0.321325380261193\\
+6	0.235053185470863\\
+9	0.142302494707577\\
+12	0.0474341649025257\\
+};
+\addplot [color=mycolor1, line width=1.8pt, mark=square*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-9	1.36656503687164\\
+-6	0.924526906044383\\
+-3	0.648074069840786\\
+0	0.463141447076376\\
+3	0.372155881318568\\
+6	0.306594194335118\\
+9	0.278836869871974\\
+12	0.251992063367083\\
+};
+\addplot [color=mycolor2, line width=1.8pt, mark=*, mark options={solid, fill=mycolor2, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-9	1.12616606235493\\
+-6	0.727667506489056\\
+-3	0.57987067523716\\
+0	0.4\\
+3	0.292831009286926\\
+6	0.218517733834122\\
+9	0.146628782986152\\
+12	0.103682206766639\\
+};
+\end{axis}
+
+\begin{axis}[%
+width=0.421\figurewidth,
+height=0.419\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-10,
+xmax=15,
+xtick={-9, -6, -3,  0,  3,  6,  9, 12},
+xlabel style={font=\color{mycolor3}},
+xlabel={SNR (dB)},
+ymode=log,
+ymin=0.0379473319220206,
+ymax=74.1891674033346,
+yminorticks=true,
+ylabel style={font=\color{mycolor3}},
+ylabel={RMSE de DoA (graus)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor3}},
+title={CAPON},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids
+]
+\addplot [color=white!35!black, dashed, line width=1.8pt, forget plot]
+  table[row sep=crcr]{%
+-9	1.615704180845\\
+-6	0.967600124018181\\
+-3	0.649807663851389\\
+0	0.440170421541475\\
+3	0.320156211871642\\
+6	0.233452350598575\\
+9	0.140534693225552\\
+12	0.0547722557505166\\
+};
+\addplot [color=mycolor1, line width=1.8pt, mark=square*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-9	3.05532322349044\\
+-6	2.59591024498152\\
+-3	2.42966047010688\\
+0	2.44862206148683\\
+3	2.37818207881567\\
+6	2.26351496571152\\
+9	2.31392523647589\\
+12	2.31268242523698\\
+};
+\addplot [color=mycolor2, line width=1.8pt, mark=*, mark options={solid, fill=mycolor2, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-9	0.716240183178799\\
+-6	0.56811090466563\\
+-3	0.408656334834051\\
+0	0.347850542618522\\
+3	0.255929677841395\\
+6	0.291547594742265\\
+9	0.373162163140906\\
+12	0.231300670124408\\
+};
+\end{axis}
+
+\begin{axis}[%
+width=0.421\figurewidth,
+height=0.419\figureheight,
+at={(0.554\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-10,
+xmax=15,
+xtick={-9, -6, -3,  0,  3,  6,  9, 12},
+xlabel style={font=\color{mycolor3}},
+xlabel={SNR (dB)},
+ymode=log,
+ymin=0.0379473319220206,
+ymax=74.1891674033346,
+yminorticks=true,
+ylabel style={font=\color{mycolor3}},
+ylabel={RMSE de DoA (graus)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor3}},
+title={MUSIC},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids
+]
+\addplot [color=white!35!black, dashed, line width=1.8pt, forget plot]
+  table[row sep=crcr]{%
+-9	1.61415612627775\\
+-6	0.968633057457776\\
+-3	0.649807663851389\\
+0	0.437035467668243\\
+3	0.321714158842908\\
+6	0.235053185470863\\
+9	0.142302494707577\\
+12	0.0474341649025257\\
+};
+\addplot [color=mycolor1, line width=1.8pt, mark=square*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-9	1.31310700249447\\
+-6	0.91323600454647\\
+-3	0.645561770863176\\
+0	0.462331050222673\\
+3	0.372491610643783\\
+6	0.307001628660175\\
+9	0.277488738510232\\
+12	0.251495526799186\\
+};
+\addplot [color=mycolor2, line width=1.8pt, mark=*, mark options={solid, fill=mycolor2, mycolor2}, forget plot]
+  table[row sep=crcr]{%
+-9	57.0685903102574\\
+-6	46.1037905166159\\
+-3	27.5505580705727\\
+0	17.2572448554223\\
+3	11.5721324741812\\
+6	0.697316284049068\\
+9	5.95506087290466\\
+12	0.471963981676568\\
+};
+\end{axis}
+\end{tikzpicture}%

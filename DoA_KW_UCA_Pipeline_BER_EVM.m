@@ -31,8 +31,8 @@ M = 8; fc = 500e6; c = 3e8; lambda = c/fc; r = 0.2*lambda; theta_sig_deg = 90;
 fs = 288000; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 
 % --- estrutura do pacote ---
-K_kw        = 2100;             % PREAMBULO (amostras p/ estimacao) -- "o que fazemos hoje"
-payload_len = 9900;             % PAYLOAD (amostras p/ medir BER/EVM)
+K_kw        = sps*100;             % PREAMBULO (amostras p/ estimacao) -- "o que fazemos hoje"
+payload_len = sps*1000;             % PAYLOAD (amostras p/ medir BER/EVM)
 K           = K_kw + payload_len;
 k0          = 1;                % preambulo comeca na amostra 1 (sem zeros antes)
 
@@ -52,7 +52,7 @@ phi_grid_deg = -180:0.5:180;
 beta_uca = 2*pi*(0:M-1).'/M;
 
 % Monte Carlo (ajustavel; payload longo -> mantenha moderado)
-n_angles = 50; n_trials = 5;
+n_angles = 500; n_trials = 5;
 rng(2026,'twister');
 gstep = phi_grid_deg(2)-phi_grid_deg(1);
 phi_set = round((-180 + 360*rand(1,n_angles))/gstep)*gstep;

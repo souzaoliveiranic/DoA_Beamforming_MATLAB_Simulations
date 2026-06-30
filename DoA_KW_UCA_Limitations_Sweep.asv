@@ -1,0 +1,227 @@
+% =========================================================================
+%  DoA_KW_UCA_Limitations_Sweep.m
+%
+%  Limitacoes praticas dos estimadores de DoA (KW, DAS, Capon, MUSIC) num UCA
+%  com acoplamento mutuo. Baseado em DoA_KW_Limitations_SBRT.m (modelo de
+%  pacote/preambulo) + formato RMSE + P(trava no interferente) do ISR sweep.
+%
+%  TRES experimentos PARALELOS (um problema por vez; baseline fixo nos demais):
+%    (A) RMSE vs RAIO do arranjo        (recalcula C e steering por raio)
+%    (B) RMSE vs ERRO DE SINCRONISMO    (desalinha a janela vs preambulo)
+%    (C) RMSE vs COMPRIMENTO DO TREINO  (K_kw: snapshots de DoA/beamforming)
+%
+%  Figuras mostram o RMSE do azimute do SOI (graus). A P(travar no
+%  interferente) (%) ainda e' calculada e salva no .mat, mas nao plotada.
+%
+%  MUSIC com 1 FONTE. Acoplamento aplicado como X = C*Xsig + C*Xint + Xn.
+%
+%  Dependencias: utils.m (simulate_data_uca_v3, compute_Ctx_for_R,
+%  steering_vec_uca), doa_kw_uca.m, Antenna Toolbox, matlab2tikz.
+% =========================================================================
+
+clear; clc; close all;
+warning('off','MATLAB:singularMatrix'); warning('off','MATLAB:nearlySingularMatrix');
+
+%% ===================== Parametros gerais / BASELINE =====================
+M = 8; fc = 500e6; c = 3e8; lambda = c/fc;
+theta_sig_deg = 90; theta_int_deg = 90; Z0 = 50;
+fs = 288000; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
+interf_t = 'fsk2';                 % interferente co-canal
+
+% --- baseline (valor fixo quando o parametro NAO esta sendo varrido) ---
+r_base    = 0.15*lambda;            % raio
+SNR_dB    = 10;                    % SNR do SOI
+ISR_dB    = -100;                    % interferente 3 dB abaixo do SOI
+K_kw_base = 100*sps;               % preambulo baseline (2100 amostras = 70 simbolos)
+
+% --- angulos (sorteados por realizacao, com separacao minima) ---
+randomize_angles = true; phi_min_sep_deg = 10;
+phi_sig_deg_fixed = 30; phi_int_deg_fixed = -45;
+
+% --- Monte Carlo ---  (suba para ~300-500 no run final)
+nEns = 300;
+rng(2026,'twister');
+
+% --- grade angular dos classicos ---
+phi_scan = -180:0.1:180;  Ngrid = numel(phi_scan);
+
+methods = ["KW","DAS","Capon","MUSIC"]; nM = numel(methods);
+mk = ["o-","x-","s-","d-"];  cols = ["red","green","blue","black"];
+
+outDir = fullfile(pwd,'Limitations Sweep Graphs'); if ~exist(outDir,'dir'), mkdir(outDir); end
+fprintf('Baseline: SNR=%+d dB, ISR=%+d dB, K_kw=%d, sep_min=%d deg, nEns=%d\n', ...
+    SNR_dB, ISR_dB, K_kw_base, phi_min_sep_deg, nEns);
+
+% dicionario de steering p/ um dado raio
+build_Ascan = @(rad) cell2mat(arrayfun(@(p) utils.steering_vec_uca(M,rad,lambda,theta_sig_deg,p), ...
+    phi_scan, 'UniformOutput', false));
+
+%% =======================================================================
+%  EXPERIMENTO A: RMSE / P-trava vs RAIO DO ARRANJO
+% =======================================================================
+fprintf('\n===== (A) Varredura de RAIO =====\n');
+range_radius = 0.1:0.05:0.25; %[0.05 0.1 0.15 0.2 0.3 0.5 0.75 1.0];   % x lambda
+nR = numel(range_radius);
+RMSE_A = zeros(nM,nR);  Plk_A = zeros(nM,nR);
+t0 = tic;
+for iR = 1:nR
+    rad = range_radius(iR)*lambda;
+    CM  = utils.compute_Ctx_for_R(fc, M, rad, Z0);     % acoplamento depende do raio
+    A_scan = build_Ascan(rad);                         % steering depende do raio
+    K = K_kw_base;                                     % sem payload (offset=0)
+    estfun = @(ps,pi_) do_one_estimation_all_v2(M, rad, lambda, CM, ps, pi_, ...
+        theta_sig_deg, theta_int_deg, SNR_dB, ISR_dB, K, K_kw_base, fs, ...
+        Rs, sps, alpha, span, fd, interf_t, 0, A_scan, phi_scan);
+    [RMSE_A(:,iR), Plk_A(:,iR)] = mc_point(nEns, randomize_angles, ...
+        phi_sig_deg_fixed, phi_int_deg_fixed, phi_min_sep_deg, estfun);
+    fprintf('  r=%.2f lam (cond C=%.1f): KW=%.2f DAS=%.2f Capon=%.2f MUSIC=%.2f deg (%.0fs)\n', ...
+        range_radius(iR), cond(CM), RMSE_A(:,iR), toc(t0));
+end
+plot_study(range_radius, RMSE_A, Plk_A, methods, mk, cols, ...
+    'raio (\lambda)', 'linear', ...
+    sprintf('(A) Limitacao por ABERTURA  (SNR=%+d dB, ISR=%+d dB, K_{kw}=%d)', SNR_dB, ISR_dB, K_kw_base), ...
+    fullfile(outDir,'limit_vs_raio'));
+
+%% =======================================================================
+%  EXPERIMENTO B: RMSE / P-trava vs ERRO DE SINCRONISMO
+% =======================================================================
+fprintf('\n===== (B) Varredura de SINCRONISMO =====\n');
+CM_b = utils.compute_Ctx_for_R(fc, M, r_base, Z0);
+A_scan_b = build_Ascan(r_base);
+range_sync_Tsym = [-50 -20 -10 -5 -2 -1 -0.5 -0.25 0 0.25 0.5 1 2 5 10 20 50];
+range_sync = range_sync_Tsym * sps;                    % T_sym -> amostras
+K_sync = K_kw_base + 2*max(abs(range_sync)) + 4*sps;   % folga p/ deslocar a janela
+nS = numel(range_sync);
+RMSE_B = zeros(nM,nS);  Plk_B = zeros(nM,nS);
+t0 = tic;
+for iS = 1:nS
+    estfun = @(ps,pi_) do_one_estimation_all_v2(M, r_base, lambda, CM_b, ps, pi_, ...
+        theta_sig_deg, theta_int_deg, SNR_dB, ISR_dB, K_sync, K_kw_base, fs, ...
+        Rs, sps, alpha, span, fd, interf_t, range_sync(iS), A_scan_b, phi_scan);
+    [RMSE_B(:,iS), Plk_B(:,iS)] = mc_point(nEns, randomize_angles, ...
+        phi_sig_deg_fixed, phi_int_deg_fixed, phi_min_sep_deg, estfun);
+    fprintf('  Delta=%+6.2f Tsym: KW=%.2f DAS=%.2f Capon=%.2f MUSIC=%.2f deg (%.0fs)\n', ...
+        range_sync_Tsym(iS), RMSE_B(:,iS), toc(t0));
+end
+plot_study(range_sync_Tsym, RMSE_B, Plk_B, methods, mk, cols, ...
+    'erro de sincronismo  \Delta / T_{sym}', 'linear', ...
+    sprintf('(B) Limitacao por SINCRONISMO  (SNR=%+d dB, ISR=%+d dB, K_{kw}=%d)', SNR_dB, ISR_dB, K_kw_base), ...
+    fullfile(outDir,'limit_vs_sincronismo'));
+
+%% =======================================================================
+%  EXPERIMENTO C: RMSE / P-trava vs COMPRIMENTO DO TREINO (K_kw)
+% =======================================================================
+fprintf('\n===== (C) Varredura de COMPRIMENTO DO TREINO =====\n');
+range_Kkw_sym = [5 10 20 50 100 200 400 800 1600 3200];               % simbolos
+range_Kkw = range_Kkw_sym * sps;                       % amostras
+nKk = numel(range_Kkw);
+RMSE_C = zeros(nM,nKk);  Plk_C = zeros(nM,nKk);
+t0 = tic;
+for iKk = 1:nKk
+    Kkw = range_Kkw(iKk);  K = Kkw;                     % offset=0 -> janela = preambulo
+    estfun = @(ps,pi_) do_one_estimation_all_v2(M, r_base, lambda, CM_b, ps, pi_, ...
+        theta_sig_deg, theta_int_deg, SNR_dB, ISR_dB, K, Kkw, fs, ...
+        Rs, sps, alpha, span, fd, interf_t, 0, A_scan_b, phi_scan);
+    [RMSE_C(:,iKk), Plk_C(:,iKk)] = mc_point(nEns, randomize_angles, ...
+        phi_sig_deg_fixed, phi_int_deg_fixed, phi_min_sep_deg, estfun);
+    fprintf('  K_kw=%5d (%3d sym): KW=%.2f DAS=%.2f Capon=%.2f MUSIC=%.2f deg (%.0fs)\n', ...
+        Kkw, range_Kkw_sym(iKk), RMSE_C(:,iKk), toc(t0));
+end
+plot_study(range_Kkw_sym, RMSE_C, Plk_C, methods, mk, cols, ...
+    'comprimento do treino  K_{kw} (simbolos)', 'log', ...
+    sprintf('(C) Limitacao por COMPRIMENTO DO TREINO  (SNR=%+d dB, ISR=%+d dB, raio=%.2f\\lambda)', SNR_dB, ISR_dB, r_base/lambda), ...
+    fullfile(outDir,'limit_vs_treino'));
+
+%% ---- salvar dados ----
+save(fullfile(outDir,'limitations_results.mat'), ...
+    'range_radius','RMSE_A','Plk_A', 'range_sync_Tsym','RMSE_B','Plk_B', ...
+    'range_Kkw_sym','RMSE_C','Plk_C', 'methods','SNR_dB','ISR_dB','K_kw_base','r_base','lambda','nEns');
+fprintf('\nConcluido. Figuras e dados em: %s\n', outDir);
+
+% =========================================================================
+%                            FUNCOES LOCAIS
+% =========================================================================
+function [rmse, plock] = mc_point(nEns, randomize, phi_fs, phi_fi, min_sep, estfun)
+% Media Monte Carlo de um ponto. estfun(phi_s,phi_i)->phi_hats (nM x 1, graus).
+    nM = 4; errs = zeros(nM,nEns); lock = zeros(nM,nEns);
+    for e = 1:nEns
+        if randomize, [ps,pi_] = sample_angles_with_min_sep(min_sep);
+        else,         ps = phi_fs; pi_ = phi_fi; end
+        ph = estfun(ps, pi_);  ph = ph(:);
+        es = abs(mod(ph - ps  + 180, 360) - 180);      % erro ao SOI
+        ei = abs(mod(ph - pi_ + 180, 360) - 180);      % erro ao interferente
+        errs(:,e) = es;  lock(:,e) = double(ei < es);  % travou se mais perto do interf.
+    end
+    rmse  = sqrt(mean(errs.^2, 2));
+    plock = 100*mean(lock, 2);
+end
+
+function plot_study(xv, RMSE, ~, methods, mk, cols, xlab, xscale, ttl, basepath)
+% Figura unica: RMSE do azimute do SOI vs parametro varrido.
+    nM = numel(methods);
+    fig = figure('Color','w','Position',[40 60 720 520]);
+
+    hold on; grid on; box on;
+    for m = 1:nM
+        plot(xv, RMSE(m,:), mk(m), 'Color', cols(m), 'LineWidth',1.9,'MarkerSize',6, ...
+            'DisplayName', methods(m));
+    end
+    set(gca,'YScale','log','XScale',xscale);
+    xlabel(xlab); ylabel('RMSE do azimute do SOI (graus)');
+    title('Erro de apontamento ao SOI'); legend('Location','best');
+
+    sgtitle(ttl, 'FontWeight','bold');
+    exportgraphics(fig, [basepath '.png'], 'Resolution',170);
+    try
+        matlab2tikz([basepath '.tex'], 'width','\figurewidth','height','\figureheight');
+    catch ME
+        fprintf(2, 'matlab2tikz indisponivel: %s\n', ME.message);
+    end
+end
+
+function phi_hats = do_one_estimation_all_v2(M, radius, lambda, CM, ...
+        phi_sig_deg, phi_int_deg, theta_sig_deg, theta_int_deg, ...
+        SNR_dB, ISR_dB, K, K_kw, fs, Rs, sps, alpha, span, fd, ...
+        interferer_type, sync_offset_samples, A_scan, phi_scan)
+%DO_ONE_ESTIMATION_ALL_V2  Estimacao DoA (KW,DAS,Capon,MUSIC) com modelo de
+%  pacote/preambulo. sync_offset_samples desloca a JANELA usada pelos
+%  estimadores em relacao ao preambulo verdadeiro (Delta). Todos os 4 metodos
+%  operam na MESMA janela K_kw. (Baseado em DoA_KW_Limitations_SBRT.m)
+
+    [~, y_ref, k0_true, Xsig, Xint, Xn] = utils.simulate_data_uca_v3(M, radius, lambda, ...
+        phi_sig_deg, phi_int_deg, theta_sig_deg, theta_int_deg, ...
+        SNR_dB, ISR_dB, K, K_kw, fs, Rs, sps, alpha, span, fd, interferer_type, []);
+
+    X = CM*Xsig + CM*Xint + Xn;  Kx = size(X,2);
+
+    % janela deslocada por Delta (em indices inteiros), com clipping/zero-fill
+    k0_est = k0_true + round(sync_offset_samples);
+    Xk = zeros(M, K_kw);
+    src_first = max(k0_est, 1);  src_last = min(k0_est + K_kw - 1, Kx);
+    if src_last >= src_first
+        Xk(:, src_first-k0_est+1 : src_last-k0_est+1) = X(:, src_first:src_last);
+    end
+
+    % ----- KW (correlaciona a janela com a referencia conhecida) -----
+    beta = 2*pi*(0:M-1)'/M;
+    [~, phi_KW] = doa_kw_uca(Xk, y_ref, radius, lambda, beta);
+
+    % ----- covariancia (compartilhada pelos classicos) -----
+    Rxx = (Xk*Xk')/K_kw;  Rxx_dl = Rxx + (1e-3*trace(Rxx)/M)*eye(M);
+    [eigvec, eigval] = eig(Rxx_dl);  [~, idx] = sort(diag(eigval),'descend');
+    En = eigvec(:, idx(2:end));  EnEnH = En*En';      % MUSIC com 1 FONTE
+
+    P_DAS   = real(sum(conj(A_scan).*(Rxx     *A_scan),1));
+    P_Capon = 1./max(real(sum(conj(A_scan).*(Rxx_dl\A_scan),1)),eps);
+    P_MUSIC = 1./max(real(sum(conj(A_scan).*(EnEnH*A_scan),1)),eps);
+    [~,i_d]=max(P_DAS); [~,i_c]=max(P_Capon); [~,i_m]=max(P_MUSIC);
+
+    phi_hats = [phi_KW; phi_scan(i_d); phi_scan(i_c); phi_scan(i_m)];
+end
+
+function [phi_s, phi_i] = sample_angles_with_min_sep(min_sep_deg)
+    while true
+        phi_s = -180 + 360*rand;  phi_i = -180 + 360*rand;
+        if abs(mod(phi_s - phi_i + 180, 360) - 180) >= min_sep_deg, return; end
+    end
+end

@@ -26,8 +26,8 @@ warning('off','MATLAB:singularMatrix'); warning('off','MATLAB:nearlySingularMatr
 warning('off','MATLAB:illConditionedMatrix'); warning('off','estimate_C_circulant_uca:smallAlpha');
 
 %% ---- Parametros ----
-M = 8; fc = 500e6; c = 3e8; lambda = c/fc; r = 0.1*lambda; theta_sig_deg = 90;
-fs = 288000; N = 2100; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
+M = 8; fc = 500e6; c = 3e8; lambda = c/fc; r = 0.15*lambda; theta_sig_deg = 90;
+fs = 288000; N = 3000; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 
 maxIter = 8; u = 0.5;                 % self-cal (KW) para 'inversao' e 'manifold estimado'
 range_SNR_dB = [-9 -6 -3 0 3 6 9 12];
@@ -36,7 +36,7 @@ beta_uca = 2*pi*(0:M-1).'/M;
 K = floor(M/2);
 
 % Monte Carlo
-n_angles = 24; n_trials = 10; n_real = n_angles*n_trials;
+n_angles = 100; n_trials = 10; n_real = n_angles*n_trials;
 rng(2026,'twister');
 gstep = phi_grid_deg(2)-phi_grid_deg(1);
 phi_set = round((-180 + 360*rand(1,n_angles))/gstep)*gstep;

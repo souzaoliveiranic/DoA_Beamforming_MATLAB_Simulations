@@ -1,0 +1,166 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
+\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.427\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmode=log,
+xmin=1050,
+xmax=8400,
+xtick={1050, 2100, 4200, 8400},
+xminorticks=true,
+xlabel style={font=\color{mycolor5}},
+xlabel={N (amostras)},
+ymode=log,
+ymin=0.38776841710307,
+ymax=0.50661531014236,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={residuo de compensacao},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Residuo de compensacao vs N},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+1050	0.494222886422463\\
+2100	0.437603986563252\\
+4200	0.421757252451967\\
+8400	0.388588536282277\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=2.8pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+1050	0.493651151297816\\
+2100	0.437263038234737\\
+4200	0.421449744982534\\
+8400	0.38840050916471\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=6.9pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+1050	0.494140604791683\\
+2100	0.437826176364836\\
+4200	0.421593670054422\\
+8400	0.388183622662251\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=2.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+1050	0.50661531014236\\
+2100	0.43403871245555\\
+4200	0.426061227203254\\
+8400	0.38776841710307\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, line width=2.0pt, mark size=4.5pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+1050	0.494023013868163\\
+2100	0.437903588603741\\
+4200	0.421530399158921\\
+8400	0.388256967041871\\
+};
+\addlegendentry{Ang. Verd.}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.427\figurewidth,
+height=\figureheight,
+at={(0.562\figurewidth,0\figureheight)},
+scale only axis,
+xmode=log,
+xmin=1050,
+xmax=8400,
+xtick={1050, 2100, 4200, 8400},
+xminorticks=true,
+xlabel style={font=\color{mycolor5}},
+xlabel={N (amostras)},
+ymode=log,
+ymin=0.334642341453002,
+ymax=0.782658399520822,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={Frobenius bruto},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Frobenius vs N},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+1050	0.777313585418636\\
+2100	0.527709252129185\\
+4200	0.482362082961973\\
+8400	0.347167120525322\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=2.8pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+1050	0.770842133347806\\
+2100	0.511099104780392\\
+4200	0.445625321192158\\
+8400	0.335713964307973\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=6.9pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+1050	0.762816775276678\\
+2100	0.515419985800073\\
+4200	0.440790365765856\\
+8400	0.334642341453002\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=2.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+1050	0.782658399520822\\
+2100	0.517169956538764\\
+4200	0.450784858317985\\
+8400	0.343782990313996\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, line width=2.0pt, mark size=4.5pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+1050	0.772103875704612\\
+2100	0.516891769955241\\
+4200	0.4447482733968\\
+8400	0.336292067736676\\
+};
+\addlegendentry{Ang. Verd.}
+
+\end{axis}
+\end{tikzpicture}%

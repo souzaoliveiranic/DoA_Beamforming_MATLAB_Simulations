@@ -39,15 +39,15 @@ M      = 8;            % nº de elementos do UCA
 fc     = 500e6;        % Hz
 c      = 3e8;
 lambda = c/fc;
-r      = 0.1*lambda;   % raio (0.1 lambda = abertura pequena, acoplamento forte)
+r      = 0.15*lambda;   % raio (0.1 lambda = abertura pequena, acoplamento forte)
 theta_sig_deg = 90;    % elevacao (plano XY)
 
 %% ---- Parametros do sinal (FSK-2 conhecido) ----
 % NOTA: aumentar N (preambulo conhecido) reduz a variancia de b_hat e melhora C.
-fs = 288000; N = 2100; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
+fs = 288000; N = 3000; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 
 %% ---- Parametros do experimento ----
-maxIter      = 12;
+maxIter      = 6;
 range_SNR_dB = -12:3:12; %[-6, 0, 6, 12];
 methods      = {'KW','DAS','CAPON','MUSIC'};
 nMethods     = numel(methods);
@@ -70,7 +70,7 @@ ridge_lambda    = 5e-3;     % Tikhonov no LS de c (0 = sem regularizacao)
 stratified_dirs = true;     % cobertura angular garantida no sorteio das P direcoes
 
 % --- Monte Carlo ---
-n_runs   = 60;
+n_runs   = 200;
 rng(2026, 'twister');
 
 if drive_C_with_KW, drv_tag = 'C dirigida por KW'; else, drv_tag = 'C dirigida pelo metodo'; end

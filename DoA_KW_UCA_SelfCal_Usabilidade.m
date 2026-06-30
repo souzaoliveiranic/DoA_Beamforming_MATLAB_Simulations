@@ -35,16 +35,16 @@ warning('off','estimate_C_circulant_uca:smallAlpha');
 
 %% ---- Parametros do array ----
 M      = 8;  fc = 500e6;  c = 3e8;  lambda = c/fc;
-r      = 0.2*lambda;       % <-- raio (escolhivel)
+r      = 0.15*lambda;       % <-- raio (escolhivel)
 theta_sig_deg = 90;
 
 %% ---- Parametros do sinal ----
-fs = 288000; N = 9900; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
+fs = 288000; N = 3000; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 
 %% ---- Parametros do experimento ----
-maxIter      = 10;
+maxIter      = 6;
 u            = 0.5;                 % <-- passo de relaxacao ESCOLHIVEL
-range_SNR_dB = [-6, 0, 6, 12];
+range_SNR_dB = -12:3:12; %[-6, 0, 6, 12];
 methods      = {'KW','DAS','CAPON','MUSIC'};
 nMethods     = numel(methods);
 phi_grid_deg = -180:0.5:180;
@@ -53,7 +53,7 @@ beta_uca     = 2*pi*(0:M-1).'/M;
 K            = floor(M/2);
 
 % --- Monte Carlo ---
-n_angles = 100;  n_trials = 8;  n_real = n_angles*n_trials;
+n_angles = 200;  n_trials = 5;  n_real = n_angles*n_trials;
 rng(2026, 'twister');
 phi_set  = round( (-180 + 360*rand(1, n_angles)) / grid_step ) * grid_step;
 

@@ -1,0 +1,294 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.00000,0.55000,0.15000}%
+\definecolor{mycolor2}{rgb}{0.75000,0.10000,0.10000}%
+\definecolor{mycolor3}{rgb}{0.10000,0.25000,0.85000}%
+\definecolor{mycolor4}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.423\figurewidth,
+height=0.419\figureheight,
+at={(0\figurewidth,0.581\figureheight)},
+scale only axis,
+xmin=-10,
+xmax=15,
+xtick={-9, -6, -3,  0,  3,  6,  9, 12},
+xlabel style={font=\color{mycolor4}},
+xlabel={SNR de entrada (dB)},
+ymin=-1,
+ymax=9.78924165378257,
+ylabel style={font=\color{mycolor4}},
+ylabel={ganho de array (dB)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor4}},
+title={KW},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=white!20!black, line width=2.6pt]
+  table[row sep=crcr]{%
+-9	8.78924165378257\\
+-6	8.78924165378257\\
+-3	8.78924165378257\\
+0	8.78924165378257\\
+3	8.78924165378257\\
+6	8.78924165378257\\
+9	8.78924165378257\\
+12	8.78924165378257\\
+};
+\addlegendentry{otimo (w=Ca)}
+
+\addplot [color=mycolor1, line width=2.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-9	8.78790570785351\\
+-6	8.78857317605906\\
+-3	8.78890127342272\\
+0	8.78907140197409\\
+3	8.7891568336971\\
+6	8.78919948806211\\
+9	8.7892204980207\\
+12	8.78923097973058\\
+};
+\addlegendentry{$\text{manifold (w=b}_{\text{hat}}\text{)}$}
+
+\addplot [color=mycolor2, dashed, line width=1.6pt]
+  table[row sep=crcr]{%
+-9	7.12517670681008\\
+-6	7.12517670681008\\
+-3	7.12517670681008\\
+0	7.12517670681008\\
+3	7.12517670681008\\
+6	7.12517670681008\\
+9	7.12517670681008\\
+12	7.12517670681008\\
+};
+\addlegendentry{acoplado (w=a)}
+
+\addplot [color=mycolor3, line width=2.0pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+-9	6.75567981972982\\
+-6	6.74123571846442\\
+-3	6.74194262504027\\
+0	6.75060738868955\\
+3	6.76343461061028\\
+6	6.78144398899805\\
+9	6.78417018171862\\
+12	6.78289842968093\\
+};
+\addlegendentry{$\text{inversao (w=D}_\text{m}^\text{H}\text{a)}$}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.423\figurewidth,
+height=0.419\figureheight,
+at={(0.556\figurewidth,0.581\figureheight)},
+scale only axis,
+xmin=-10,
+xmax=15,
+xtick={-9, -6, -3,  0,  3,  6,  9, 12},
+xlabel style={font=\color{mycolor4}},
+xlabel={SNR de entrada (dB)},
+ymin=-1,
+ymax=9.78924165378257,
+ylabel style={font=\color{mycolor4}},
+ylabel={ganho de array (dB)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor4}},
+title={DAS},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids
+]
+\addplot [color=white!20!black, line width=2.6pt, forget plot]
+  table[row sep=crcr]{%
+-9	8.78924165378257\\
+-6	8.78924165378257\\
+-3	8.78924165378257\\
+0	8.78924165378257\\
+3	8.78924165378257\\
+6	8.78924165378257\\
+9	8.78924165378257\\
+12	8.78924165378257\\
+};
+\addplot [color=mycolor1, line width=2.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-9	8.78790570785351\\
+-6	8.78857317605906\\
+-3	8.78890127342272\\
+0	8.78907140197409\\
+3	8.7891568336971\\
+6	8.78919948806211\\
+9	8.7892204980207\\
+12	8.78923097973058\\
+};
+\addplot [color=mycolor2, dashed, line width=1.6pt, forget plot]
+  table[row sep=crcr]{%
+-9	7.12517670681008\\
+-6	7.12517670681008\\
+-3	7.12517670681008\\
+0	7.12517670681008\\
+3	7.12517670681008\\
+6	7.12517670681008\\
+9	7.12517670681008\\
+12	7.12517670681008\\
+};
+\addplot [color=mycolor3, line width=2.0pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}, forget plot]
+  table[row sep=crcr]{%
+-9	6.75994457339518\\
+-6	6.74301286984569\\
+-3	6.74240846415432\\
+0	6.75290854405181\\
+3	6.7656933335627\\
+6	6.78427937277377\\
+9	6.78727308299795\\
+12	6.78616528671173\\
+};
+\end{axis}
+
+\begin{axis}[%
+width=0.423\figurewidth,
+height=0.419\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-10,
+xmax=15,
+xtick={-9, -6, -3,  0,  3,  6,  9, 12},
+xlabel style={font=\color{mycolor4}},
+xlabel={SNR de entrada (dB)},
+ymin=-1,
+ymax=9.78924165378257,
+ylabel style={font=\color{mycolor4}},
+ylabel={ganho de array (dB)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor4}},
+title={CAPON},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids
+]
+\addplot [color=white!20!black, line width=2.6pt, forget plot]
+  table[row sep=crcr]{%
+-9	8.78924165378257\\
+-6	8.78924165378257\\
+-3	8.78924165378257\\
+0	8.78924165378257\\
+3	8.78924165378257\\
+6	8.78924165378257\\
+9	8.78924165378257\\
+12	8.78924165378257\\
+};
+\addplot [color=mycolor1, line width=2.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-9	8.78790570785351\\
+-6	8.78857317605906\\
+-3	8.78890127342272\\
+0	8.78907140197409\\
+3	8.7891568336971\\
+6	8.78919948806211\\
+9	8.7892204980207\\
+12	8.78923097973058\\
+};
+\addplot [color=mycolor2, dashed, line width=1.6pt, forget plot]
+  table[row sep=crcr]{%
+-9	7.12517670681008\\
+-6	7.12517670681008\\
+-3	7.12517670681008\\
+0	7.12517670681008\\
+3	7.12517670681008\\
+6	7.12517670681008\\
+9	7.12517670681008\\
+12	7.12517670681008\\
+};
+\addplot [color=mycolor3, line width=2.0pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}, forget plot]
+  table[row sep=crcr]{%
+-9	6.73548113215342\\
+-6	6.73254432961009\\
+-3	6.73928099283633\\
+0	6.74966102648749\\
+3	6.76457126941714\\
+6	6.78416811927056\\
+9	6.78791657575998\\
+12	6.78656140613683\\
+};
+\end{axis}
+
+\begin{axis}[%
+width=0.423\figurewidth,
+height=0.419\figureheight,
+at={(0.556\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-10,
+xmax=15,
+xtick={-9, -6, -3,  0,  3,  6,  9, 12},
+xlabel style={font=\color{mycolor4}},
+xlabel={SNR de entrada (dB)},
+ymin=-1,
+ymax=9.78924165378257,
+ylabel style={font=\color{mycolor4}},
+ylabel={ganho de array (dB)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor4}},
+title={MUSIC},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids
+]
+\addplot [color=white!20!black, line width=2.6pt, forget plot]
+  table[row sep=crcr]{%
+-9	8.78924165378257\\
+-6	8.78924165378257\\
+-3	8.78924165378257\\
+0	8.78924165378257\\
+3	8.78924165378257\\
+6	8.78924165378257\\
+9	8.78924165378257\\
+12	8.78924165378257\\
+};
+\addplot [color=mycolor1, line width=2.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}, forget plot]
+  table[row sep=crcr]{%
+-9	8.78790570785351\\
+-6	8.78857317605906\\
+-3	8.78890127342272\\
+0	8.78907140197409\\
+3	8.7891568336971\\
+6	8.78919948806211\\
+9	8.7892204980207\\
+12	8.78923097973058\\
+};
+\addplot [color=mycolor2, dashed, line width=1.6pt, forget plot]
+  table[row sep=crcr]{%
+-9	7.12517670681008\\
+-6	7.12517670681008\\
+-3	7.12517670681008\\
+0	7.12517670681008\\
+3	7.12517670681008\\
+6	7.12517670681008\\
+9	7.12517670681008\\
+12	7.12517670681008\\
+};
+\addplot [color=mycolor3, line width=2.0pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}, forget plot]
+  table[row sep=crcr]{%
+-9	5.50882235794601\\
+-6	6.12207750667754\\
+-3	6.45817803722754\\
+0	6.59844050315507\\
+3	6.71461725141635\\
+6	6.78221434381041\\
+9	6.77237977646405\\
+12	6.78581128688046\\
+};
+\end{axis}
+\end{tikzpicture}%

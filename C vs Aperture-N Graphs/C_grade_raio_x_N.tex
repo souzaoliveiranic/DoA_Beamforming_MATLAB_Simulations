@@ -1,0 +1,148 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.00000,1.00000,1.00000}%
+\definecolor{mycolor2}{rgb}{0.33333,0.66667,1.00000}%
+\definecolor{mycolor3}{rgb}{0.66667,0.33333,1.00000}%
+\definecolor{mycolor4}{rgb}{1.00000,0.00000,1.00000}%
+\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.427\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmode=log,
+xmin=1050,
+xmax=8400,
+xtick={1050, 2100, 4200, 8400},
+xminorticks=true,
+xlabel style={font=\color{mycolor5}},
+xlabel={N (amostras)},
+ymode=log,
+ymin=0.127728193096793,
+ymax=0.868434979316517,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={residuo de compensacao},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Ang. Verd. (base): compRes vs N por raio},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+1050	0.868434979316517\\
+2100	0.728642006572925\\
+4200	0.598952082824424\\
+8400	0.493702251829007\\
+};
+\addlegendentry{$\text{0.10}\lambda$}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+1050	0.494023013868163\\
+2100	0.437903588603741\\
+4200	0.421530399158921\\
+8400	0.388256967041871\\
+};
+\addlegendentry{$\text{0.15}\lambda$}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+1050	0.382057880877385\\
+2100	0.356571942394385\\
+4200	0.283276715840687\\
+8400	0.220486879094365\\
+};
+\addlegendentry{$\text{0.20}\lambda$}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+1050	0.243992695765297\\
+2100	0.187905213925173\\
+4200	0.164241244998656\\
+8400	0.127728193096793\\
+};
+\addlegendentry{$\text{0.25}\lambda$}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.427\figurewidth,
+height=\figureheight,
+at={(0.562\figurewidth,0\figureheight)},
+scale only axis,
+xmode=log,
+xmin=1050,
+xmax=8400,
+xtick={1050, 2100, 4200, 8400},
+xminorticks=true,
+xlabel style={font=\color{mycolor5}},
+xlabel={N (amostras)},
+ymode=log,
+ymin=0.12934256709448,
+ymax=0.867694207307911,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={residuo de compensacao},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Self-cal KW (pratico): compRes vs N por raio},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+xminorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+1050	0.867694207307911\\
+2100	0.720857859182389\\
+4200	0.598964832885445\\
+8400	0.493069983889897\\
+};
+\addlegendentry{$\text{0.10}\lambda$}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+1050	0.494222886422463\\
+2100	0.437603986563252\\
+4200	0.421757252451967\\
+8400	0.388588536282277\\
+};
+\addlegendentry{$\text{0.15}\lambda$}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+1050	0.381795920083513\\
+2100	0.356782390910503\\
+4200	0.284180199550996\\
+8400	0.223362243340581\\
+};
+\addlegendentry{$\text{0.20}\lambda$}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+1050	0.245623632894277\\
+2100	0.187686469265194\\
+4200	0.164610373959664\\
+8400	0.12934256709448\\
+};
+\addlegendentry{$\text{0.25}\lambda$}
+
+\end{axis}
+\end{tikzpicture}%

@@ -1,0 +1,154 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
+\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.779\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-13,
+xmax=13,
+xtick={-12,  -9,  -6,  -3,   0,   3,   6,   9,  12},
+xlabel style={font=\color{mycolor5}},
+xlabel={SNR (dB)},
+ymode=log,
+ymin=0.080275135055607,
+ymax=19.099999999994,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={MEDIANA de erro de DoA (graus)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}, align=center},
+title={MEDIANA de erro de DoA: laco iterativo (solido) vs sem compensacao (pontilhado)\\[1ex]$\text{250 azimutes x 10 realizacoes,  u=1.00,  raio=0.15}\lambda$},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={at={(1.03,0.5)}, anchor=west, legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=2.0pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-12	0.904935049177816\\
+-9	0.630379801831239\\
+-6	0.452863910347654\\
+-3	0.315833668047834\\
+0	0.237995756459625\\
+3	0.170971093641135\\
+6	0.124417173478768\\
+9	0.0953777847754256\\
+12	0.080275135055607\\
+};
+\addlegendentry{KW iterativo}
+
+\addplot [color=mycolor1, dotted, line width=1.2pt, mark size=4.0pt, mark=o, mark options={solid, mycolor1}]
+  table[row sep=crcr]{%
+-12	1.9267263699633\\
+-9	1.43934551074145\\
+-6	1.06958852343863\\
+-3	0.741242941372622\\
+0	0.521551187219885\\
+3	0.398310364336382\\
+6	0.340106089468929\\
+9	0.289958427052298\\
+12	0.268531370096618\\
+};
+\addlegendentry{KW sem comp.}
+
+\addplot [color=mycolor2, line width=2.0pt, mark size=2.8pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+-12	1.09999999999972\\
+-9	0.699999999991775\\
+-6	0.499999999995545\\
+-3	0.300000000005994\\
+0	0.200000000008615\\
+3	0.19999999999375\\
+6	0.100000000005949\\
+9	0.100000000001174\\
+12	0.099999999997948\\
+};
+\addlegendentry{DAS iterativo}
+
+\addplot [color=mycolor2, dotted, line width=1.2pt, mark size=2.8pt, mark=square, mark options={solid, mycolor2}]
+  table[row sep=crcr]{%
+-12	1.3999999999928\\
+-9	0.899999999995821\\
+-6	0.600000000004869\\
+-3	0.400000000007637\\
+0	0.300000000003777\\
+3	0.20000000000725\\
+6	0.200000000000841\\
+9	0.199999999991419\\
+12	0.100000000009544\\
+};
+\addlegendentry{DAS sem comp.}
+
+\addplot [color=mycolor3, line width=2.0pt, mark size=6.9pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+-12	0.700000000005623\\
+-9	0.499999999994856\\
+-6	0.30000000000507\\
+-3	0.200000000005133\\
+0	0.199999999991491\\
+3	0.10000000000602\\
+6	0.100000000002012\\
+9	0.100000000000563\\
+12	0.099999999999369\\
+};
+\addlegendentry{CAPON iterativo}
+
+\addplot [color=mycolor3, dotted, line width=1.2pt, mark size=6.9pt, mark=diamond, mark options={solid, mycolor3}]
+  table[row sep=crcr]{%
+-12	2.39999999999376\\
+-9	1.99999999999767\\
+-6	1.70000000000989\\
+-3	1.60000000000483\\
+0	1.59999999999404\\
+3	1.60000000000167\\
+6	1.59999999999719\\
+9	1.50000000000397\\
+12	1.50000000000276\\
+};
+\addlegendentry{CAPON sem comp.}
+
+\addplot [color=mycolor4, line width=2.0pt, mark size=2.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+-12	19.099999999994\\
+-9	12.8000000000051\\
+-6	3.54999999999909\\
+-3	0.800000000001518\\
+0	0.399999999996382\\
+3	0.200000000001438\\
+6	0.100000000006887\\
+9	0.100000000001558\\
+12	0.0999999999989996\\
+};
+\addlegendentry{MUSIC iterativo}
+
+\addplot [color=mycolor4, dotted, line width=1.2pt, mark size=2.7pt, mark=triangle, mark options={solid, mycolor4}]
+  table[row sep=crcr]{%
+-12	1.29999999999906\\
+-9	0.89999999999322\\
+-6	0.600000000004421\\
+-3	0.400000000007111\\
+0	0.300000000003621\\
+3	0.200000000007407\\
+6	0.200000000001211\\
+9	0.199999999991348\\
+12	0.100000000009544\\
+};
+\addlegendentry{MUSIC sem comp.}
+
+\end{axis}
+\end{tikzpicture}%

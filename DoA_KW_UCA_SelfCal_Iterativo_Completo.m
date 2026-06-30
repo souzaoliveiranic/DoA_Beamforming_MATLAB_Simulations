@@ -15,8 +15,8 @@
 %         vs iteracao (com oracle).
 %     (B) SCATTER de erro por azimute (iterativo vs sem comp.), 1 painel/metodo.
 %     (C) resumo de DoA vs SNR: RMSE e MEDIANA (iterativo vs sem comp.).
-%     (D) resumo de metricas de C vs SNR: Frobenius bruto, invariante a escala
-%         e residuo de compensacao (com oracle).
+%     (D) resumo de metricas de C vs SNR: Frobenius bruto e residuo de
+%         compensacao (com Ang. Verd.).
 %     (E) PLANO COMPLEXO dos coeficientes (verdadeiro vs nuvem estimada + oracle).
 % =========================================================================
 
@@ -36,12 +36,12 @@ r      = 0.15*lambda;      % <-- raio (escolhivel)
 theta_sig_deg = 90;
 
 %% ---- Parametros do sinal (FSK-2 conhecido) ----
-fs = 288000; N = 9900; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
+fs = 288000; N = 3000; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 
 %% ---- Parametros do experimento ----
 maxIter      = 6;
 u            = 1;                 % <-- PASSO de relaxacao ESCOLHIVEL (1 = sem suavizar)
-range_SNR_dB = [-6, 0, 6, 12];
+range_SNR_dB = -12:3:12; %[-6, 0, 6, 12];
 methods      = {'KW','DAS','CAPON','MUSIC'};
 nMethods     = numel(methods);
 phi_grid_deg = -180:0.1:180;
@@ -50,7 +50,7 @@ beta_uca     = 2*pi*(0:M-1).'/M;
 K            = floor(M/2);
 
 % --- Monte Carlo ---
-n_angles = 500;             % azimutes aleatorios (no grid)
+n_angles = 250;             % azimutes aleatorios (no grid)
 n_trials = 10;             % realizacoes por azimute
 n_real   = n_angles*n_trials;
 rng(2026, 'twister');
@@ -289,17 +289,17 @@ plot_summary_vs_snr(range_SNR_dB, med_final, med_noComp, methods, colorsM, marke
     n_angles, n_trials, r/lambda, u, 'MEDIANA de erro de DoA', fullfile(outDir,'resumo_MEDIANA_doa_vs_snr.png'));
 
 %% ---- (D) resumo de metricas de C vs SNR ----
-fig = figure('Color','w','Position',[60 80 1500 470]);
-metsD = {frob_final, scaleinv_final, cres_final};
-orcD  = {frob_oracle, scaleinv_orc, cres_oracle};
-titD  = {'Frobenius bruto', 'Frobenius invariante a escala', 'Residuo de compensacao'};
-for sp = 1:3
-    subplot(1,3,sp); hold on; grid on;
+fig = figure('Color','w','Position',[60 80 1050 470]);
+metsD = {frob_final, cres_final};
+orcD  = {frob_oracle, cres_oracle};
+titD  = {'Frobenius bruto', 'Residuo de compensacao'};
+for sp = 1:2
+    subplot(1,2,sp); hold on; grid on;
     for im = 1:nMethods
         plot(range_SNR_dB, flr(metsD{sp}(im,:)), markers_m{im}, 'Color',colorsM(im,:), ...
             'LineWidth',1.8,'MarkerFaceColor',colorsM(im,:),'MarkerSize',8,'DisplayName',methods{im});
     end
-    plot(range_SNR_dB, flr(orcD{sp}), 'k--p', 'LineWidth',1.6,'MarkerFaceColor','k','MarkerSize',8,'DisplayName','oracle (ang. sabido)');
+    plot(range_SNR_dB, flr(orcD{sp}), 'k--p', 'LineWidth',1.6,'MarkerFaceColor','k','MarkerSize',8,'DisplayName','Ang. Verd.');
     set(gca,'YScale','log'); xlabel('SNR (dB)'); ylabel('erro de C'); xticks(range_SNR_dB);
     title(titD{sp}); legend('Location','best');
 end
@@ -308,6 +308,14 @@ exportgraphics(fig, fullfile(outDir,'resumo_metricas_C_vs_snr.png'),'Resolution'
 matlab2tikz(fullfile(outDir,'resumo_metricas_C_vs_snr.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- (E) plano complexo dos coeficientes por SNR ----
+% Limites Re/Im fixos pela figura de nuvem MAIS AGRUPADA (maior SNR), iguais
+% em todas as figuras. Em SNRs baixas alguns pontos podem cair fora do eixo
+% (intencional): o foco e' enxergar bem a diferenca entre os coeficientes.
+[~, iTight] = max(range_SNR_dB);
+srcTight = cell(1, nMethods+1);
+for im = 1:nMethods, srcTight{im} = squeeze(c_runs(im,:,:,iTight)); end
+srcTight{nMethods+1} = squeeze(c_oracle(:,:,iTight));
+lim = common_complex_lim(srcTight, c_true_vec);
 for iSNR = 1:nSNR
     fig = figure('Name',sprintf('Coef. complexos SNR=%+d',range_SNR_dB(iSNR)),'Color','w','Position',[40 40 1500 820]);
     srcC = cell(1, nMethods+1);
@@ -315,7 +323,6 @@ for iSNR = 1:nSNR
     srcC{nMethods+1} = squeeze(c_oracle(:,:,iSNR));
     labC = [methods, {'ORACLE (ang. sabido)'}];
     errC = [coeff_err(:,:,iSNR); coeff_err_orc(:,iSNR).'];
-    lim  = common_complex_lim(srcC, c_true_vec);
     for pp = 1:(nMethods+1)
         subplot(2,3,pp); hold on; grid on; axis equal;
         S = srcC{pp};
@@ -331,8 +338,15 @@ for iSNR = 1:nSNR
         xlabel('Re'); ylabel('Im'); xlim(lim); ylim(lim);
         estr = strjoin(arrayfun(@(k) sprintf('%.2f',errC(pp,k)), 1:K, 'uni',0), ', ');
         title(sprintf('%s  |\\Deltac_k|=[%s]', labC{pp}, estr), 'FontSize',9);
-        if pp == 1, legend('Location','bestoutside'); end
     end
+    % Legenda dos coeficientes no 6o tile (vazio), p/ nao deformar os paineis
+    lg_ax = subplot(2,3,6); axis(lg_ax,'off'); hold(lg_ax,'on');
+    hleg = gobjects(1,K);
+    for k = 1:K
+        hleg(k) = scatter(lg_ax, nan, nan, 36, ck_colors(k,:), 'filled', ...
+            'DisplayName',sprintf('c_%d',k));
+    end
+    legend(lg_ax, hleg, 'Location','west', 'FontSize',11);
     sgtitle(sprintf(['Coeficientes c_1..c_%d: verdadeiro (estrela) vs estimado (nuvem)\n' ...
         'SNR=%+d dB, u=%.2f, %d realizacoes, raio=%.2f\\lambda'], ...
         K, range_SNR_dB(iSNR), u, n_real, r/lambda),'FontWeight','bold');

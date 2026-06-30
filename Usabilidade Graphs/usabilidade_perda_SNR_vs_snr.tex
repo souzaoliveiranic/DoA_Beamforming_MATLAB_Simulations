@@ -1,0 +1,159 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
+\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.71\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-13,
+xmax=13,
+xtick={-12,  -9,  -6,  -3,   0,   3,   6,   9,  12},
+xlabel style={font=\color{mycolor5}},
+xlabel={SNR (dB)},
+y dir=reverse,
+ymin=-9,
+ymax=0,
+ylabel style={font=\color{mycolor5}},
+ylabel={perda de SNR de array (dB)  [menor = melhor]},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}, align=center},
+title={Usabilidade do desacoplamento: perda de SNR vs SNR\\[1ex]$\text{u=0.50, raio=0.15}\lambda\text{, 1000 realizacoes}$},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+legend style={at={(1.03,0.5)}, anchor=west, legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-12	-6.76584486864763\\
+-9	-6.77219300140999\\
+-6	-6.75050599904053\\
+-3	-6.72236300123857\\
+0	-6.75339745176239\\
+3	-6.76221576135256\\
+6	-6.77670801204902\\
+9	-6.78243147838596\\
+12	-6.78488245935461\\
+};
+\addlegendentry{desacopla KW}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=2.8pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+-12	-6.76831845316807\\
+-9	-6.77249473285745\\
+-6	-6.75053798667501\\
+-3	-6.72279144596284\\
+0	-6.75244795428897\\
+3	-6.76210121563389\\
+6	-6.77605014219347\\
+9	-6.78243287625054\\
+12	-6.7849515887975\\
+};
+\addlegendentry{desacopla DAS}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=6.9pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+-12	-6.74349209534783\\
+-9	-6.75948627881211\\
+-6	-6.73371601539468\\
+-3	-6.70845142247902\\
+0	-6.74590270062263\\
+3	-6.76173612411755\\
+6	-6.77626139608449\\
+9	-6.78239392692196\\
+12	-6.7849348774339\\
+};
+\addlegendentry{desacopla CAPON}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=2.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+-12	-5.27822577096129\\
+-9	-5.50787269080831\\
+-6	-6.09223679633119\\
+-3	-6.37594683249026\\
+0	-6.62606243991081\\
+3	-6.71768703214275\\
+6	-6.7659881379277\\
+9	-6.77301686605813\\
+12	-6.77999910872406\\
+};
+\addlegendentry{desacopla MUSIC}
+
+\addplot [color=black, dashed, line width=1.8pt, mark size=4.0pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+-12	-6.74110261203763\\
+-9	-6.75772381367897\\
+-6	-6.7314722871412\\
+-3	-6.70713880043773\\
+0	-6.74555110514577\\
+3	-6.76160240724295\\
+6	-6.77626393364943\\
+9	-6.78239915752498\\
+12	-6.78493539299103\\
+};
+\addlegendentry{desacopla ORACLE}
+
+\addplot [color=white!45!black, dotted, line width=2.2pt]
+  table[row sep=crcr]{%
+-12	-7.12521110774836\\
+-9	-7.12521110774836\\
+-6	-7.12521110774836\\
+-3	-7.12521110774836\\
+0	-7.12521110774836\\
+3	-7.12521110774836\\
+6	-7.12521110774836\\
+9	-7.12521110774836\\
+12	-7.12521110774836\\
+};
+\addlegendentry{SEM compensacao (w=a)}
+
+\addplot [color=black!45!green, dashdotted, line width=2.2pt]
+  table[row sep=crcr]{%
+-12	-8.78614298894565\\
+-9	-8.78747417984867\\
+-6	-8.78815111418974\\
+-3	-8.78846900387979\\
+0	-8.78864052986126\\
+3	-8.78872607364488\\
+6	-8.78876779930588\\
+9	-8.78878867980871\\
+12	-8.7887995827797\\
+};
+\addlegendentry{$\text{MANIFOLD w=b}_{\text{hat}}\text{ (sem inverter)}$}
+
+\addplot [color=red, line width=1.2pt]
+  table[row sep=crcr]{%
+-12	-8.78881000798019\\
+-9	-8.78881000798019\\
+-6	-8.78881000798019\\
+-3	-8.78881000798019\\
+0	-8.78881000798019\\
+3	-8.78881000798019\\
+6	-8.78881000798019\\
+9	-8.78881000798019\\
+12	-8.78881000798019\\
+};
+\addlegendentry{otimo (matched ao canal)}
+
+\addplot [color=red, dashed, line width=1.0pt]
+  table[row sep=crcr]{%
+-13	0\\
+13	0\\
+};
+\addlegendentry{ideal (sem acoplamento)}
+
+\end{axis}
+\end{tikzpicture}%

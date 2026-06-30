@@ -30,11 +30,11 @@ M      = 8;            % nº de elementos do UCA
 fc     = 500e6;
 c      = 3e8;
 lambda = c/fc;
-r      = 0.1*lambda;   % raio (abertura pequena -> acoplamento forte, C dificil)
+r      = 0.15*lambda;   % raio (abertura pequena -> acoplamento forte, C dificil)
 theta_sig_deg = 90;
 
 %% ---- Parametros do sinal (FSK-2 conhecido) ----
-fs = 288000; N = 2100;%9900;%2100; 
+fs = 288000; N = 9000;%9900;%2100; 
 Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 
 %% ---- Parametros do experimento ----
@@ -42,9 +42,9 @@ maxIter      = 12;
 u            = 1;                 % <-- PASSO de relaxacao da atualizacao de C (1 = sem suavizar)
 range_u      = [1.0 0.7 0.5 0.3];   % varredura de u (figura dedicada)
 snr_u_demo   = 6;                   % SNR usada na varredura de u (dB)
-n_real_u     = 150;                 % realizacoes na varredura de u
+n_real_u     = 100;                 % realizacoes na varredura de u
 
-range_SNR_dB = [-6, 0, 6, 12];
+range_SNR_dB = -12:3:12; %[-6, 0, 6, 12];
 methods      = {'KW','DAS','CAPON','MUSIC'};
 nMethods     = numel(methods);
 phi_grid_deg = -180:0.5:180;
@@ -53,8 +53,8 @@ beta_uca     = 2*pi*(0:M-1).'/M;
 K            = floor(M/2);
 
 % --- Monte Carlo ---
-n_angles = 24;        % azimutes aleatorios (no grid)
-n_trials = 10;        % realizacoes por azimute
+n_angles = 100;        % azimutes aleatorios (no grid)
+n_trials = 5;        % realizacoes por azimute
 n_real   = n_angles*n_trials;
 rng(2026, 'twister');
 phi_set  = round( (-180 + 360*rand(1, n_angles)) / grid_step ) * grid_step;
@@ -273,13 +273,13 @@ sgtitle(sprintf('Efeito do passo de relaxacao u na evolucao de C  (SNR=%+d dB, r
 exportgraphics(fig, fullfile(outDir,'efeito_passo_u.png'),'Resolution',170);
 matlab2tikz(fullfile(outDir,'efeito_passo_u.tex'), 'width','\figurewidth','height','\figureheight');
 
-% --- (D) resumo metricas de C vs SNR (3 metricas), com oracle ---
-fig = figure('Color','w','Position',[60 80 1500 470]);
-metsD = {frob_final, scaleinv_final, cres_final};
-orcD  = {frob_oracle, scaleinv_orc, cres_oracle};
-titD  = {'Frobenius bruto', 'Frobenius invariante a escala', 'Residuo de compensacao'};
-for sp = 1:3
-    subplot(1,3,sp); hold on; grid on;
+% --- (D) resumo metricas de C vs SNR (2 metricas), com oracle ---
+fig = figure('Color','w','Position',[60 80 1050 470]);
+metsD = {frob_final, cres_final};
+orcD  = {frob_oracle, cres_oracle};
+titD  = {'Frobenius bruto', 'Residuo de compensacao'};
+for sp = 1:2
+    subplot(1,2,sp); hold on; grid on;
     for im = 1:nMethods
         plot(range_SNR_dB, flr(metsD{sp}(im,:)), markers_m{im}, 'Color',colorsM(im,:), ...
             'LineWidth',1.8,'MarkerFaceColor',colorsM(im,:),'MarkerSize',8,'DisplayName',methods{im});

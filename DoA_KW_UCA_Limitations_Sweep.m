@@ -6,13 +6,12 @@
 %  pacote/preambulo) + formato RMSE + P(trava no interferente) do ISR sweep.
 %
 %  TRES experimentos PARALELOS (um problema por vez; baseline fixo nos demais):
-%    (A) RMSE/P-trava vs RAIO do arranjo        (recalcula C e steering por raio)
-%    (B) RMSE/P-trava vs ERRO DE SINCRONISMO    (desalinha a janela vs preambulo)
-%    (C) RMSE/P-trava vs COMPRIMENTO DO TREINO  (K_kw: snapshots de DoA/beamforming)
+%    (A) RMSE vs RAIO do arranjo        (recalcula C e steering por raio)
+%    (B) RMSE vs ERRO DE SINCRONISMO    (desalinha a janela vs preambulo)
+%    (C) RMSE vs COMPRIMENTO DO TREINO  (K_kw: snapshots de DoA/beamforming)
 %
-%  Metricas (por metodo, media Monte Carlo):
-%    - RMSE do azimute do SOI (graus)
-%    - P(travar no interferente) (%)  = estimativa mais perto do interf. que do SOI
+%  Figuras mostram o RMSE do azimute do SOI (graus). A P(travar no
+%  interferente) (%) ainda e' calculada e salva no .mat, mas nao plotada.
 %
 %  MUSIC com 1 FONTE. Acoplamento aplicado como X = C*Xsig + C*Xint + Xn.
 %
@@ -30,17 +29,17 @@ fs = 288000; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 interf_t = 'fsk2';                 % interferente co-canal
 
 % --- baseline (valor fixo quando o parametro NAO esta sendo varrido) ---
-r_base    = 0.2*lambda;            % raio
-SNR_dB    = 10;                    % SNR do SOI
-ISR_dB    = -3;                    % interferente 3 dB abaixo do SOI
-K_kw_base = 70*sps;               % preambulo baseline (2100 amostras = 70 simbolos)
+r_base    = 0.15*lambda;            % raio
+SNR_dB    = 6;                    % SNR do SOI
+ISR_dB    = -6;                    % interferente 3 dB abaixo do SOI
+K_kw_base = 100*sps;               % preambulo baseline (2100 amostras = 70 simbolos)
 
 % --- angulos (sorteados por realizacao, com separacao minima) ---
 randomize_angles = true; phi_min_sep_deg = 10;
 phi_sig_deg_fixed = 30; phi_int_deg_fixed = -45;
 
 % --- Monte Carlo ---  (suba para ~300-500 no run final)
-nEns = 150;
+nEns = 300;
 rng(2026,'twister');
 
 % --- grade angular dos classicos ---
@@ -61,7 +60,7 @@ build_Ascan = @(rad) cell2mat(arrayfun(@(p) utils.steering_vec_uca(M,rad,lambda,
 %  EXPERIMENTO A: RMSE / P-trava vs RAIO DO ARRANJO
 % =======================================================================
 fprintf('\n===== (A) Varredura de RAIO =====\n');
-range_radius = [0.05 0.1 0.15 0.2 0.3 0.5 0.75 1.0];   % x lambda
+range_radius = 0.1:0.05:0.25; %[0.05 0.1 0.15 0.2 0.3 0.5 0.75 1.0];   % x lambda
 nR = numel(range_radius);
 RMSE_A = zeros(nM,nR);  Plk_A = zeros(nM,nR);
 t0 = tic;
@@ -89,7 +88,7 @@ plot_study(range_radius, RMSE_A, Plk_A, methods, mk, cols, ...
 fprintf('\n===== (B) Varredura de SINCRONISMO =====\n');
 CM_b = utils.compute_Ctx_for_R(fc, M, r_base, Z0);
 A_scan_b = build_Ascan(r_base);
-range_sync_Tsym = [-50 -20 -10 -5 -2 -1 -0.5 -0.25 0 0.25 0.5 1 2 5 10 20 50];
+range_sync_Tsym = [-20 -10 -5 -2 -1 -0.5 -0.25 0 0.25 0.5 1 2 5 10 20];
 range_sync = range_sync_Tsym * sps;                    % T_sym -> amostras
 K_sync = K_kw_base + 2*max(abs(range_sync)) + 4*sps;   % folga p/ deslocar a janela
 nS = numel(range_sync);
@@ -113,7 +112,7 @@ plot_study(range_sync_Tsym, RMSE_B, Plk_B, methods, mk, cols, ...
 %  EXPERIMENTO C: RMSE / P-trava vs COMPRIMENTO DO TREINO (K_kw)
 % =======================================================================
 fprintf('\n===== (C) Varredura de COMPRIMENTO DO TREINO =====\n');
-range_Kkw_sym = [5 10 20 40 70 140 280];               % simbolos
+range_Kkw_sym = [1 5 10 20 50 100 200 400 600 800 1000 ];               % simbolos
 range_Kkw = range_Kkw_sym * sps;                       % amostras
 nKk = numel(range_Kkw);
 RMSE_C = zeros(nM,nKk);  Plk_C = zeros(nM,nKk);
@@ -157,12 +156,12 @@ function [rmse, plock] = mc_point(nEns, randomize, phi_fs, phi_fi, min_sep, estf
     plock = 100*mean(lock, 2);
 end
 
-function plot_study(xv, RMSE, Plk, methods, mk, cols, xlab, xscale, ttl, basepath)
-% Figura 1x2: RMSE (esq) e P(trava no interferente) (dir) vs parametro varrido.
+function plot_study(xv, RMSE, ~, methods, mk, cols, xlab, xscale, ttl, basepath)
+% Figura unica: RMSE do azimute do SOI vs parametro varrido.
     nM = numel(methods);
-    fig = figure('Color','w','Position',[40 60 1280 520]);
+    fig = figure('Color','w','Position',[40 60 720 520]);
 
-    subplot(1,2,1); hold on; grid on; box on;
+    hold on; grid on; box on;
     for m = 1:nM
         plot(xv, RMSE(m,:), mk(m), 'Color', cols(m), 'LineWidth',1.9,'MarkerSize',6, ...
             'DisplayName', methods(m));
@@ -170,15 +169,6 @@ function plot_study(xv, RMSE, Plk, methods, mk, cols, xlab, xscale, ttl, basepat
     set(gca,'YScale','log','XScale',xscale);
     xlabel(xlab); ylabel('RMSE do azimute do SOI (graus)');
     title('Erro de apontamento ao SOI'); legend('Location','best');
-
-    subplot(1,2,2); hold on; grid on; box on;
-    for m = 1:nM
-        plot(xv, Plk(m,:), mk(m), 'Color', cols(m), 'LineWidth',1.9,'MarkerSize',6, ...
-            'DisplayName', methods(m));
-    end
-    set(gca,'XScale',xscale); ylim([-3 103]);
-    xlabel(xlab); ylabel('P(travar no interferente) (%)');
-    title('Fracao travada no interferente'); legend('Location','best');
 
     sgtitle(ttl, 'FontWeight','bold');
     exportgraphics(fig, [basepath '.png'], 'Resolution',170);

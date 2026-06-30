@@ -1,0 +1,297 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
+\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.274\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=1,
+xmax=6,
+xlabel style={font=\color{mycolor5}},
+xlabel={Iteracao},
+ymode=log,
+ymin=0.134089522333759,
+ymax=7.14747871630267,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={RMSE de DoA (graus)},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={DoA (pontilhado = sem comp.)},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.6pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+1	0.139557028679512\\
+2	0.139541323839172\\
+3	0.139541357165945\\
+4	0.139541356973952\\
+5	0.139541356974877\\
+6	0.139541356974871\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor1, dotted, line width=1.0pt, forget plot]
+  table[row sep=crcr]{%
+1	0.411420682505171\\
+6	0.411420682505171\\
+};
+\addplot [color=mycolor2, line width=1.6pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+1	0.143261997752601\\
+2	0.14356879883898\\
+3	0.14356879883898\\
+4	0.14356879883898\\
+5	0.14356879883898\\
+6	0.14356879883898\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor2, dotted, line width=1.0pt, forget plot]
+  table[row sep=crcr]{%
+1	0.231775753694952\\
+6	0.231775753694952\\
+};
+\addplot [color=mycolor3, line width=1.6pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+1	0.134089522333759\\
+2	0.139484766192179\\
+3	0.1392982411938\\
+4	0.139255161483106\\
+5	0.139255161483106\\
+6	0.139255161483106\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor3, dotted, line width=1.0pt, forget plot]
+  table[row sep=crcr]{%
+1	2.30695210180031\\
+6	2.30695210180031\\
+};
+\addplot [color=mycolor4, line width=1.6pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+1	6.12757080742437\\
+2	7.14747871630267\\
+3	5.63494951175248\\
+4	5.33078118102775\\
+5	5.5947600484738\\
+6	6.06948828156049\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=mycolor4, dotted, line width=1.0pt, forget plot]
+  table[row sep=crcr]{%
+1	0.231603108789287\\
+6	0.231603108789287\\
+};
+\end{axis}
+
+\begin{axis}[%
+width=0.274\figurewidth,
+height=\figureheight,
+at={(0.36\figurewidth,0\figureheight)},
+scale only axis,
+xmin=1,
+xmax=6,
+xlabel style={font=\color{mycolor5}},
+xlabel={Iteracao},
+ymode=log,
+ymin=0.414056088236265,
+ymax=0.420528265278949,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={$\text{Frobenius $|$$|$C}_{\text{hat}}\text{-C}_{\text{true}}\text{$|$$|$/$|$$|$C}_{\text{true}}\text{$|$$|$}$},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Frobenius de C vs iteracao},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.6pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+1	0.420217277560523\\
+2	0.420209875410251\\
+3	0.420209866306121\\
+4	0.420209866294339\\
+5	0.420209866294321\\
+6	0.420209866294333\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.6pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+1	0.414087679888908\\
+2	0.414087950193803\\
+3	0.414087950193803\\
+4	0.414087950193803\\
+5	0.414087950193803\\
+6	0.414087950193803\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.6pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+1	0.414056088236265\\
+2	0.416259990918312\\
+3	0.416433398472953\\
+4	0.416792134289858\\
+5	0.416792134289858\\
+6	0.416792134289858\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.6pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+1	0.419228559106982\\
+2	0.420528265278949\\
+3	0.418557046252066\\
+4	0.418031370965822\\
+5	0.419125202047173\\
+6	0.418810586273268\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, dashed, line width=1.6pt, mark size=2.5pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+1	0.414082016223431\\
+2	0.414082016223431\\
+3	0.414082016223431\\
+4	0.414082016223431\\
+5	0.414082016223431\\
+6	0.414082016223431\\
+};
+\addlegendentry{oracle (ang. sabido)}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.274\figurewidth,
+height=\figureheight,
+at={(0.72\figurewidth,0\figureheight)},
+scale only axis,
+xmin=1,
+xmax=6,
+xlabel style={font=\color{mycolor5}},
+xlabel={Iteracao},
+ymode=log,
+ymin=0.231603108789287,
+ymax=2.30695210180031,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={residuo de compensacao},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Residuo de compensacao vs iteracao},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.6pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+1	0.407561315845755\\
+2	0.407561179736384\\
+3	0.407561179683557\\
+4	0.40756117968066\\
+5	0.407561179680688\\
+6	0.407561179680674\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.6pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+1	0.407494626601623\\
+2	0.407494913713968\\
+3	0.407494913713968\\
+4	0.407494913713968\\
+5	0.407494913713968\\
+6	0.407494913713968\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.6pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+1	0.407441158924683\\
+2	0.40748118208558\\
+3	0.407482024375833\\
+4	0.407483102273457\\
+5	0.407483102273457\\
+6	0.407483102273457\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.6pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+1	0.410582462542949\\
+2	0.413481700523493\\
+3	0.409727056475981\\
+4	0.411535687052943\\
+5	0.410108035100841\\
+6	0.412113265576568\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, dashed, line width=1.6pt, mark size=2.5pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+1	0.407578988553854\\
+2	0.407578988553854\\
+3	0.407578988553854\\
+4	0.407578988553854\\
+5	0.407578988553854\\
+6	0.407578988553854\\
+};
+\addlegendentry{oracle (ang. sabido)}
+
+\addplot [color=mycolor1, dotted, line width=1.0pt]
+  table[row sep=crcr]{%
+1	0.411420682505171\\
+6	0.411420682505171\\
+};
+\addlegendentry{data1}
+
+\addplot [color=mycolor2, dotted, line width=1.0pt]
+  table[row sep=crcr]{%
+1	0.231775753694952\\
+6	0.231775753694952\\
+};
+\addlegendentry{data2}
+
+\addplot [color=mycolor3, dotted, line width=1.0pt]
+  table[row sep=crcr]{%
+1	2.30695210180031\\
+6	2.30695210180031\\
+};
+\addlegendentry{data3}
+
+\addplot [color=mycolor4, dotted, line width=1.0pt]
+  table[row sep=crcr]{%
+1	0.231603108789287\\
+6	0.231603108789287\\
+};
+\addlegendentry{data4}
+
+\end{axis}
+\end{tikzpicture}%

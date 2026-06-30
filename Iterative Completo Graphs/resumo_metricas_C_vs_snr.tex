@@ -1,0 +1,210 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
+\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.429\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-15,
+xmax=15,
+xtick={-12,  -9,  -6,  -3,   0,   3,   6,   9,  12},
+xlabel style={font=\color{mycolor5}},
+xlabel={SNR (dB)},
+ymode=log,
+ymin=0.333053048168711,
+ymax=2.3292016750147,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={erro de C},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Frobenius bruto},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-12	2.03529998318206\\
+-9	1.77647537445931\\
+-6	1.46612638674757\\
+-3	1.1216389726109\\
+0	0.928052106677018\\
+3	0.678618269963447\\
+6	0.555745063162159\\
+9	0.420209866294333\\
+12	0.343242362647063\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=2.8pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+-12	2.07986448380794\\
+-9	1.76530352341609\\
+-6	1.47184824897879\\
+-3	1.12263030602965\\
+0	0.934761677988178\\
+3	0.674727878551826\\
+6	0.553678318361878\\
+9	0.414087950193803\\
+12	0.336576635832258\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=6.9pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+-12	2.05675073572968\\
+-9	1.74563623807604\\
+-6	1.44647964933916\\
+-3	1.11849416176146\\
+0	0.882159881397617\\
+3	0.671215912348876\\
+6	0.542696102758111\\
+9	0.416792134289858\\
+12	0.333053048168711\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=2.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+-12	2.3292016750147\\
+-9	1.94426146406211\\
+-6	1.66940109883205\\
+-3	1.2018804458079\\
+0	0.929289746742334\\
+3	0.699432805622177\\
+6	0.559663002921701\\
+9	0.418810586273268\\
+12	0.337410041930066\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, dashed, line width=1.6pt, mark size=4.0pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+-12	2.02555035332034\\
+-9	1.79966841078211\\
+-6	1.48375614439008\\
+-3	1.10974712176918\\
+0	0.879577689501105\\
+3	0.659397924150275\\
+6	0.536357865174303\\
+9	0.414082016223431\\
+12	0.336905317663358\\
+};
+\addlegendentry{Ang. Verd.}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.429\figurewidth,
+height=\figureheight,
+at={(0.565\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-15,
+xmax=15,
+xtick={-12,  -9,  -6,  -3,   0,   3,   6,   9,  12},
+xlabel style={font=\color{mycolor5}},
+xlabel={SNR (dB)},
+ymode=log,
+ymin=0.376802152314246,
+ymax=1.38795190825139,
+yminorticks=true,
+ylabel style={font=\color{mycolor5}},
+ylabel={erro de C},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Residuo de compensacao},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+yminorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-12	0.859696292787701\\
+-9	0.878504713644426\\
+-6	0.718180529027135\\
+-3	0.608474623131034\\
+0	0.514326909076179\\
+3	0.460351173875004\\
+6	0.423250958865735\\
+9	0.407561179680674\\
+12	0.376947107118102\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=2.8pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+-12	0.863969647184741\\
+-9	0.878774976436193\\
+-6	0.717270060567365\\
+-3	0.608976746171228\\
+0	0.514183054083486\\
+3	0.460328794604212\\
+6	0.423196639498334\\
+9	0.407494913713968\\
+12	0.376802152314246\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=6.9pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+-12	0.87850222873724\\
+-9	0.879900534570694\\
+-6	0.72475831590542\\
+-3	0.610773740488935\\
+0	0.514574936856099\\
+3	0.460680132269446\\
+6	0.423153512461194\\
+9	0.407483102273457\\
+12	0.376856099166708\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=2.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+-12	1.36257539430881\\
+-9	1.38795190825139\\
+-6	1.04370922086057\\
+-3	0.746162321372411\\
+0	0.564696352258608\\
+3	0.480237354526571\\
+6	0.423381608323995\\
+9	0.412113265576568\\
+12	0.377017999832391\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, dashed, line width=1.6pt, mark size=4.0pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+-12	0.866413630764008\\
+-9	0.862369293447585\\
+-6	0.731625362535462\\
+-3	0.609589426349869\\
+0	0.5152636136283\\
+3	0.460955124400276\\
+6	0.423412559241497\\
+9	0.407578988553854\\
+12	0.377014999379354\\
+};
+\addlegendentry{Ang. Verd.}
+
+\end{axis}
+\end{tikzpicture}%

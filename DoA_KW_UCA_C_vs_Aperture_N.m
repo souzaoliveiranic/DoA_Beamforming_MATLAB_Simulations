@@ -6,14 +6,9 @@
 %   (2) NUMERO DE AMOSTRAS N (preambulo)     -> ruido de b_hat
 %
 % Para cada ponto (raio, N) mede-se, em Monte Carlo:
-%   - ORACLE 1-DIR (angulo verdadeiro): C por LS circulante de 1 shot. E' o
-%     melhor estimador de 1 direcao DADO o angulo, mas NAO e' um piso da
-%     metrica de matriz cheia: a estimacao de 1 direcao e' subdeterminada
-%     fora do manifold, entao um metodo (angulo estimado) pode bate-lo por
-%     acaso na metrica. Serve para ISOLAR o erro de DoA.
-%   - ORACLE MULTI-DIR (P_oracle direcoes, angulos verdadeiros): C conjunta
-%     bem-determinada -> PISO HONESTO de recuperacao de C (nenhum metodo de
-%     1 shot deve bate-lo, a menos de ruido de Monte Carlo).
+%   - ANG. VERD. (angulo verdadeiro): C por LS circulante de 1 shot, usando o
+%     angulo verdadeiro. Melhor estimador de 1 direcao DADO o angulo; serve de
+%     base/referencia para ISOLAR o erro de DoA.
 %   - Self-cal single-shot (4 metodos KW/DAS/Capon/MUSIC, init KW, passo u):
 %     o desempenho pratico (angulo estimado).
 %
@@ -22,14 +17,14 @@
 %   bruto como apoio.
 %
 % Saidas:
-%   (A) vs RAIO  (N fixo): residuo de compensacao e Frobenius, metodos + 2 oracles
+%   (A) vs RAIO  (N fixo): residuo de compensacao e Frobenius, metodos + ang. verd.
 %   (B) vs N     (raio fixo): idem
-%   (C) GRADE raio x N: oracle multi-dir (piso) e KW (pratico)
+%   (C) GRADE raio x N: ang. verd. (base) e KW (pratico)
 % =========================================================================
 
 clear; clc; close all;
 
-% Advertencias ESPERADAS em aberturas pequenas (steering quase paralelos ->
+% Advertencias ESPERADAS em raios pequenos (steering quase paralelos ->
 % LS de C mal-condicionado). Sao tratadas (estimativas nao-finitas sao
 % DESCARTADAS da media em run_point), entao suprimimos o ruido no console.
 warning('off','MATLAB:singularMatrix');
@@ -41,7 +36,7 @@ warning('off','estimate_C_circulant_uca:smallAlpha');
 M      = 8;  fc = 500e6;  c = 3e8;  lambda = c/fc;  theta_sig_deg = 90;
 fs = 288000; Rs = 9600; sps = 30; alpha = 0.3; span = 8; fd = 4.8e3;
 
-maxIter   = 10;
+maxIter   = 12;
 u         = 0.5;                 % passo de relaxacao da atualizacao de C
 SNR_fixed = 6;                   % SNR fixa para isolar o efeito de raio e N (dB)
 methods   = {'KW','DAS','CAPON','MUSIC'};
@@ -54,10 +49,9 @@ K         = floor(M/2);
 % --- Varreduras ---
 range_radius = [0.10 0.15 0.20 0.25];   % em lambda
 range_N      = [1050 2100 4200 8400];        % multiplos de sps=30
-r_base_idx   = find(abs(range_radius-0.20)<1e-9);  % raio do corte "vs N"
+r_base_idx   = find(abs(range_radius-0.15)<1e-9);  % raio do corte "vs N"
 N_base_idx   = find(range_N==2100);                % N do corte "vs raio"
-n_real       = 60;               % realizacoes Monte Carlo por ponto
-P_oracle     = 5;                % direcoes (ang. verdadeiros) do oracle multi-dir
+n_real       = 500;               % realizacoes Monte Carlo por ponto
 rng(2026, 'twister');
 
 outDir = fullfile(pwd, 'C vs Aperture-N Graphs');
@@ -82,22 +76,20 @@ end
 
 %% ======================= GRADE raio x N =======================
 cres_grid    = zeros(nMethods, nRad, nN);  frob_grid    = zeros(nMethods, nRad, nN);
-cres_o1_grid = zeros(nRad, nN);            frob_o1_grid = zeros(nRad, nN);   % oracle 1-dir
-cres_om_grid = zeros(nRad, nN);            frob_om_grid = zeros(nRad, nN);   % oracle multi-dir
+cres_o1_grid = zeros(nRad, nN);            frob_o1_grid = zeros(nRad, nN);   % ang. verd. (1-dir)
 
 t0 = tic;
 for ir = 1:nRad
     r = range_radius(ir)*lambda;
     for iN = 1:nN
         N = range_N(iN);
-        [cm, fm, co1, fo1, com, fom] = run_point(M, r, lambda, theta_sig_deg, SNR_fixed, N, ...
+        [cm, fm, co1, fo1] = run_point(M, r, lambda, theta_sig_deg, SNR_fixed, N, ...
             fs, Rs, sps, alpha, span, fd, phi_grid_deg, grid_step, beta_uca, ...
-            A_dict_c{ir}, methods, maxIter, u, C_true_c{ir}, normC_c(ir), n_real, P_oracle);
+            A_dict_c{ir}, methods, maxIter, u, C_true_c{ir}, normC_c(ir), n_real);
         cres_grid(:,ir,iN)=cm;  frob_grid(:,ir,iN)=fm;
         cres_o1_grid(ir,iN)=co1; frob_o1_grid(ir,iN)=fo1;
-        cres_om_grid(ir,iN)=com; frob_om_grid(ir,iN)=fom;
-        fprintf('  raio=%.2f  N=%5d  | oracle1=%.3f  oracleMD=%.3f  KW=%.3f  | %.0fs\n', ...
-            range_radius(ir), N, co1, com, cm(1), toc(t0));
+        fprintf('  raio=%.2f  N=%5d  | ang.verd=%.3f  KW=%.3f  | %.0fs\n', ...
+            range_radius(ir), N, co1, cm(1), toc(t0));
     end
 end
 
@@ -113,8 +105,7 @@ for im=1:nMethods
     plot(range_radius, flr(squeeze(cres_grid(im,:,iN))), markers_m{im}, 'Color',colorsM(im,:), ...
         'LineWidth',1.8,'MarkerFaceColor',colorsM(im,:),'MarkerSize',8,'DisplayName',methods{im});
 end
-plot(range_radius, flr(cres_o1_grid(:,iN)), '--p','Color',[.5 .5 .5],'LineWidth',1.6,'MarkerFaceColor',[.5 .5 .5],'MarkerSize',8,'DisplayName','oracle 1-dir (ang. verd.)');
-plot(range_radius, flr(cres_om_grid(:,iN)), 'k-p','LineWidth',2.0,'MarkerFaceColor','k','MarkerSize',9,'DisplayName',sprintf('oracle multi-dir P=%d (piso)',P_oracle));
+plot(range_radius, flr(cres_o1_grid(:,iN)), 'k-p','LineWidth',2.0,'MarkerFaceColor','k','MarkerSize',9,'DisplayName','Ang. Verd.');
 set(gca,'YScale','log'); xlabel('raio (\lambda)'); ylabel('residuo de compensacao'); xticks(range_radius);
 title('Residuo de compensacao vs raio'); legend('Location','best');
 subplot(1,2,2); hold on; grid on;
@@ -122,11 +113,10 @@ for im=1:nMethods
     plot(range_radius, flr(squeeze(frob_grid(im,:,iN))), markers_m{im}, 'Color',colorsM(im,:), ...
         'LineWidth',1.8,'MarkerFaceColor',colorsM(im,:),'MarkerSize',8,'DisplayName',methods{im});
 end
-plot(range_radius, flr(frob_o1_grid(:,iN)), '--p','Color',[.5 .5 .5],'LineWidth',1.6,'MarkerFaceColor',[.5 .5 .5],'MarkerSize',8,'DisplayName','oracle 1-dir');
-plot(range_radius, flr(frob_om_grid(:,iN)), 'k-p','LineWidth',2.0,'MarkerFaceColor','k','MarkerSize',9,'DisplayName',sprintf('oracle multi-dir P=%d',P_oracle));
+plot(range_radius, flr(frob_o1_grid(:,iN)), 'k-p','LineWidth',2.0,'MarkerFaceColor','k','MarkerSize',9,'DisplayName','Ang. Verd.');
 set(gca,'YScale','log'); xlabel('raio (\lambda)'); ylabel('Frobenius bruto'); xticks(range_radius);
 title('Frobenius vs raio'); legend('Location','best');
-sgtitle(sprintf('Influencia da ABERTURA  (N=%d, SNR=%+d dB, %d realizacoes, u=%.2f)', ...
+sgtitle(sprintf('Influencia do RAIO  (N=%d, SNR=%+d dB, %d realizacoes, u=%.2f)', ...
     range_N(iN), SNR_fixed, n_real, u),'FontWeight','bold');
 exportgraphics(fig, fullfile(outDir,'C_vs_raio.png'),'Resolution',170);
 matlab2tikz(fullfile(outDir,'C_vs_raio.tex'), 'width','\figurewidth','height','\figureheight');
@@ -139,8 +129,7 @@ for im=1:nMethods
     plot(range_N, flr(squeeze(cres_grid(im,ir,:))), markers_m{im}, 'Color',colorsM(im,:), ...
         'LineWidth',1.8,'MarkerFaceColor',colorsM(im,:),'MarkerSize',8,'DisplayName',methods{im});
 end
-plot(range_N, flr(cres_o1_grid(ir,:)), '--p','Color',[.5 .5 .5],'LineWidth',1.6,'MarkerFaceColor',[.5 .5 .5],'MarkerSize',8,'DisplayName','oracle 1-dir (ang. verd.)');
-plot(range_N, flr(cres_om_grid(ir,:)), 'k-p','LineWidth',2.0,'MarkerFaceColor','k','MarkerSize',9,'DisplayName',sprintf('oracle multi-dir P=%d (piso)',P_oracle));
+plot(range_N, flr(cres_o1_grid(ir,:)), 'k-p','LineWidth',2.0,'MarkerFaceColor','k','MarkerSize',9,'DisplayName','Ang. Verd.');
 set(gca,'YScale','log','XScale','log'); xlabel('N (amostras)'); ylabel('residuo de compensacao'); xticks(range_N);
 title('Residuo de compensacao vs N'); legend('Location','best');
 subplot(1,2,2); hold on; grid on;
@@ -148,8 +137,7 @@ for im=1:nMethods
     plot(range_N, flr(squeeze(frob_grid(im,ir,:))), markers_m{im}, 'Color',colorsM(im,:), ...
         'LineWidth',1.8,'MarkerFaceColor',colorsM(im,:),'MarkerSize',8,'DisplayName',methods{im});
 end
-plot(range_N, flr(frob_o1_grid(ir,:)), '--p','Color',[.5 .5 .5],'LineWidth',1.6,'MarkerFaceColor',[.5 .5 .5],'MarkerSize',8,'DisplayName','oracle 1-dir');
-plot(range_N, flr(frob_om_grid(ir,:)), 'k-p','LineWidth',2.0,'MarkerFaceColor','k','MarkerSize',9,'DisplayName',sprintf('oracle multi-dir P=%d',P_oracle));
+plot(range_N, flr(frob_o1_grid(ir,:)), 'k-p','LineWidth',2.0,'MarkerFaceColor','k','MarkerSize',9,'DisplayName','Ang. Verd.');
 set(gca,'YScale','log','XScale','log'); xlabel('N (amostras)'); ylabel('Frobenius bruto'); xticks(range_N);
 title('Frobenius vs N'); legend('Location','best');
 sgtitle(sprintf('Influencia de N  (raio=%.2f\\lambda, SNR=%+d dB, %d realizacoes, u=%.2f)', ...
@@ -157,16 +145,16 @@ sgtitle(sprintf('Influencia de N  (raio=%.2f\\lambda, SNR=%+d dB, %d realizacoes
 exportgraphics(fig, fullfile(outDir,'C_vs_N.png'),'Resolution',170);
 matlab2tikz(fullfile(outDir,'C_vs_N.tex'), 'width','\figurewidth','height','\figureheight');
 
-%% ---- (C) GRADE raio x N: piso (oracle multi-dir) e pratico (KW) ----
+%% ---- (C) GRADE raio x N: base (ang. verd.) e pratico (KW) ----
 rad_colors = cool(nRad);
 fig = figure('Color','w','Position',[60 80 1300 520]);
 subplot(1,2,1); hold on; grid on;
 for ir=1:nRad
-    plot(range_N, flr(cres_om_grid(ir,:)), 'o-','Color',rad_colors(ir,:),'LineWidth',1.8, ...
+    plot(range_N, flr(cres_o1_grid(ir,:)), 'o-','Color',rad_colors(ir,:),'LineWidth',1.8, ...
         'MarkerFaceColor',rad_colors(ir,:),'MarkerSize',8,'DisplayName',sprintf('%.2f\\lambda',range_radius(ir)));
 end
 set(gca,'YScale','log','XScale','log'); xlabel('N (amostras)'); ylabel('residuo de compensacao'); xticks(range_N);
-title(sprintf('PISO: oracle multi-dir P=%d, compRes vs N por raio',P_oracle)); legend('Location','best');
+title('Ang. Verd. (base): compRes vs N por raio'); legend('Location','best');
 subplot(1,2,2); hold on; grid on;
 iKW = find(strcmp(methods,'KW'));
 for ir=1:nRad
@@ -180,26 +168,23 @@ exportgraphics(fig, fullfile(outDir,'C_grade_raio_x_N.png'),'Resolution',170);
 matlab2tikz(fullfile(outDir,'C_grade_raio_x_N.tex'), 'width','\figurewidth','height','\figureheight');
 
 %% ---- Resumo numerico ----
-fprintf('\n===== RESIDUO DE COMPENSACAO (oracle multi-dir P=%d) — grade raio x N =====\n', P_oracle);
+fprintf('\n===== RESIDUO DE COMPENSACAO (Ang. Verd.) — grade raio x N =====\n');
 fprintf('%-8s', 'raio\\N'); fprintf('%9d', range_N); fprintf('\n');
 for ir=1:nRad
-    fprintf('%-8.2f', range_radius(ir)); fprintf('%9.3f', cres_om_grid(ir,:)); fprintf('\n');
+    fprintf('%-8.2f', range_radius(ir)); fprintf('%9.3f', cres_o1_grid(ir,:)); fprintf('\n');
 end
 fprintf('\nFiguras salvas em: %s\n', outDir);
 
 % =========================================================================
 %                            FUNCOES LOCAIS
 % =========================================================================
-function [cres_m, frob_m, cres_o1, frob_o1, cres_om, frob_om] = run_point(M, r, lambda, ...
+function [cres_m, frob_m, cres_o1, frob_o1] = run_point(M, r, lambda, ...
     theta, SNR, N, fs, Rs, sps, alpha, span, fd, phi_grid, grid_step, beta, A_dict, ...
-    methods, maxIter, u, C_true, normCtrue, n_real, P_oracle)
+    methods, maxIter, u, C_true, normCtrue, n_real)
     nM = numel(methods);
     % Somas e CONTAGENS de validos (estimativas nao-finitas sao descartadas).
     sc_m=zeros(nM,1); sf_m=zeros(nM,1); cnt_m=zeros(nM,1);
     sc_o1=0; sf_o1=0; cnt_o1=0;
-    sc_om=0; sf_om=0; cnt_om=0;
-    Bbuf = zeros(M, P_oracle); Abuf = zeros(M, P_oracle); fillb = 0;
-    nGroups = floor(n_real/P_oracle);
     for run = 1:n_real
         phi_true = round((-180 + 360*rand)/grid_step)*grid_step;
         [~, q, ~, Xsig, ~, Xn] = utils.simulate_fsk_data_uca(M, r, lambda, ...
@@ -207,17 +192,9 @@ function [cres_m, frob_m, cres_o1, frob_o1, cres_om, frob_om] = run_point(M, r, 
         q = q(:);  Xc = C_true*Xsig + Xn;  bhat = Xc*conj(q)/(q'*q);
         a_true = utils.steering_vec_uca(M, r, lambda, theta, phi_true);
 
-        % --- oracle 1-dir ---
+        % --- ang. verd. (1-dir) ---
         Co1 = estimate_C_circulant_uca(bhat, a_true, M);
         [sc_o1, sf_o1, cnt_o1] = accum(sc_o1, sf_o1, cnt_o1, Co1, C_true, normCtrue);
-
-        % --- buffer para oracle multi-dir (reaproveita shots; sem custo extra) ---
-        fillb = fillb + 1;  Bbuf(:,fillb) = bhat;  Abuf(:,fillb) = a_true;
-        if fillb == P_oracle
-            Com = estimate_C_multidir(Bbuf, Abuf, M, 30, 1e-10);
-            [sc_om, sf_om, cnt_om] = accum(sc_om, sf_om, cnt_om, Com, C_true, normCtrue);
-            fillb = 0;
-        end
 
         % --- self-cal por metodo (1 shot) ---
         for im = 1:nM
@@ -231,13 +208,12 @@ function [cres_m, frob_m, cres_o1, frob_o1, cres_om, frob_om] = run_point(M, r, 
     end
     cres_m = sc_m./max(cnt_m,1);  frob_m = sf_m./max(cnt_m,1);
     cres_o1= sc_o1/max(cnt_o1,1); frob_o1= sf_o1/max(cnt_o1,1);
-    cres_om= sc_om/max(cnt_om,1); frob_om= sf_om/max(cnt_om,1);
 
-    % Aviso de descarte (estimativas degeneradas em abertura pequena)
-    ndrop_o1 = n_real - cnt_o1;  ndrop_om = nGroups - cnt_om;  ndrop_m = max(n_real - cnt_m);
-    if ndrop_o1>0 || ndrop_om>0 || ndrop_m>0
-        fprintf('     [descartes] oracle1=%d/%d  oracleMD=%d/%d  metodo(pior)=%d/%d\n', ...
-            ndrop_o1, n_real, ndrop_om, nGroups, ndrop_m, n_real);
+    % Aviso de descarte (estimativas degeneradas em raio pequeno)
+    ndrop_o1 = n_real - cnt_o1;  ndrop_m = max(n_real - cnt_m);
+    if ndrop_o1>0 || ndrop_m>0
+        fprintf('     [descartes] ang.verd=%d/%d  metodo(pior)=%d/%d\n', ...
+            ndrop_o1, n_real, ndrop_m, n_real);
     end
 end
 

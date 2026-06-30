@@ -9,13 +9,13 @@
 \begin{tikzpicture}
 
 \begin{axis}[%
-width=0.427\figurewidth,
+width=0.951\figurewidth,
 height=\figureheight,
 at={(0\figurewidth,0\figureheight)},
 scale only axis,
 xmode=log,
-xmin=5,
-xmax=280,
+xmin=1,
+xmax=1000,
 xminorticks=true,
 xlabel style={font=\color{mycolor1}},
 xlabel={$\text{comprimento do treino  K}_{\text{kw}}\text{ (simbolos)}$},
@@ -36,122 +36,65 @@ legend style={legend cell align=left, align=left}
 ]
 \addplot [color=red, line width=1.9pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
-5	28.8730409499654\\
-10	25.8898155981757\\
-20	23.1660306400012\\
-40	15.3427125720691\\
-70	3.64498250634963\\
-140	2.11926620345431\\
-280	1.79776173400514\\
+1	42.357053110194\\
+5	21.9700564997001\\
+10	20.3339379399194\\
+20	15.2941285271661\\
+50	7.37187852695523\\
+100	6.28253923423382\\
+200	3.58442399868856\\
+400	2.68274984729924\\
+600	1.94126455189117\\
+800	1.72015660430884\\
+1000	1.3578971034231\\
 };
 \addlegendentry{KW}
 
 \addplot [color=green, line width=1.9pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
-5	24.6545102806078\\
-10	29.4463583807832\\
-20	29.735148007815\\
-40	17.408421888532\\
-70	9.75477019470708\\
-140	9.09276303372567\\
-280	9.36187774177426\\
+1	38.0381490012419\\
+5	19.0313159466573\\
+10	25.821012109517\\
+20	14.533785451007\\
+50	12.4595014988245\\
+100	6.48935985059429\\
+200	6.08468130403271\\
+400	6.1271941275063\\
+600	5.16965096627662\\
+800	5.45071089104946\\
+1000	5.26055413946178\\
 };
 \addlegendentry{DAS}
 
 \addplot [color=blue, line width=1.9pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
-5	55.4724160999657\\
-10	62.6530368362956\\
-20	75.5789846085396\\
-40	66.8283065806695\\
-70	58.7090435326994\\
-140	49.272607372136\\
-280	48.3227987471687\\
+1	64.3290274440121\\
+5	50.5369017982543\\
+10	55.5579665823441\\
+20	54.9370243208972\\
+50	41.1148304301607\\
+100	33.7815101953165\\
+200	36.3396694499808\\
+400	35.0964434414292\\
+600	32.9293686996967\\
+800	34.3691052408057\\
+1000	33.7301059955968\\
 };
 \addlegendentry{Capon}
 
 \addplot [color=black, line width=1.9pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
-5	26.7040509617763\\
-10	29.8081058847844\\
-20	30.5549171041865\\
-40	20.9745065182344\\
-70	14.0523833376458\\
-140	12.4634950898485\\
-280	12.767053066958\\
-};
-\addlegendentry{MUSIC}
-
-\end{axis}
-
-\begin{axis}[%
-width=0.427\figurewidth,
-height=\figureheight,
-at={(0.562\figurewidth,0\figureheight)},
-scale only axis,
-xmode=log,
-xmin=5,
-xmax=280,
-xminorticks=true,
-xlabel style={font=\color{mycolor1}},
-xlabel={$\text{comprimento do treino  K}_{\text{kw}}\text{ (simbolos)}$},
-ymin=-3,
-ymax=103,
-ylabel style={font=\color{mycolor1}},
-ylabel={P(travar no interferente) (\%)},
-axis background/.style={fill=white},
-title style={font=\bfseries\color{mycolor1}},
-title={Fracao travada no interferente},
-xmajorgrids,
-xminorgrids,
-ymajorgrids,
-legend style={legend cell align=left, align=left}
-]
-\addplot [color=red, line width=1.9pt, mark=o, mark options={solid, red}]
-  table[row sep=crcr]{%
-5	0.666666666666667\\
-10	2\\
-20	2.66666666666667\\
-40	0.666666666666667\\
-70	0\\
-140	0\\
-280	0\\
-};
-\addlegendentry{KW}
-
-\addplot [color=green, line width=1.9pt, mark=x, mark options={solid, green}]
-  table[row sep=crcr]{%
-5	0\\
-10	2.66666666666667\\
-20	3.33333333333333\\
-40	0.666666666666667\\
-70	0\\
-140	0\\
-280	0\\
-};
-\addlegendentry{DAS}
-
-\addplot [color=blue, line width=1.9pt, mark=square, mark options={solid, blue}]
-  table[row sep=crcr]{%
-5	22.6666666666667\\
-10	28.6666666666667\\
-20	35.3333333333333\\
-40	29.3333333333333\\
-70	20\\
-140	14\\
-280	14\\
-};
-\addlegendentry{Capon}
-
-\addplot [color=black, line width=1.9pt, mark=diamond, mark options={solid, black}]
-  table[row sep=crcr]{%
-5	0\\
-10	2\\
-20	2.66666666666667\\
-40	0.666666666666667\\
-70	0\\
-140	0\\
-280	0\\
+1	37.9152336367355\\
+5	20.01867289292\\
+10	24.7428930630719\\
+20	14.8521267947051\\
+50	14.7335395145809\\
+100	10.1234974497701\\
+200	9.29089564657964\\
+400	9.44513053966125\\
+600	8.74423584917897\\
+800	8.87028984879042\\
+1000	8.77567502564949\\
 };
 \addlegendentry{MUSIC}
 

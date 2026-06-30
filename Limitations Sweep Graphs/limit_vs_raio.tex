@@ -9,17 +9,17 @@
 \begin{tikzpicture}
 
 \begin{axis}[%
-width=0.427\figurewidth,
+width=0.951\figurewidth,
 height=\figureheight,
 at={(0\figurewidth,0\figureheight)},
 scale only axis,
-xmin=0,
-xmax=1,
+xmin=0.1,
+xmax=0.25,
 xlabel style={font=\color{mycolor1}},
 xlabel={$\text{raio (}\lambda\text{)}$},
 ymode=log,
 ymin=1,
-ymax=135.689234000291,
+ymax=100,
 yminorticks=true,
 ylabel style={font=\color{mycolor1}},
 ylabel={RMSE do azimute do SOI (graus)},
@@ -33,127 +33,37 @@ legend style={legend cell align=left, align=left}
 ]
 \addplot [color=red, line width=1.9pt, mark=o, mark options={solid, red}]
   table[row sep=crcr]{%
-0.05	7.58631977907541\\
-0.1	32.0061123257817\\
-0.15	9.50570629160089\\
-0.2	3.31671880844214\\
-0.3	29.7510872016365\\
-0.5	135.689234000291\\
-0.75	59.7560113168042\\
-1	121.315865312521\\
+0.1	9.6840974357402\\
+0.15	5.16002296948064\\
+0.2	1.93459230623054\\
+0.25	1.36994541365604\\
 };
 \addlegendentry{KW}
 
 \addplot [color=green, line width=1.9pt, mark=x, mark options={solid, green}]
   table[row sep=crcr]{%
-0.05	27.415598653325\\
-0.1	45.7333058365711\\
-0.15	36.5845743397088\\
-0.2	9.34665685721191\\
-0.3	6.10561383352989\\
-0.5	2.67908999548956\\
-0.75	2.14796696963563\\
-1	1.24970096830445\\
+0.1	20.0837019648377\\
+0.15	6.45827477437077\\
+0.2	5.17502026948873\\
+0.25	4.38876123671779\\
 };
 \addlegendentry{DAS}
 
 \addplot [color=blue, line width=1.9pt, mark=square, mark options={solid, blue}]
   table[row sep=crcr]{%
-0.05	47.2317033414236\\
-0.1	81.1597655320212\\
-0.15	77.5252636480398\\
-0.2	62.7450739094144\\
-0.3	50.3954013186242\\
-0.5	42.4788033283731\\
-0.75	69.1691249074269\\
-1	54.1243971410081\\
+0.1	46.3821097429081\\
+0.15	33.9560425839341\\
+0.2	20.6613221038289\\
+0.25	8.28735855291515\\
 };
 \addlegendentry{Capon}
 
 \addplot [color=black, line width=1.9pt, mark=diamond, mark options={solid, black}]
   table[row sep=crcr]{%
-0.05	27.6101608257052\\
-0.1	45.0279555832779\\
-0.15	32.6679310308029\\
-0.2	13.2750212015916\\
-0.3	7.02877778745744\\
-0.5	3.1213067864723\\
-0.75	2.63893686506052\\
-1	1.45454732608708\\
-};
-\addlegendentry{MUSIC}
-
-\end{axis}
-
-\begin{axis}[%
-width=0.427\figurewidth,
-height=\figureheight,
-at={(0.562\figurewidth,0\figureheight)},
-scale only axis,
-xmin=0,
-xmax=1,
-xlabel style={font=\color{mycolor1}},
-xlabel={$\text{raio (}\lambda\text{)}$},
-ymin=-3,
-ymax=103,
-ylabel style={font=\color{mycolor1}},
-ylabel={P(travar no interferente) (\%)},
-axis background/.style={fill=white},
-title style={font=\bfseries\color{mycolor1}},
-title={Fracao travada no interferente},
-xmajorgrids,
-ymajorgrids,
-legend style={legend cell align=left, align=left}
-]
-\addplot [color=red, line width=1.9pt, mark=o, mark options={solid, red}]
-  table[row sep=crcr]{%
-0.05	0\\
-0.1	8\\
-0.15	0\\
-0.2	0\\
-0.3	8\\
-0.5	74.6666666666667\\
-0.75	24.6666666666667\\
-1	62\\
-};
-\addlegendentry{KW}
-
-\addplot [color=green, line width=1.9pt, mark=x, mark options={solid, green}]
-  table[row sep=crcr]{%
-0.05	3.33333333333333\\
-0.1	14\\
-0.15	4.66666666666667\\
-0.2	0\\
-0.3	0\\
-0.5	0\\
-0.75	0\\
-1	0\\
-};
-\addlegendentry{DAS}
-
-\addplot [color=blue, line width=1.9pt, mark=square, mark options={solid, blue}]
-  table[row sep=crcr]{%
-0.05	11.3333333333333\\
-0.1	26\\
-0.15	26.6666666666667\\
-0.2	24\\
-0.3	18\\
-0.5	15.3333333333333\\
-0.75	41.3333333333333\\
-1	36\\
-};
-\addlegendentry{Capon}
-
-\addplot [color=black, line width=1.9pt, mark=diamond, mark options={solid, black}]
-  table[row sep=crcr]{%
-0.05	3.33333333333333\\
-0.1	14\\
-0.15	2\\
-0.2	0\\
-0.3	0\\
-0.5	0\\
-0.75	0\\
-1	0\\
+0.1	21.3320766178744\\
+0.15	9.97335189129261\\
+0.2	6.46733808788921\\
+0.25	4.84895305987183\\
 };
 \addlegendentry{MUSIC}
 

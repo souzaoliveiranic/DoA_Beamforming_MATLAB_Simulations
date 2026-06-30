@@ -1,0 +1,204 @@
+% This file was created by matlab2tikz.
+%
+%The latest updates can be retrieved from
+%  http://www.mathworks.com/matlabcentral/fileexchange/22022-matlab2tikz-matlab2tikz
+%where you can also make suggestions and rate matlab2tikz.
+%
+\definecolor{mycolor1}{rgb}{0.06600,0.44300,0.74500}%
+\definecolor{mycolor2}{rgb}{0.86600,0.32900,0.00000}%
+\definecolor{mycolor3}{rgb}{0.92900,0.69400,0.12500}%
+\definecolor{mycolor4}{rgb}{0.52100,0.08600,0.81900}%
+\definecolor{mycolor5}{rgb}{0.12941,0.12941,0.12941}%
+%
+\begin{tikzpicture}
+
+\begin{axis}[%
+width=0.431\figurewidth,
+height=\figureheight,
+at={(0\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-15,
+xmax=15,
+xtick={-12,  -9,  -6,  -3,   0,   3,   6,   9,  12},
+xlabel style={font=\color{mycolor5}},
+xlabel={SNR (dB)},
+ymin=0,
+ymax=40,
+ylabel style={font=\color{mycolor5}},
+ylabel={$\text{amplificacao de ruido  10log}_{\text{10}}\text{(trace(DD}^\text{H}\text{)/M)  (dB)}$},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={$\text{Amplificacao de ruido do desacoplador  D=inv(C}_{\text{hat}}\text{)}$},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-12	20.4449119122682\\
+-9	37.993841057212\\
+-6	17.5716348281616\\
+-3	24.9015314627435\\
+0	9.68453217580321\\
+3	15.4615137838738\\
+6	16.8393740479111\\
+9	17.4585618455334\\
+12	22.6139661225357\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=2.8pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+-12	14.0747795460665\\
+-9	16.8257675931191\\
+-6	12.1301665098953\\
+-3	11.1167522920502\\
+0	8.16549576168999\\
+3	6.19683937563809\\
+6	7.93617210035969\\
+9	4.45465819653307\\
+12	4.63472100758592\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=6.9pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+-12	20.3165540183091\\
+-9	13.7860991239069\\
+-6	10.8411986660458\\
+-3	11.2349510343247\\
+0	9.82646041858226\\
+3	6.28358730530602\\
+6	7.01230063823241\\
+9	4.44400868046607\\
+12	4.63324936256021\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=2.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+-12	28.0705808087041\\
+-9	19.131805096364\\
+-6	13.976979051887\\
+-3	15.4950769623123\\
+0	11.2626437666219\\
+3	9.62414193704294\\
+6	10.7488584367246\\
+9	4.68033508749984\\
+12	4.36933736804904\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, dashed, line width=1.8pt, mark size=4.0pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+-12	19.0806897798987\\
+-9	12.5860286043247\\
+-6	10.2192740606805\\
+-3	9.97116356763054\\
+0	9.87746992018167\\
+3	6.2840779056982\\
+6	7.06657900936762\\
+9	4.44183691787915\\
+12	4.63281321999497\\
+};
+\addlegendentry{oracle}
+
+\end{axis}
+
+\begin{axis}[%
+width=0.431\figurewidth,
+height=\figureheight,
+at={(0.567\figurewidth,0\figureheight)},
+scale only axis,
+xmin=-15,
+xmax=15,
+xtick={-12,  -9,  -6,  -3,   0,   3,   6,   9,  12},
+xlabel style={font=\color{mycolor5}},
+xlabel={SNR (dB)},
+ymin=0,
+ymax=1.05,
+ylabel style={font=\color{mycolor5}},
+ylabel={$\text{fidelidade de steering  $|$a}^\text{H}\text{ DCa$|$}^\text{2}\text{/($|$$|$a$|$$|$}^\text{2}\text{$|$$|$DCa$|$$|$}^\text{2}\text{)}$},
+axis background/.style={fill=white},
+title style={font=\bfseries\color{mycolor5}},
+title={Fidelidade de steering (1 = sem acoplamento residual)},
+axis x line*=bottom,
+axis y line*=left,
+xmajorgrids,
+ymajorgrids,
+legend style={legend cell align=left, align=left}
+]
+\addplot [color=mycolor1, line width=1.8pt, mark size=4.0pt, mark=*, mark options={solid, fill=mycolor1, mycolor1}]
+  table[row sep=crcr]{%
+-12	0.996490836128028\\
+-9	0.998152432898695\\
+-6	0.998496435215007\\
+-3	0.998649373082036\\
+0	0.999324154401005\\
+3	0.999500766098898\\
+6	0.999849389258309\\
+9	0.999919703221473\\
+12	0.999944468407951\\
+};
+\addlegendentry{KW}
+
+\addplot [color=mycolor2, line width=1.8pt, mark size=2.8pt, mark=square*, mark options={solid, fill=mycolor2, mycolor2}]
+  table[row sep=crcr]{%
+-12	0.997375245193192\\
+-9	0.998126857223971\\
+-6	0.998341918528871\\
+-3	0.998669412718237\\
+0	0.999294501247208\\
+3	0.999483132478938\\
+6	0.999836940913997\\
+9	0.999919528158321\\
+12	0.99994442338457\\
+};
+\addlegendentry{DAS}
+
+\addplot [color=mycolor3, line width=1.8pt, mark size=6.9pt, mark=diamond*, mark options={solid, fill=mycolor3, mycolor3}]
+  table[row sep=crcr]{%
+-12	0.996821434455379\\
+-9	0.998043971532769\\
+-6	0.998140664829196\\
+-3	0.99812333652176\\
+0	0.998527842614394\\
+3	0.99947965460066\\
+6	0.999848438821264\\
+9	0.999919530277203\\
+12	0.999944363342591\\
+};
+\addlegendentry{CAPON}
+
+\addplot [color=mycolor4, line width=1.8pt, mark size=2.7pt, mark=triangle*, mark options={solid, fill=mycolor4, mycolor4}]
+  table[row sep=crcr]{%
+-12	0.81802530649762\\
+-9	0.839267317704651\\
+-6	0.897397105895938\\
+-3	0.947262270271674\\
+0	0.985662491012993\\
+3	0.992838304522172\\
+6	0.997805436028323\\
+9	0.99804837416927\\
+12	0.9989691890886\\
+};
+\addlegendentry{MUSIC}
+
+\addplot [color=black, dashed, line width=1.8pt, mark size=4.0pt, mark=star*, mark options={solid, fill=black, black}]
+  table[row sep=crcr]{%
+-12	0.996759695352435\\
+-9	0.998009138475232\\
+-6	0.998007919686976\\
+-3	0.998038545951878\\
+0	0.998461221869193\\
+3	0.999479140406884\\
+6	0.999848415038485\\
+9	0.999919525791662\\
+12	0.999944380071774\\
+};
+\addlegendentry{oracle}
+
+\end{axis}
+\end{tikzpicture}%
