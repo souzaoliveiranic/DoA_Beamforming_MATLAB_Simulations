@@ -45,7 +45,7 @@ fd     = 4.8e3;         % desvio de frequência (Δf) [Hz]
 range_SNR_dB = -6:6:6; %-6:6:6; %-9:3:9;
 range_ISR_dB = -6; %-6:1:-3; %-12:6:0; %-9:3:3;
 range_snapshots = 2000:3000:N_DOA;
-range_radius = [0.25];%[0.25 0.2 0.15 0.1]; %[0.5 0.3 0.25 0.2 0.15 0.1]; %[0.25];
+range_radius = [0.25 0.2 0.15 0.1]; %[0.5 0.3 0.25 0.2 0.15 0.1]; %[0.25];
 range_coupling = [0 1]; % com e sem acoplamento
 range_phi = -180:72:180; %-180:18:180;
 nMethods = 4;
@@ -347,7 +347,7 @@ colors =  ["red", "green", "blue", "black", "magenta", "cyan", "yellow"];
 line_style =   ["-", "--", ":","-."]; % linha continua sem acoplamento % linha tracejada com acoplamento
 
 % Criar pasta 'graficos'
-outDir = fullfile(pwd, 'graficos');
+outDir = fullfile(pwd, 'graficosArtigoSalvador');
 if ~exist(outDir, 'dir')
     mkdir(outDir);
 end
@@ -770,7 +770,7 @@ colors =  ["red", "green", "blue", "black", "red", "green", "blue", "black"];
 line_style =   ["-", "--", ":"]; % linha continua sem acoplamento % linha tracejada com acoplamento
 
 % Criar pasta 'graficos'
-outDir = fullfile(pwd, 'graficosBeamforming');
+outDir = fullfile(pwd, 'graficosBeamformingArtigoSalvador');
 if ~exist(outDir, 'dir')
     mkdir(outDir);
 end
